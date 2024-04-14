@@ -1,6 +1,6 @@
 # scan360
 
-## A data driven approch to build stock market intelligence
+## A data driven approch to build stock market intelligence.
 
 ### currently working on:
 - [ ] Scrapping NSE Announcements.

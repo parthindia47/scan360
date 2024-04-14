@@ -1,1 +1,15 @@
 twitter_streaming.py
+downloads/
+temp/
+
+# Ignore all doc files
+*.pdf
+*.xls
+*.xlsx
+*.xlsm
+
+# Ignore doc files in all directories
+**/*.pdf
+**/*.xls
+**/*.xlsx
+**/*.xlsm
