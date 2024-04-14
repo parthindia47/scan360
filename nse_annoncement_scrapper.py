@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Sep  6 01:43:43 2020
-
 => listing
 https://www.nseindia.com/market-data/all-upcoming-issues-ipo
 
@@ -236,7 +234,7 @@ def getCompaniesListUrl(urlType,index):
     return companiesListUrl[urlType]
 
 # ==========================================================================
-# ============================ fetch Function ==============================
+# ============================ Fetch Function ==============================
 
 '''
 Fetch any Json from URL
@@ -316,185 +314,14 @@ def downloadFromJsonArray(jsonObjArray, attachmentKey, downloadPath):
         time.sleep(2)  # Pause execution for 2 seconds
 
 # ==========================================================================
-def fetchJsonObj(urlType):
+# ============================  Fetch JSON ==============================
+
+def fetchJsonObj(urlType,index):
     response = fetchUrl(getBaseUrl(urlType=urlType))
-    jsonUrl = getJsonUrlQuery(urlType=urlType,index="equities")
+    jsonUrl = getJsonUrlQuery(urlType=urlType,index=index)
     jsonObj = fetchJson(jsonUrl, response.cookies)
 
     return jsonObj
-
-def fetchAnnouncements():
-    announcementBaseUrl = "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
-    response = fetchUrl(announcementBaseUrl)
-
-    # announcementSchemaUrl = getAnnouncementSchemaUrl(index="equities")
-    # announcementSchemaJson = fetchJson(announcementSchemaUrl,response.cookies)
-    # print(announcementSchemaJson)
-
-    # announcementJsonUrl = getAnnouncementUrlQuery(index="equities")
-    # announcementJson = fetchJson(announcementJsonUrl,response.cookies)
-
-    # subjectUrl = getListOfSubjectsUrl(index="equities")
-    # subjectList = fetchJson(subjectUrl)
-    # print(subjectList)
-
-    # downloadFromJsonArray(announcementJson, "attchmntFile", "C:\\Users\\Parth\\Documents\\scan360\\downloads" )
-    # print(announcementJson)
-
-'''
-=> Amalgamation / Merger / arrangements of listed Companies ???
-https://www.nseindia.com/companies-listing/corporate-filings-scheme-document
-
-json
-https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme"
-
-schema
-https://www.nseindia.com/json/CorporateFiling/CF-scheme-document.json
-
-company list
-https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme/master
-
-
-filters :
-https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme?index=equities&from_date=14-03-2024&to_date=14-04-2024
-https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme?index=equities&issuer=3i%20Infotech%20Limited&type=3i%20Infotech%20Limited
-'''
-def fetchCorporateArrangement():
-
-    schemaUrl = "https://www.nseindia.com/json/CorporateFiling/CF-scheme-document.json"
-    companiesListUrl = "https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme/master"
-
-    response = fetchUrl(getBaseUrl(urlType="arrangement"))
-    arrangementJsonUrl = getJsonUrlQuery(urlType="arrangement",index="equities")
-    arrangementJson = fetchJson(arrangementJsonUrl, response.cookies)
-
-    print(arrangementJson)
-
-'''
-=> Board Meetings
-https://www.nseindia.com/companies-listing/corporate-filings-board-meetings
-
-
-
-json
-https://www.nseindia.com/api/corporate-board-meetings?index=equities
-https://www.nseindia.com/api/corporate-board-meetings?index=sme
-
-schema
-https://www.nseindia.com/json/CorporateFiling/CF-boardmeeting-equity.json
-https://www.nseindia.com/json/CorporateFiling/CF-boardmeeting-sme.json
-
-subjects :
-https://www.nseindia.com/api/corporate-board-meetings-subject?index=equities
-
-filters :
-https://www.nseindia.com/api/corporate-board-meetings?index=equities&symbol=SUBEX&issuer=Subex%20Limited
-https://www.nseindia.com/api/corporate-board-meetings?index=equities&from_date=14-04-2024&to_date=29-04-2024
-
-'''
-def fetchBoardMeetings():
-
-    response = fetchUrl(getBaseUrl(urlType="boardMeetings"))
-    boardMeetingsJsonUrl = getJsonUrlQuery(urlType="boardMeetings",index="equities")
-    boardMeetingsJson = fetchJson(boardMeetingsJsonUrl, response.cookies)
-    print(boardMeetingsJson)
-
-'''
-=> Bonus / Dividend / Buy Back / Rights Issue / General Meeting
-https://www.nseindia.com/companies-listing/corporate-filings-actions
-
-
-schema:
-https://www.nseindia.com/json/CorporateFiling/CF-corpactions-equity.json
-https://www.nseindia.com/json/CorporateFiling/CF-corpactions-debt.json
-https://www.nseindia.com/json/CorporateFiling/CF-corpactions-mf.json
-https://www.nseindia.com/json/CorporateFiling/CF-corpactions-sme.json
-
-holiday:
-https://www.nseindia.com/api/holiday-master?type=trading
-
-subjects:
-https://www.nseindia.com/api/corporates-corporateActions-subject?index=equities
-
-list of companies:
-https://www.nseindia.com/api/corporates-corporateActions-debtcompany
-
-json:
-https://www.nseindia.com/api/corporates-corporateActions?index=equities
-https://www.nseindia.com/api/corporates-corporateActions?index=debt
-https://www.nseindia.com/api/corporates-corporateActions?index=mf
-https://www.nseindia.com/api/corporates-corporateActions?index=sme
-
-filters:
-https://www.nseindia.com/api/corporates-corporateActions?index=equities&from_date=14-04-2024&to_date=21-04-2024
-https://www.nseindia.com/api/corporates-corporateActions?index=equities&from_date=07-04-2024&to_date=14-04-2024
-
-https://www.nseindia.com/api/corporates-corporateActions?index=equities&from_date=14-04-2024&to_date=14-04-2024
-https://www.nseindia.com/api/corporates-corporateActions?index=equities&from_date=14-04-2024&to_date=14-07-2024&fo_sec=true
-
-https://www.nseindia.com/api/corporates-corporateActions?index=equities&from_date=undefined&to_date=undefined&symbol=SUBEX&issuer=Subex%20Limited
-
-https://www.nseindia.com/api/corporates-corporateActions?index=equities&from_date=undefined&to_date=undefined&symbol=SUBEX&subject=BONUS&issuer=Subex%20Limited
-
-'''
-def fetchCorporateActions():
-    response = fetchUrl(getBaseUrl(urlType="corporateActions"))
-    boardMeetingsJsonUrl = getJsonUrlQuery(urlType="corporateActions",index="equities")
-    boardMeetingsJson = fetchJson(boardMeetingsJsonUrl, response.cookies)
-    print(boardMeetingsJson)
-
-'''
-=> Financial Results
-https://www.nseindia.com/companies-listing/corporate-filings-financial-results
-
-
-https://www.nseindia.com/api/corporates-financial-results?index=equities&period=Annual
-https://www.nseindia.com/api/corporates-financial-results?index=equities&period=Quarterly
-https://www.nseindia.com/api/corporates-financial-results?index=equities&period=Half-Yearly
-
-https://www.nseindia.com/api/corporates-financial-results?index=equities&from_date=14-01-2024&to_date=14-04-2024&fo_sec=true&period=Half-Yearly
-
-https://www.nseindia.com/api/corporates-financial-results?index=equities&fo_sec=true&symbol=SUBEX&issuer=Subex%20Limited&period=Half-Yearly
-
-'''
-def fetchFinancialResults():
-    response = fetchUrl(getBaseUrl(urlType="financialResults"))
-    boardMeetingsJsonUrl = getJsonUrlQuery(urlType="financialResults",index="equities")
-    boardMeetingsJson = fetchJson(boardMeetingsJsonUrl, response.cookies)
-    print(boardMeetingsJson)
-
-
-'''
-=> IPO fillings 
-https://www.nseindia.com/companies-listing/corporate-filings-offer-documents
-
-schema:
-https://www.nseindia.com/json/CorporateFiling/CF-equity-offer-document.json
-https://www.nseindia.com/json/CorporateFiling/CF-sme-offer-document.json
-https://www.nseindia.com/json/CorporateFiling/CF-debt-offer-document.json
-
-json:
-https://www.nseindia.com/api/corporates/offerdocs?index=equities
-https://www.nseindia.com/api/corporates/offerdocs?index=sme
-https://www.nseindia.com/api/corporates/offerdocs?index=debt
-
-filter:
-https://www.nseindia.com/api/corporates/offerdocs?index=equities&from_date=14-10-2023&to_date=14-04-2024
-
-company list:
-https://www.nseindia.com/api/corporates/offerdocs?index=equities&company=Adani%20Wilmar%20Limited
-https://www.nseindia.com/api/corporates/offerdocs?index=equities&isin=IDERR
-
-
-'''
-def fetchOfferDocuments():
-    response = fetchUrl(getBaseUrl(urlType="offerDocs"))
-    boardMeetingsJsonUrl = getJsonUrlQuery(urlType="offerDocs",index="equities")
-    boardMeetingsJson = fetchJson(boardMeetingsJsonUrl, response.cookies)
-    print(boardMeetingsJson)
-
-    
-#fetchAnnouncements()
 
 '''
 ref
@@ -521,5 +348,5 @@ def fetchStockPrice():
 
 #fetchOfferDocuments()
 
-url = getSubjectUrl(urlType="boardMeetings",index="equities")
-print(url)
+jsonObj = fetchJsonObj(urlType="boardMeetings",index="equities")
+print(jsonObj)
