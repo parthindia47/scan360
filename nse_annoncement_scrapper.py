@@ -32,6 +32,7 @@ import pytz  # Import pytz module for timezone support
 import pandas as pd
 from io import StringIO
 import math
+import csv
 
 nseSegments = {"equities":"equities",
               "debt":"debt",
@@ -42,6 +43,8 @@ nseSegments = {"equities":"equities",
               "invitsreits":"invitsreits"}
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
+
+scrappingStartingDate = datetime.datetime(2024, 1, 1)
 
 '''
 # announcements 
@@ -124,7 +127,9 @@ def getJsonUrlQuery(urlType,
     
     # Handling time-wise search
     if fromDate and toDate:
-        baseUrl += f"&from_date={fromDate}&to_date={toDate}"
+        fromDate_str = fromDate.strftime("%d-%m-%Y")  # Convert Python date to string in "dd-mm-yyyy" format
+        toDate_str = toDate.strftime("%d-%m-%Y")      # Convert Python date to string in "dd-mm-yyyy" format
+        baseUrl += f"&from_date={fromDate_str}&to_date={toDate_str}"
     
     # Handling company-wise search
     if symbol and issuer:
@@ -321,12 +326,24 @@ def downloadFromJsonArray(jsonObjArray, attachmentKey, downloadPath):
 # ==========================================================================
 # ============================  Fetch JSON ==============================
 
-def fetchJsonObj(urlType,index):
-    response = fetchUrl(getBaseUrl(urlType=urlType))
-    jsonUrl = getJsonUrlQuery(urlType=urlType,index=index)
-    jsonObj = fetchJson(jsonUrl, response.cookies)
+def fetchJsonObj(urlType,index,fromDate=None,toDate=None,step=6):
+    jsonObjMaster = []
+    start_date = fromDate
+    end_date = toDate
 
-    return jsonObj
+    response = fetchUrl(getBaseUrl(urlType=urlType))
+    while start_date <= toDate:
+        end_date = start_date + datetime.timedelta(days=step)  # Add 6 days to get the end date (7 days interval)
+        jsonUrl = getJsonUrlQuery(urlType=urlType,index=index,fromDate=start_date,toDate=end_date)
+        jsonObj = fetchJson(jsonUrl, response.cookies)
+
+        # Extend jsonObjMaster with the list of objects in jsonObj
+        jsonObjMaster.extend(jsonObj)
+        
+        # Move to the next iteration (next week)
+        start_date += datetime.timedelta(days=(step+1))
+
+    return jsonObjMaster
 
 # ==========================================================================
 # ============================  Yahoo Fin API ==============================
@@ -475,32 +492,36 @@ def calculatePercentageDifference(yFinTicker, date):
     print("start_date: ", start_date)
     print("end_date: ", end_date)
 
-    # Fetch historical data for the specified date range
-    tickerInformation = yf.Ticker(yFinTicker)
-    tickerHistory = tickerInformation.history(start=start_date, end=end_date)
-    print(tickerHistory)
+    try:
+      # Fetch historical data for the specified date range
+      tickerInformation = yf.Ticker(yFinTicker)
+      tickerHistory = tickerInformation.history(start=start_date, end=end_date)
+      print(tickerHistory)
 
-    if not tickerHistory.empty:
-        # Calculate the percentage difference between close price of (start_date + num_days) and open price of start_date
-        open_price = tickerHistory.iloc[0]['Open']
-        close_price = tickerHistory.iloc[0]['Close']
-        percentageDiff1d = ((close_price - open_price) / open_price) * 100
-        percentageDiff1d = round(percentageDiff1d,2)
+      if not tickerHistory.empty:
+          # Calculate the percentage difference between close price of (start_date + num_days) and open price of start_date
+          open_price = tickerHistory.iloc[0]['Open']
+          close_price = tickerHistory.iloc[0]['Close']
+          percentageDiff1d = ((close_price - open_price) / open_price) * 100
+          percentageDiff1d = round(percentageDiff1d,2)
 
-        mid_day = math.ceil(len(tickerHistory)/2) - 1
-        open_price = tickerHistory.iloc[0]['Open']
-        close_price = tickerHistory.iloc[mid_day]['Close']
-        percentageDiff3d = ((close_price - open_price) / open_price) * 100
-        percentageDiff3d = round(percentageDiff3d,2)
+          mid_day = math.ceil(len(tickerHistory)/2) - 1
+          open_price = tickerHistory.iloc[0]['Open']
+          close_price = tickerHistory.iloc[mid_day]['Close']
+          percentageDiff3d = ((close_price - open_price) / open_price) * 100
+          percentageDiff3d = round(percentageDiff3d,2)
 
-        open_price = tickerHistory.iloc[0]['Open']
-        close_price = tickerHistory.iloc[-1]['Close']
-        percentageDiff5d = ((close_price - open_price) / open_price) * 100
-        percentageDiff5d = round(percentageDiff5d,2)
+          open_price = tickerHistory.iloc[0]['Open']
+          close_price = tickerHistory.iloc[-1]['Close']
+          percentageDiff5d = ((close_price - open_price) / open_price) * 100
+          percentageDiff5d = round(percentageDiff5d,2)
 
-        return {'1d':percentageDiff1d,'3d':percentageDiff3d,'5d':percentageDiff5d}
-    else:
-        print("No historical data available for the specified date range.")
+          return {'1d':percentageDiff1d,'3d':percentageDiff3d,'5d':percentageDiff5d}
+      else:
+          print("No historical data available for the specified date range.")
+          return None
+    except Exception as e:
+        print(e)
         return None
 
 
@@ -533,11 +554,58 @@ def getAllNseHolidays():
 # result = fetchPercentageChange1Day("BRIGADE.NS", datetime.datetime(2024, 4, 12))
 # print("1d % change " + str(result))
 
-result = calculatePercentageDifference("BRIGADE.NS", datetime.datetime(2024, 4, 3))
-print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
+# result = calculatePercentageDifference("BRIGADE.NS", datetime.datetime(2024, 4, 3))
+# print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
 
-# jsonObj = fetchJsonObj(urlType="boardMeetings",index="equities")
-# print(jsonObj)
+def scrapNseAnnouncements():
+  current_date = datetime.datetime.now()
+
+  start_date = scrappingStartingDate
+  end_date = start_date + datetime.timedelta(days=20)
+  master_json_list = fetchJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
+
+  print("length " + str(len(master_json_list)))
+  print(type(master_json_list))
+  #print(master_json_list)
+  #print(master_json_list[0])
+
+  # Convert the list of dictionaries to a DataFrame
+  df = pd.DataFrame(master_json_list)
+
+  csv_filename = "output.csv"
+  df.to_csv(csv_filename, index=False, encoding='utf-8')
+
+  print("Data saved to", csv_filename)
+
+def yahooFinTesting(yFinTicker, date):
+    # Set the timezone to UTC
+    ist_timezone = pytz.timezone('Asia/Kolkata')
+    
+    # Convert the input date to UTC timezone
+    date_ist = date.astimezone(ist_timezone)
+
+    # calculate start_date and end_date
+    start_date = date_ist
+    end_date = start_date + datetime.timedelta(days=1)
+
+    tickerInformation = yf.Ticker(yFinTicker)
+    tickerHistory = tickerInformation.history(start=start_date, end=end_date) 
+    print(tickerHistory)
+
+    print("information")
+    print(tickerInformation.info)
+
+    print("history_metadata")
+    print(tickerInformation.history_metadata)
+
+    print("actions")
+    print(tickerInformation.actions)
+
+    print("news")
+    print(tickerInformation.news)
+
+
+yahooFinTesting("RELIANCE.NS",datetime.datetime(2024, 4, 15))
 
 # result = getAllNseSymbols()
 # print(result)
