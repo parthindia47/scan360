@@ -5,6 +5,7 @@
 ### currently working on:
 - [ ] Scrapping NSE Announcements.
 - [ ] Mapping Announcements against stock price movement and create database which announcements gives positive moves.
+- [ ] list of NSE symbol tickers and yahoo fin ticker and relation
 
 ### Find out:
 - [ ] where are all concall details are uploaded ?
