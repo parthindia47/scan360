@@ -6,9 +6,6 @@ https://www.nseindia.com/market-data/all-upcoming-issues-ipo
 ==> annual report
 https://www.nseindia.com/companies-listing/corporate-filings-annual-reports
 
-==> Equity based
-https://www.nseindia.com/get-quotes/equity?symbol=RAYMOND
-
 credit ratings seems to be having indirect links
 
 list of all stocks
@@ -525,25 +522,51 @@ def calculatePercentageDifference(yFinTicker, date):
         return None
 
 
+def getAbsoluteFilePath(file_name):
+  current_dir = os.path.dirname(__file__)
+
+  # Concatenate the parent directory path with the file name
+  file_path = os.path.join(current_dir, file_name)
+
+  return file_path
+
 '''
 EQ (Equity): EQ represents the Equity segment
 BE (Group B): BE stands for "Trade-to-Trade" segment or the "Limited Physical Market" segment. 
 BZ (Group Z): BZ represents the Trade-to-Trade segment for securities that 
               have not been traded at all during the last 365 days
 '''
-def getAllNseSymbols():
-
-    csv_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
-
-    response = requests.get(csv_url, headers=headers)
+def getAllNseSymbols(local=False):
+    remote_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+    local_url = "stock_info\EQUITY_L.csv"  # Adjust the path as needed
     
-    # Read the CSV data into a DataFrame
-    df = pd.read_csv(StringIO(response.text))
-    
-    # Convert the DataFrame to a dictionary
-    json_data = df.to_dict(orient='records')
-    
-    return json_data
+    if local:
+        # Get the absolute path of the local CSV file
+        abs_path = os.path.abspath(local_url)
+        print("Fetching locally " + abs_path)
+        
+        # Read the CSV data into a DataFrame
+        df = pd.read_csv(abs_path)
+        
+        # Convert the DataFrame to a dictionary
+        json_data = df.to_dict(orient='records')
+        
+        return json_data
+    else:
+        print("Fetching remotely " + remote_url)
+        response = requests.get(remote_url,headers=headers)
+        
+        # Save the CSV data to the local file path
+        with open(local_url, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        
+        # Read the local CSV data into a DataFrame
+        df = pd.read_csv(StringIO(response.text))
+        
+        # Convert the DataFrame to a dictionary
+        json_data = df.to_dict(orient='records')
+        
+        return json_data
 
 def getAllNseHolidays():
     url = "https://www.nseindia.com/api/holiday-master?type=trading"
@@ -557,22 +580,22 @@ def getAllNseHolidays():
 # result = calculatePercentageDifference("BRIGADE.NS", datetime.datetime(2024, 4, 3))
 # print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
 
-def scrapNseAnnouncements():
+def updateNseAnnouncements():
   current_date = datetime.datetime.now()
 
   start_date = scrappingStartingDate
   end_date = start_date + datetime.timedelta(days=20)
   master_json_list = fetchJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
 
-  print("length " + str(len(master_json_list)))
-  print(type(master_json_list))
+  print("total entries " + str(len(master_json_list)))
+  #print(type(master_json_list))
   #print(master_json_list)
   #print(master_json_list[0])
 
   # Convert the list of dictionaries to a DataFrame
   df = pd.DataFrame(master_json_list)
 
-  csv_filename = "output.csv"
+  csv_filename = "nse_fillings\\announcements.csv"
   df.to_csv(csv_filename, index=False, encoding='utf-8')
 
   print("Data saved to", csv_filename)
@@ -604,11 +627,113 @@ def yahooFinTesting(yFinTicker, date):
     print("news")
     print(tickerInformation.news)
 
+'''
+==> Equity based
+https://www.nseindia.com/get-quotes/equity?symbol=RAYMOND
 
-yahooFinTesting("RELIANCE.NS",datetime.datetime(2024, 4, 15))
+total market cap, trade volume etc
+https://www.nseindia.com/api/quote-equity?symbol=RAYMOND&section=trade_info
 
-# result = getAllNseSymbols()
-# print(result)
+prices and quote
+https://www.nseindia.com/api/quote-equity?symbol=RAYMOND
+
+financial results, announcement etc.
+https://www.nseindia.com/api/top-corp-info?symbol=RAYMOND&market=equities
+
+meta-data
+https://www.nseindia.com/api/equity-meta-info?symbol=RAYMOND
+'''
+def getNseStockInfo(nseTicker):
+    pass
+
+'''
+#yahooFinTesting("RELIANCE.NS")
+'''    
+def getyFinTickerInfo(yFinTicker, sub="INFO"):
+    try:
+      tickerInformation = yf.Ticker(yFinTicker)
+
+      if sub == "INFO":
+        return tickerInformation.info
+      
+    except Exception as e:
+        print(e)
+        return None
+
+'''
+will return ticker history between start_date and end_date
+if it is not supported by yFin will return None
+'''
+def getyFinTickerCandles(yFinTicker,start_date,end_date):
+    try:
+      tickerInformation = yf.Ticker(yFinTicker)
+      tickerHistory = tickerInformation.history(start=start_date, end=end_date)
+      if not tickerHistory.empty:
+        return tickerHistory
+      else:
+          return None
+    except Exception as e:
+        print(e)
+        return None
+
+'''
+in yahoo finance all stock ticker are appended by ".NS"
+'''
+def updateYFinStockList(nseStockList, delay=6):
+    master_list = []
+    unsupported_tickers = []
+    for idx, obj in enumerate(nseStockList):
+        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        result = getyFinTickerInfo(obj["SYMBOL"] + ".NS")
+        if result:
+            master_list.append(result)
+        else:
+           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+           unsupported_tickers.append(obj["SYMBOL"])
+        time.sleep(delay)
+
+    df = pd.DataFrame(master_list)
+    csv_filename = "stock_info\yFinStockInfo.csv"
+    df.to_csv(csv_filename, index=False, encoding='utf-8')
+    print("saved " + csv_filename)
+
+    if unsupported_tickers:
+      df = pd.DataFrame(unsupported_tickers)
+      csv_filename = "stock_info\yFinUnsupportedTickers.csv"
+      df.to_csv(csv_filename, index=False, encoding='utf-8')
+      print("saved " + csv_filename)
+
+def updateYFinTickerCandles(nseStockList, delay=6):
+    ist_timezone = pytz.timezone('Asia/Kolkata')
+
+    start_date = scrappingStartingDate
+    end_date = datetime.datetime.now(ist_timezone)
+
+    for idx, obj in enumerate(nseStockList):
+        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        result = getyFinTickerCandles(obj["SYMBOL"] + ".NS", \
+                                      start_date=start_date, \
+                                      end_date=end_date)
+        if not result.empty:
+            csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
+
+            # Assuming df is your DataFrame containing historical data
+            # Reset the index to include 'Date' as a regular column
+            result.reset_index(inplace=True)
+            result.to_csv(csv_filename, index=False, encoding='utf-8')
+            print("saved " + csv_filename)
+        else:
+           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+        time.sleep(delay)
+
 
 # result = getAllNseHolidays()
 # print(result)
+
+#yahooFinTesting("RELIANCE.NS",datetime.datetime(2024, 4, 15))
+
+# nseStockList = getAllNseSymbols(local=True)
+# updateYFinTickerCandles(nseStockList)
+#print(result)
+
+updateNseAnnouncements()
