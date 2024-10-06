@@ -1,15 +1,26 @@
 twitter_streaming.py
-downloads/
-temp/
+downloads/**
+temp/**
+docs/notes.md
+nse_fillings/**
+nse_fillings_attachments/**
+stock_charts/**
+stock_info/**
+stock_charts_copy/**
+output/**
+stock_info/**
+
 
 # Ignore all doc files
 *.pdf
 *.xls
 *.xlsx
 *.xlsm
+*.log
 
 # Ignore doc files in all directories
 **/*.pdf
 **/*.xls
 **/*.xlsx
 **/*.xlsm
+docs/stock_ideas.docx
