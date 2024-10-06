@@ -18,6 +18,17 @@ https://www.nseindia.com/market-data/securities-available-for-trading
 -- Face value ?
 -- total floating ?
 
+OCR:
+https://github.com/UB-Mannheim/tesseract/wiki
+
+Popular:
+https://github.com/oschwartz10612/poppler-windows/releases/
+
+Path Variable:
+C:\Program Files\Tesseract-OCR
+C:\poppler-24.08.0
+C:\poppler-24.08.0\Library\bin
+
 """
 import os
 import requests
@@ -32,7 +43,11 @@ import math
 import csv
 import hashlib
 import logging
-
+import zipfile
+import re
+import PyPDF2
+import pytesseract
+from pdf2image import convert_from_path
 
 nseSegments = {"equities":"equities",
               "debt":"debt",
@@ -279,7 +294,6 @@ def getJsonUrlQuery(urlType,
     
     return baseUrl
 
-
 def getSchemaUrl(urlType,index):
     schemaBaseUrl = "https://www.nseindia.com/json/CorporateFiling/"
 
@@ -332,7 +346,6 @@ def getSchemaUrl(urlType,index):
     schemaBaseUrl = schemaBaseUrl + schemaObjs[urlType][index]
     return schemaBaseUrl
 
-
 def getBaseUrl(urlType):
     baseUrls = {
         "announcement":"https://www.nseindia.com/companies-listing/corporate-filings-announcements" ,
@@ -346,7 +359,6 @@ def getBaseUrl(urlType):
     baseUrl = baseUrls[urlType]
     return baseUrl
     
-
 def getSubjectUrl(urlType,index):
     subjectUrls = {
         "announcement":"https://www.nseindia.com/api/corporate-announcements-subject?index=" ,
@@ -424,6 +436,73 @@ def fetchUrl(url):
 
 # ==========================================================================
 # ============================  File Download ==============================
+def ocr_pdf_to_text(pdf_path, output_folder='downloads'):
+    """Convert scanned PDF pages to text using OCR."""
+    # Convert PDF to a list of images
+    images = convert_from_path(pdf_path)
+    
+    # Ensure the output folder exists
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    # Initialize an empty string to hold the extracted text
+    extracted_text = ""
+    
+    # Loop through the images (one for each page)
+    for i, image in enumerate(images):
+        # Save each page as an image file
+        image_path = os.path.join(output_folder, f'page_{i + 1}.png')
+        image.save(image_path, 'PNG')
+        
+        # Use Tesseract to extract text from the image
+        text = pytesseract.image_to_string(image)
+        extracted_text += f"\n\n--- Page {i + 1} ---\n{text}"
+    
+    return extracted_text
+
+def extract_text_from_pdf(pdf_path):
+    """Extract text from the PDF file."""
+    with open(pdf_path, 'rb') as file:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in range(len(reader.pages)):
+            text += reader.pages[page].extract_text() + "\n"
+    return text
+
+def search_keywords_in_pdf(pdf_file_path, keywords):
+  text = None
+  text = extract_text_from_pdf(pdf_file_path)
+  print("Length of text " + str(len(text)))
+
+  if len(text) < 50:
+      #it is possible that this is image
+      # Example usage
+      text = ocr_pdf_to_text(pdf_file_path)
+
+  results = searchInText(text, keywords)
+  # Print the results
+  for keyword, occurrences in results.items():
+      print(f"Keyword: {keyword}")
+      for line_number, line in occurrences:
+          print(f"Line {line_number}: {line}")
+      print("\n")
+
+  return results
+
+'''
+# Path to the zip file
+zip_file_path = 'path/to/your/file.zip'
+
+# Directory to extract the files
+extract_to = 'path/to/extract/'
+'''
+def extractZipFile(zip_file_path, extract_to):
+    # Ensure the extraction directory exists
+    os.makedirs(extract_to, exist_ok=True)
+
+    # Extract all the contents
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
 
 def downloadFileFromUrl(url, outputDir="."):
     try:
@@ -436,21 +515,27 @@ def downloadFileFromUrl(url, outputDir="."):
         
         # Get the file name from the URL
         fileName = url.split("/")[-1]
+        fileExtension = fileName.split(".")[-1]
         
         # Determine the output path
-        outputPath = os.path.join(outputDir, fileName)
+        fileOutputPath = os.path.join(outputDir, fileName)
 
-        print("Downloading " + url + " Saving to " + outputPath)
+        print("Downloading " + url + " Saving to " + fileOutputPath)
         
         # Send a GET request to the URL
         response = requests.get(url,headers=headers)
         response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
         
         # Save the content of the response to a file
-        with open(outputPath, 'wb') as file:
+        with open(fileOutputPath, 'wb') as file:
             file.write(response.content)
+
+        # this is zip file
+        if fileExtension == "zip":
+            print("This is zip file, extracting")
+            extractZipFile(fileOutputPath, outputDir)
         
-        print(f"File downloaded successfully as '{outputPath}'")
+        print(f"File downloaded successfully as '{fileOutputPath}'")
     except (requests.exceptions.RequestException, FileNotFoundError) as e:
         print("Error:", e)
 
@@ -469,7 +554,6 @@ This is master function to fetch any type of fillings from NSE.
 Example:
 fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
 '''
-
 def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delay=5):
     jsonObjMaster = []
     start_date = fromDate
@@ -1181,7 +1265,45 @@ def yahooFinTesting(yFinTicker, date):
 #fetchNseAnnouncements()
 #syncUpNseAnnouncements()
 
-fetchNseAnnouncements(start_date=datetime.datetime(2020, 1, 1), 
-                      end_date=datetime.datetime(2020, 4, 1),
-                      file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+# fetchNseAnnouncements(start_date=datetime.datetime(2020, 1, 1), 
+#                       end_date=datetime.datetime(2020, 4, 1),
+#                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 #updatePercentageForAnnouncements()
+
+# downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
+#                     outputDir="downloads")
+
+
+def searchInText(text, keywords):
+    # Split the text into lines
+    lines = text.splitlines()
+
+    # Dictionary to hold search results
+    search_results = {}
+
+    for keyword in keywords:
+        keyword_pattern = re.compile(rf'\b{re.escape(keyword)}\b', re.IGNORECASE)
+        for line_number, line in enumerate(lines, start=1):
+            if re.search(keyword_pattern, line):
+                if keyword not in search_results:
+                    search_results[keyword] = []
+                search_results[keyword].append((line_number, line.strip()))
+
+    return search_results
+
+# Example usage
+pdf_file_path = 'downloads/rsu.pdf'
+keywords = ['Bank', 'Million', 'clients', 'intimation', 'interest', 'plan', 'valid']
+
+search_keywords_in_pdf(pdf_file_path, keywords)
+
+
+# # Search for the keywords in the PDF
+# results = search_keywords_in_pdf(pdf_file_path, keywords)
+
+# # Print the results
+# for keyword, occurrences in results.items():
+#     print(f"Keyword: {keyword}")
+#     for line_number, line in occurrences:
+#         print(f"Line {line_number}: {line}")
+#     print("\n")
