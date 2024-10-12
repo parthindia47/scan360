@@ -63,6 +63,44 @@ scrappingStartingDate = datetime.datetime(2022, 1, 1)
 current_datetime = datetime.datetime.now()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
 
+announcementKeywords = [
+"Acquisition",
+"Acquire",
+"Amalgamation",
+"Arrangement",
+"Merger",
+"Demerge",
+"De merge",
+"Demerger",
+"disinvestment",
+"Amalgamation",
+"Re-structuring",
+"Restructuring",
+"Offer For Sale",
+"Bonus",
+"split",
+"dividend",
+"Buy back",
+"Buyback",
+"Rights issue",
+"Right issue",
+"Public offer",
+"New Project",
+"new contract",
+"new order",
+"order received",
+"Bagging",
+"winning",
+"Expansion",
+"Investment",
+"settlement",
+"Raising of funds",
+"Rating",
+"clarification"
+]
+
+accepted_extensions = ['pdf']
+
 # =======================================================================
 # ========================== logging ====================================
 
@@ -469,17 +507,25 @@ def extract_text_from_pdf(pdf_path):
             text += reader.pages[page].extract_text() + "\n"
     return text
 
-def search_keywords_in_pdf(pdf_file_path, keywords):
+'''
+# Example usage
+pdf_file_path = 'downloads/rsu.pdf'
+keywords = ['Bank', 'Million', 'clients', 'intimation', 'interest', 'plan', 'valid']
+search_keywords_in_pdf(pdf_file_path, keywords)
+'''
+def search_keywords_in_pdf(pdf_file_path, keywords, jpg_pdf = True):
   text = None
   text = extract_text_from_pdf(pdf_file_path)
   print("Length of text " + str(len(text)))
 
-  if len(text) < 50:
-      #it is possible that this is image
-      # Example usage
+  #if length of text is less, it is possible that it is image.
+  #we will extract text from image using ocr
+  if len(text) < 50 and jpg_pdf :
       text = ocr_pdf_to_text(pdf_file_path)
 
+  #this will return line number and line containing keywords
   results = searchInText(text, keywords)
+
   # Print the results
   for keyword, occurrences in results.items():
       print(f"Keyword: {keyword}")
@@ -504,18 +550,28 @@ def extractZipFile(zip_file_path, extract_to):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
 
+'''
+downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
+                    outputDir="downloads")
+
+common extensions on nse site = {'xml', 'zip', 'pdf', 'xlsx', 'PDF', 'jpg'}
+'''
 def downloadFileFromUrl(url, outputDir="."):
     try:
         # Check if the output directory exists
         if not os.path.exists(outputDir):
             raise FileNotFoundError(f"The directory '{outputDir}' does not exist.")
         
-        if not url:
+        if not url or len(url) < 10:
             print("URL is None")
+            return
         
         # Get the file name from the URL
         fileName = url.split("/")[-1]
         fileExtension = fileName.split(".")[-1]
+
+        if fileExtension.lower() not in accepted_extensions:
+          return
         
         # Determine the output path
         fileOutputPath = os.path.join(outputDir, fileName)
@@ -539,11 +595,23 @@ def downloadFileFromUrl(url, outputDir="."):
     except (requests.exceptions.RequestException, FileNotFoundError) as e:
         print("Error:", e)
 
-def downloadFromJsonArray(jsonObjArray, attachmentKey, downloadPath):
-    for obj in jsonObjArray:
-      if obj[attachmentKey]:
-        downloadFileFromUrl(obj[attachmentKey],downloadPath)
-        time.sleep(2)  # Pause execution for 2 seconds
+def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
+    attachmentKey = "attchmntFile"
+
+    # Read the CSV data into a DataFrame
+    df = pd.read_csv(csv_filename)
+
+    # Parse the 'an_dt' column as datetime
+    df['an_dt'] = pd.to_datetime(df['an_dt'])
+
+    # Iterate over the DataFrame rows
+    for index, row in df.iterrows():
+        # Check if the attachment key exists and is not NaN
+        if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
+            print(row[attachmentKey])  # Access row by column name
+            downloadFileFromUrl(row[attachmentKey],downloadDir)
+            time.sleep(delay)  # Pause execution for 2 seconds
+
 
 # ==========================================================================
 # ==============================  Fetch JSON ===============================
@@ -557,22 +625,35 @@ fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, t
 def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delay=5):
     jsonObjMaster = []
     start_date = fromDate
-    end_date = toDate
+    final_end_date = toDate  # Rename to avoid confusion
 
+    # First, get response from the main URL to fetch cookies
     response = fetchUrl(getBaseUrl(urlType=urlType))
     print(response)
-    while start_date <= toDate:
-        end_date = start_date + datetime.timedelta(days=step)  # Add 6 days to get the end date (7 days interval)
-        jsonUrl = getJsonUrlQuery(urlType=urlType,index=index,fromDate=start_date,toDate=end_date)
+
+    # Ensure step is set properly if start and end dates are the same or close together
+    if start_date == final_end_date:
+        step = 0  # If dates are the same, no step needed
+    elif (final_end_date - start_date).days < step:
+        step = (final_end_date - start_date).days  # Adjust step to the remaining days if smaller than the step size
+
+    while start_date <= final_end_date:
+        # Calculate the dynamic end date, making sure it doesn't exceed the final end date
+        end_date = start_date + datetime.timedelta(days=step)
+        if end_date > final_end_date:
+            end_date = final_end_date
+
+        # Fetch the JSON object using the calculated start and end date
+        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, fromDate=start_date, toDate=end_date)
         jsonObj = fetchJson(jsonUrl, response.cookies)
 
-        # Extend jsonObjMaster with the list of objects in jsonObj
+        # Extend the list with the fetched data
         jsonObjMaster.extend(jsonObj)
-        
-        # Move to the next iteration (next week)
+
+        # Move to the next iteration (next step after the current end_date)
         start_date = end_date + datetime.timedelta(days=1)
 
-        time.sleep(delay)
+        time.sleep(delay)  # Delay between API requests
 
     return jsonObjMaster
 
@@ -1291,11 +1372,30 @@ def searchInText(text, keywords):
 
     return search_results
 
-# Example usage
-pdf_file_path = 'downloads/rsu.pdf'
-keywords = ['Bank', 'Million', 'clients', 'intimation', 'interest', 'plan', 'valid']
+def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
+    attachmentKey = "attchmntFile"
 
-search_keywords_in_pdf(pdf_file_path, keywords)
+    # Read the CSV data into a DataFrame
+    df = pd.read_csv(csv_filename)
+
+    # Parse the 'an_dt' column as datetime
+    df['an_dt'] = pd.to_datetime(df['an_dt'])
+
+    # Iterate over the DataFrame rows
+    for index, row in df.iterrows():
+        # Check if the attachment key exists and is not NaN
+        if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
+            print(row[attachmentKey])  # Access row by column name
+            url = row[attachmentKey]
+            if url or len(url) < 10:
+                # Get the file name from the URL
+                fileName = url.split("/")[-1]
+                fileExtension = fileName.split(".")[-1]
+                filePath = os.path.join(downloadDir, fileName)
+
+                # Check if the output directory exists
+                if fileExtension.lower() in accepted_extensions and os.path.exists(filePath):
+                    search_keywords_in_pdf(filePath, keywords, jpg_pdf = False)
 
 
 # # Search for the keywords in the PDF
@@ -1307,3 +1407,19 @@ search_keywords_in_pdf(pdf_file_path, keywords)
 #     for line_number, line in occurrences:
 #         print(f"Line {line_number}: {line}")
 #     print("\n")
+
+
+# fetchNseAnnouncements(start_date=datetime.datetime(2024, 9, 15), 
+#                   end_date=datetime.datetime(2024, 10, 15),
+#                   file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+
+# downloadFilesFromCsvList("nse_fillings\\announcements_2024-10-13_01-07-30.csv",
+#                         downloadDir="downloads")
+
+
+searchKeywordsFromCsvList("nse_fillings\\announcements_2024-10-13_01-07-30.csv",
+                          announcementKeywords,
+                          downloadDir="downloads")
+
+
+
