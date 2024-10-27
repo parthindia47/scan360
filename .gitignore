@@ -5,10 +5,9 @@ docs/notes.md
 nse_fillings/**
 nse_fillings_attachments/**
 stock_charts/**
-stock_info/**
+stock_info/tji/**
 stock_charts_copy/**
 output/**
-stock_info/**
 
 
 # Ignore all doc files

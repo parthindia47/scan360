@@ -63,6 +63,11 @@ scrappingStartingDate = datetime.datetime(2022, 1, 1)
 current_datetime = datetime.datetime.now()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
 
+'''
+removed words
+"Approval",
+"dividend",
+'''
 announcementKeywords = [
 "Acquisition",
 "Acquire",
@@ -79,17 +84,23 @@ announcementKeywords = [
 "Offer For Sale",
 "Bonus",
 "split",
-"dividend",
 "Buy back",
 "Buyback",
 "Rights issue",
 "Right issue",
 "Public offer",
+"public offering",
+"fund raise",
+"fund raising",
+"raise fund",
 "New Project",
 "new contract",
 "new order",
 "order received",
+"Awarding of order",
 "Bagging",
+"beg",
+"begs",
 "winning",
 "Expansion",
 "Investment",
@@ -97,12 +108,76 @@ announcementKeywords = [
 "Raising of funds",
 "Rating",
 "clarification"
+"Partnership",      #newly_added
+"Joint venture",
+"Collaboration",
+"Capital expenditure",
+"capacity addition"
+"Strategic alliance",
+"Revenue growth",
+"Profit increase",
+"Earnings beat",
+"Record earnings",
+"Cost reduction",
+"Debt reduction",
+"Product launch",
+"New technology",
+"Innovation",
+"License",
+"Patent granted",
+"FDA approval",
+"Contract extension",
+"Market expansion",
+"Upgraded",
+"downgraded",
+"Buy recommendation",
+"Positive outlook",
+"Guidance raised",
+"Milestone achieved",
+"Supply agreement",
+"Exclusive agreement",
+"Patent filing",       #added_2
+"Product approval",
+"Regulatory approval",
+"Secondary offering",
+"Share repurchase",
+"Equity infusion",
+"Capital raise",
+"Increase in volume",
+"Spurt in Volume",
+"Movement in price"
+]
+
+'''
+"SWSOLAR"
+'''
+avoid_tickers = [
+  "RNAVAL",
+  "CANFINHOME",
+]
+
+avoid_subject = [
+"Loss of Share Certificates",
+"Share Certificate",
+"Issue of Duplicate Share Certificate",
+"ESOP",
+"Trading Window",
+"Copy of Newspaper Publication"
 ]
 
 accepted_extensions = ['pdf']
 
+market_cap_limit = 20000000000  # 2000 cr
+
+def rupees_to_crores(rupees):
+    crores = rupees / 10000000
+    return crores
+
 # =======================================================================
 # ========================== logging ====================================
+
+# Suppress PyPDF2 logs
+logging.getLogger("PyPDF2").setLevel(logging.WARNING)
 
 def setup_logger(printing=False):
     # Create a logger
@@ -170,11 +245,28 @@ def calculatePercentage(open,close):
 # ==========================================================================
 # ========================== NSE Helper Function ===========================
 
+def getAllBseSymbol(local=False):
+    local_url = "stock_info\equity_bse.csv"  # Adjust the path as needed
+    if local:
+        # Get the absolute path of the local CSV file
+        abs_path = os.path.abspath(local_url)
+        print("Fetching locally " + abs_path)
+        
+        # Read the CSV data into a DataFrame
+        df = pd.read_csv(abs_path)
+        
+        # Convert the DataFrame to a dictionary
+        json_data = df.to_dict(orient='records')
+        
+        return json_data
+
 '''
 EQ (Equity): EQ represents the Equity segment
 BE (Group B): BE stands for "Trade-to-Trade" segment or the "Limited Physical Market" segment. 
 BZ (Group Z): BZ represents the Trade-to-Trade segment for securities that 
               have not been traded at all during the last 365 days
+
+return list of object
 '''
 def getAllNseSymbols(local=False):
     remote_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
@@ -512,28 +604,53 @@ def extract_text_from_pdf(pdf_path):
 pdf_file_path = 'downloads/rsu.pdf'
 keywords = ['Bank', 'Million', 'clients', 'intimation', 'interest', 'plan', 'valid']
 search_keywords_in_pdf(pdf_file_path, keywords)
+
+return:
+{
+'Amalgamation': 
+[(126, 'equity\xa0shares,\xa0merger/\xa0amalgamation \xa0or\xa0sale'), 
+(126, 'equity\xa0shares,\xa0merger/\xa0amalgamation \xa0or\xa0sale')], 
+'Merger': 
+[(126, 'equity\xa0shares,\xa0merger/\xa0amalgamation \xa0or\xa0sale')], 
+'Bonus': 
+[(125, 'issue,\xa0bonus\xa0issue,\xa0split\xa0or\xa0consolidation \xa0of')], 
+'split': 
+[(125, 'issue,\xa0bonus\xa0issue,\xa0split\xa0or\xa0consolidation \xa0of')]
+}
 '''
 def search_keywords_in_pdf(pdf_file_path, keywords, jpg_pdf = True):
   text = None
-  text = extract_text_from_pdf(pdf_file_path)
-  print("Length of text " + str(len(text)))
+
+  try:
+    text = extract_text_from_pdf(pdf_file_path)
+  except Exception as e:
+    print("Exception while opening pdf !!")
+    print(e)
+
+  # if text is None then return
+  if not text:
+    return
+
+  #print("Length of text " + str(len(text)))
 
   #if length of text is less, it is possible that it is image.
   #we will extract text from image using ocr
   if len(text) < 50 and jpg_pdf :
+      print("converting image to text ...")
       text = ocr_pdf_to_text(pdf_file_path)
 
   #this will return line number and line containing keywords
   results = searchInText(text, keywords)
 
+  return results
+
+def print_keyword_search_results(results):
   # Print the results
   for keyword, occurrences in results.items():
       print(f"Keyword: {keyword}")
       for line_number, line in occurrences:
           print(f"Line {line_number}: {line}")
       print("\n")
-
-  return results
 
 '''
 # Path to the zip file
@@ -570,13 +687,14 @@ def downloadFileFromUrl(url, outputDir="."):
         fileName = url.split("/")[-1]
         fileExtension = fileName.split(".")[-1]
 
+        # if it is not accepted extension then don't download
         if fileExtension.lower() not in accepted_extensions:
           return
         
         # Determine the output path
         fileOutputPath = os.path.join(outputDir, fileName)
 
-        print("Downloading " + url + " Saving to " + fileOutputPath)
+        #print("Downloading " + url + " Saving to " + fileOutputPath)
         
         # Send a GET request to the URL
         response = requests.get(url,headers=headers)
@@ -603,10 +721,12 @@ def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
 
     # Parse the 'an_dt' column as datetime
     df['an_dt'] = pd.to_datetime(df['an_dt'])
+    total_rows = len(df)
 
     # Iterate over the DataFrame rows
     for index, row in df.iterrows():
         # Check if the attachment key exists and is not NaN
+        print("Downloading " + str(index) + " of " + str(total_rows) + " ...")
         if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
             print(row[attachmentKey])  # Access row by column name
             downloadFileFromUrl(row[attachmentKey],downloadDir)
@@ -966,20 +1086,87 @@ def getLastProcessedHashForPercentage(file_path):
 
 # ==========================================================================
 # ======================= Core Fetch Functions =============================
+'''
+website
+city
+industry
+sector
+longBusinessSummary   #summary of company
+beta
+trailingPE
+marketCap             #in rupee
+bookValue
+priceToBook
+symbol                #attached with .NS for NSE, .BO for BSE
+longName              #long name of company
+currentPrice
+recommendationKey
+debtToEquity
+totalCashPerShare
+
+example:
+stockInfo = readYFinStockInfo()
+print(stockInfo)
+
+return:
+return list of objects [{},{},{}]
+'''
+
+def readYFinStockInfo():
+    local_url = "stock_info\\yFinStockInfo.csv"
+    json_data = None
+
+    if os.path.exists(local_url):
+      df = pd.read_csv(local_url)
+
+      # Convert the DataFrame to a dictionary
+      json_data = df.to_dict(orient='records')
+    else:
+      print("csv path do not exists")
+    
+    return json_data
+
+'''
+Note:
+    in yahoo finance all stock ticker are appended by ".NS"
+'''
+def getYFinTickerName(NseTicker, exchange="NSE"):
+    if exchange == "NSE":
+        return NseTicker + ".NS"
+    elif exchange == "BSE":
+        return NseTicker + ".BO"
 
 '''
 This function fetch and save stock info like market cap, stock price, 
 industry, book values etc.
 
+example:
+    nseStockList = getAllNseSymbols(local=True)
+    fetchYFinStockInfo(nseStockList,partial=False)
+
 Note:
-    in yahoo finance all stock ticker are appended by ".NS"
+  To download all bse stock list:
+  https://www.bseindia.com/corporates/List_Scrips.html
+  and select Equity T + 1 > Active
+
+  To download all nse stock list:
+  "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+
+  For NSE yahoo attach .NS and for BSE yahoo attach .BO
+
 '''
-def fetchYFinStockInfo(nseStockList, delay=6, partial=False):
+def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
     master_list = []
     unsupported_tickers = []
     lookup_list = []
-    local_url = "stock_info\\yFinStockInfo.csv"
+    local_url = "stock_info\\yFinStockInfo_" + exchange + ".csv"
+    symbolCsvId = None
 
+    if exchange == "NSE":
+        symbolCsvId = "SYMBOL"
+    elif exchange == "BSE":
+        symbolCsvId = "Security Id"
+    
     if partial:
       df = pd.read_csv(local_url)
 
@@ -990,18 +1177,19 @@ def fetchYFinStockInfo(nseStockList, delay=6, partial=False):
       #print(lookup_list)
     
     for idx, obj in enumerate(nseStockList):
-        yFinNseTicker = obj["SYMBOL"] + ".NS"
+        yFinNseTicker = getYFinTickerName(obj[symbolCsvId], exchange)
         if partial and yFinNseTicker in lookup_list:
             continue
             
-        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        print("fetching " + str(idx) + " " + obj[symbolCsvId] )
         result = getyFinTickerInfo(yFinNseTicker)
         if result:
+            #print(result)
             master_list.append(result)
             time.sleep(delay)
         else:
-           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
-           unsupported_tickers.append(obj["SYMBOL"])
+           print("UNSUPPORTED " + str(idx) + " " + obj[symbolCsvId] )
+           unsupported_tickers.append(obj[symbolCsvId])
 
     df = pd.DataFrame(master_list)
     df.to_csv(local_url, index=False, encoding='utf-8')
@@ -1009,7 +1197,7 @@ def fetchYFinStockInfo(nseStockList, delay=6, partial=False):
 
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\yFinUnsupportedTickers.csv"
+      csv_filename = "stock_info\\yFinUnsupportedTickers_" + exchange + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
@@ -1049,7 +1237,7 @@ def fetchYFinTickerCandles(nseStockList, delay=6, partial=False):
         if partial and os.path.exists(csv_filename):
             continue
 
-        result = getyFinTickerCandles(obj["SYMBOL"] + ".NS", \
+        result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
                                       start_date=start_date, \
                                       end_date=end_date)
         
@@ -1218,7 +1406,7 @@ def syncUpYFinTickerCandles(nseStockList, delay=6):
             print("All Synced up, skipping ...")
             continue
 
-        result = getyFinTickerCandles(obj["SYMBOL"] + ".NS", \
+        result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
                                       start_date=start_date, \
                                       end_date=end_date)
         
@@ -1354,6 +1542,12 @@ def yahooFinTesting(yFinTicker, date):
 # downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
 #                     outputDir="downloads")
 
+def objList_to_dict(objects_list, key):
+    lookup_dict = {}
+    for obj in objects_list:
+        lookup_value = obj.get(key)
+        lookup_dict[lookup_value] = obj  # If unique values are expected
+    return lookup_dict
 
 def searchInText(text, keywords):
     # Split the text into lines
@@ -1372,8 +1566,39 @@ def searchInText(text, keywords):
 
     return search_results
 
+def getStockInfoObj(stockInfoList, stockNseName):
+    yFinStock = getYFinTickerName(stockNseName)
+
+def nseStockFilterTest():
+    count = 0
+    nseStockList = getAllNseSymbols(local=False)
+    #print(nseStockList)
+
+    # get stock info
+    stockInfoList = readYFinStockInfo()
+    stockInfoDict = objList_to_dict(stockInfoList, "symbol")
+
+    for i, entry in enumerate(nseStockList):
+        stockInfoObj = stockInfoDict.get(getYFinTickerName(nseStockList[i]['SYMBOL']))
+        if stockInfoObj:
+            if rupees_to_crores(stockInfoObj['marketCap']) > 1000:
+                count = count + 1
+
+    print("Total counts : " + str(count))
+
+
 def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     attachmentKey = "attchmntFile"
+    symbolKey = "symbol"
+    titleKey = "desc"
+    companyNameKey = "sm_name"
+    descriptionKey = "attchmntText"
+    dateKey = "an_dt"
+    entryWithKeywords = 0
+
+    # get stock info
+    stockInfoList = readYFinStockInfo()
+    stockInfoDict = objList_to_dict(stockInfoList, "symbol")
 
     # Read the CSV data into a DataFrame
     df = pd.read_csv(csv_filename)
@@ -1385,7 +1610,7 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     for index, row in df.iterrows():
         # Check if the attachment key exists and is not NaN
         if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
-            print(row[attachmentKey])  # Access row by column name
+            print(str(index) + " " + row[attachmentKey])  # Access row by column name
             url = row[attachmentKey]
             if url or len(url) < 10:
                 # Get the file name from the URL
@@ -1393,9 +1618,32 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
                 fileExtension = fileName.split(".")[-1]
                 filePath = os.path.join(downloadDir, fileName)
 
+                stockInfoObj = stockInfoDict.get(getYFinTickerName(row['symbol']))
+
                 # Check if the output directory exists
-                if fileExtension.lower() in accepted_extensions and os.path.exists(filePath):
-                    search_keywords_in_pdf(filePath, keywords, jpg_pdf = False)
+                if fileExtension.lower() in accepted_extensions and \
+                    os.path.exists(filePath) and \
+                    row['symbol'] not in avoid_tickers:
+
+                    results = search_keywords_in_pdf(filePath, keywords, jpg_pdf = True)
+                    if results:
+                        #details from yahoo fin
+                        if stockInfoObj:
+                              if rupees_to_crores(stockInfoObj['marketCap']) > 1500:
+                                  print("==============================================================")
+                                  print("Name: " + row[companyNameKey] + "\n" +
+                                        "Title: " + row[titleKey] + "\n" +
+                                        "Desc: " + row[descriptionKey] + "\n" + 
+                                        "Link: " + row[attachmentKey] + "\n" +
+                                        "Market cap(cr): " + str(rupees_to_crores(stockInfoObj['marketCap'])))
+
+                                  print_keyword_search_results(results)
+                                  entryWithKeywords = entryWithKeywords + 1
+                                  print("==============================================================")
+                        else:
+                            print("** NO YAHOO FIN OBJ **")
+
+    print("Out of " + str(len(df)) + " entry matches " + str(entryWithKeywords))
 
 
 # # Search for the keywords in the PDF
@@ -1409,17 +1657,24 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 #     print("\n")
 
 
-# fetchNseAnnouncements(start_date=datetime.datetime(2024, 9, 15), 
-#                   end_date=datetime.datetime(2024, 10, 15),
+# fetchNseAnnouncements(start_date=datetime.datetime(2024, 10, 17), 
+#                   end_date=datetime.datetime(2024, 10, 17),
 #                   file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 
-# downloadFilesFromCsvList("nse_fillings\\announcements_2024-10-13_01-07-30.csv",
+# downloadFilesFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
 #                         downloadDir="downloads")
 
+# searchKeywordsFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
+#                           announcementKeywords,
+#                           downloadDir="downloads")
 
-searchKeywordsFromCsvList("nse_fillings\\announcements_2024-10-13_01-07-30.csv",
-                          announcementKeywords,
-                          downloadDir="downloads")
+# nseStockList = getAllNseSymbols(local=False)
+# fetchYFinStockInfo(nseStockList,delay=3,partial=False)
 
+# stockInfo = readYFinStockInfo()
+# print(stockInfo)
 
+# nseStockFilterTest()
 
+bseStockList = getAllBseSymbol(local=True)
+fetchYFinStockInfo(bseStockList,delay=3,partial=True,exchange="BSE")
