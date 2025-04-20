@@ -9,6 +9,9 @@ stock_info/tji/**
 stock_charts_copy/**
 output/**
 
+source/client/node_modules/**
+source/server/node_modules/**
+
 
 # Ignore all doc files
 *.pdf
