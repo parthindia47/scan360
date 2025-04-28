@@ -21,7 +21,8 @@ th {
 }
 
 tr:hover {
-  background-color: #f9f9f9;
+  background-color: #e0f7fa; /* Light blue shade when you hover */
+  cursor: pointer; /* Makes it clear that row is hoverable */
 }
 
 h1 {
@@ -33,3 +34,5 @@ h1 {
   font-size: 0.9rem;
   color: #4a90e2; /* light blue */
 }
+
+

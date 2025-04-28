@@ -107,10 +107,10 @@ Railways,5
 RailwaysWagons,3
 RatingAgencies,3
 RealEstate,27
-RealEstate-Mumbai,4
-RealEstate-North,3
-RealEstate-Other,3
-RealEstate-South,4
+RealEstateMumbai,4
+RealEstateNorth,3
+RealEstateOther,3
+RealEstateSouth,4
 Recycling,9
 Refractories,5
 RenewableEnergy,8
@@ -135,7 +135,6 @@ TravelServices,10
 Turbines,2
 TwoThreeWheelers,5
 Tyre,7
-Upstream,3
 WasteManagement,2
 WaterSupply,4
 Yarn,6

@@ -35,6 +35,7 @@ import requests
 import json
 import time
 import datetime
+from datetime import date
 import yfinance as yf
 import pytz  # Import pytz module for timezone support
 import pandas as pd
@@ -270,7 +271,7 @@ return list of object
 '''
 def getAllNseSymbols(local=False):
     remote_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
-    local_url = "stock_info\EQUITY_L.csv"  # Adjust the path as needed
+    local_url = "stock_info\csv\EQUITY_L.csv"  # Adjust the path as needed
     
     if local:
         # Get the absolute path of the local CSV file
@@ -1221,7 +1222,7 @@ Example:
     fetchYFinTickerCandles(nseStockList,partial=True)
 
 '''
-def fetchYFinTickerCandles(nseStockList, delay=6, partial=False):
+def fetchYFinTickerCandles(nseStockList, delaySec=6, partial=False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
     # start_date = scrappingStartingDate
@@ -1247,7 +1248,7 @@ def fetchYFinTickerCandles(nseStockList, delay=6, partial=False):
             result.reset_index(inplace=True)
             result.to_csv(csv_filename, index=False, encoding='utf-8')
             print("saved " + csv_filename)
-            time.sleep(delay)
+            time.sleep(delaySec)
         else:
            print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
 
@@ -1378,7 +1379,7 @@ Drop Duplicate with Datetime
 https://stackoverflow.com/questions/46489695/drop-duplicates-not-working-in-pandas
 https://stackoverflow.com/questions/50686970/understanding-why-drop-duplicates-is-not-working
 '''
-def syncUpYFinTickerCandles(nseStockList, delay=6):
+def syncUpYFinTickerCandles(nseStockList, delaySec=6):
     ist_timezone = pytz.timezone('Asia/Kolkata')
     current_date = datetime.datetime.now(ist_timezone)
 
@@ -1389,20 +1390,25 @@ def syncUpYFinTickerCandles(nseStockList, delay=6):
         #obj["SYMBOL"] = "3IINFOLTD"
 
         # Read the CSV data into a DataFrame
-        df = pd.read_csv(csv_filename)
-        
-        # Parse the 'Date' column as datetime
-        df['Date'] = pd.to_datetime(df['Date']) 
+        try:
+            df = pd.read_csv(csv_filename)
 
-        last_row_date = df.iloc[-1]['Date']    
-        start_date = last_row_date + datetime.timedelta(days=1) # next day
-        end_date = current_date + datetime.timedelta(days=1)
+            # Parse the 'Date' column as datetime
+            df['Date'] = pd.to_datetime(df['Date']) 
 
-        print("last_row_date " + str(last_row_date) + \
-              " start_date " + str(start_date) + \
-              " end_date " + str(end_date))
+            last_row_date = df.iloc[-1]['Date']    
+            start_date = last_row_date + datetime.timedelta(days=1) # next day
+            end_date = current_date + datetime.timedelta(days=1)
+        except Exception as e:
+            print("An error occurred:", e)
+            continue
 
-        if last_row_date >= current_date:
+        # print("last_row_date " + str(last_row_date) + \
+        #       " start_date " + str(start_date) + \
+        #       " end_date " + str(end_date))
+
+        #if last_row_date >= current_date:
+        if last_row_date.date() >= date(2025, 4, 25):
             print("All Synced up, skipping ...")
             continue
 
@@ -1411,7 +1417,6 @@ def syncUpYFinTickerCandles(nseStockList, delay=6):
                                       end_date=end_date)
         
         if result is not None and not result.empty:
-            
             df.reset_index(drop=True)
             df.set_index('Date', inplace=True)
 
@@ -1431,9 +1436,12 @@ def syncUpYFinTickerCandles(nseStockList, delay=6):
             # print("concatenated_df")
             # print(concatenated_df)
 
-            concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
-            print("saved " + csv_filename)
-            time.sleep(delay)
+            try:
+                concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
+                print("Saved " + csv_filename)
+                time.sleep(delaySec)
+            except Exception as e:
+                print("An error occurred:", e)
         else:
            print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
 
@@ -1477,10 +1485,6 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
-
-# ==========================================================================
-# ============================  TEST FUNCTIONS =============================
-
 def yahooFinTesting(yFinTicker, date):
     # Set the timezone to UTC
     ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -1507,40 +1511,6 @@ def yahooFinTesting(yFinTicker, date):
 
     print("news")
     print(tickerInformation.news)
-
-# ==========================================================================
-# ============================  SCRIPT RUN =================================
-
-
-# result = getAllNseHolidays()
-# print(result)
-
-#yahooFinTesting("RELIANCE.NS",datetime.datetime(2024, 4, 15))
-
-#nseStockList = getAllNseSymbols(local=True)
-# syncUpYFinTickerCandles(nseStockList,delay=200)
-
-#fetchYFinTickerCandles(nseStockList,partial=True)
-#print(result)
-
-#fetchYFinStockInfo(nseStockList,partial=False)
-
-#fetchNseAnnouncements()
-
-#getPercentageChange(None,datetime.datetime(2024, 2, 1))
-
-#syncUpCalculatePercentageForAnnouncement()
-
-#fetchNseAnnouncements()
-#syncUpNseAnnouncements()
-
-# fetchNseAnnouncements(start_date=datetime.datetime(2020, 1, 1), 
-#                       end_date=datetime.datetime(2020, 4, 1),
-#                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
-#updatePercentageForAnnouncements()
-
-# downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
-#                     outputDir="downloads")
 
 def objList_to_dict(objects_list, key):
     lookup_dict = {}
@@ -1585,7 +1555,6 @@ def nseStockFilterTest():
                 count = count + 1
 
     print("Total counts : " + str(count))
-
 
 def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     attachmentKey = "attchmntFile"
@@ -1646,6 +1615,44 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     print("Out of " + str(len(df)) + " entry matches " + str(entryWithKeywords))
 
 
+# ==========================================================================
+# ============================  TEST FUNCTIONS =============================
+
+
+# ==========================================================================
+# ============================  SCRIPT RUN =================================
+
+
+# result = getAllNseHolidays()
+# print(result)
+
+#yahooFinTesting("RELIANCE.NS",datetime.datetime(2024, 4, 15))
+
+nseStockList = getAllNseSymbols(local=False)
+syncUpYFinTickerCandles(nseStockList,delaySec=15)
+#fetchYFinTickerCandles(nseStockList,delaySec=15,partial=True)
+#print(result)
+
+#fetchYFinStockInfo(nseStockList,partial=False)
+
+#fetchNseAnnouncements()
+
+#getPercentageChange(None,datetime.datetime(2024, 2, 1))
+
+#syncUpCalculatePercentageForAnnouncement()
+
+#fetchNseAnnouncements()
+#syncUpNseAnnouncements()
+
+# fetchNseAnnouncements(start_date=datetime.datetime(2020, 1, 1), 
+#                       end_date=datetime.datetime(2020, 4, 1),
+#                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+#updatePercentageForAnnouncements()
+
+# downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
+#                     outputDir="downloads")
+
+
 # # Search for the keywords in the PDF
 # results = search_keywords_in_pdf(pdf_file_path, keywords)
 
@@ -1676,5 +1683,8 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 
 # nseStockFilterTest()
 
-bseStockList = getAllBseSymbol(local=True)
-fetchYFinStockInfo(bseStockList,delay=3,partial=True,exchange="BSE")
+# bseStockList = getAllBseSymbol(local=True)
+# fetchYFinStockInfo(bseStockList,delay=3,partial=True,exchange="BSE")
+
+# *************************************************************************
+
