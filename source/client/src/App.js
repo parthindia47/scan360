@@ -6,7 +6,7 @@ function App() {
   const [industries, setIndustries] = useState({});
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading] = useState(true); // <-- Add loading state
-  const [sortField, setSortField] = useState('1D'); // Default sort by 1D
+  const [sortConfig, setSortConfig] = useState({ field: '1D', direction: 'desc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/industries')
@@ -22,6 +22,18 @@ function App() {
 
   const toggleExpand = (industry) => {
     setExpanded(prev => ({ ...prev, [industry]: !prev[industry] }));
+  };
+
+  const toggleSort = (field) => {
+    setSortConfig(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const formatIndustryName = (str) => {
+    if (!str) return '';
+    return str.replace(/([a-z])([A-Z])/g, '$1 $2'); // inserts space before capital letter
   };
 
   const getColorStyle = (value) => {
@@ -41,41 +53,43 @@ function App() {
         </div>
       ) : (
       <>
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setSortField('1D')} className="p-2 bg-blue-500 text-white rounded">Sort by 1D</button>
-        <button onClick={() => setSortField('1W')} className="p-2 bg-blue-500 text-white rounded">Sort by 1W</button>
-        <button onClick={() => setSortField('1M')} className="p-2 bg-blue-500 text-white rounded">Sort by 1M</button>
-        <button onClick={() => setSortField('3M')} className="p-2 bg-blue-500 text-white rounded">Sort by 3M</button>
-      </div>
       <table className="table-auto w-full border-collapse">
         <thead>
           <tr className="bg-gray-100">
             <th>#</th>
             <th className="p-2 text-left">Industry</th>
-            <th>Weight</th>
-            <th>LTP vs 52W High</th>
-            <th>1D</th>
-            <th>1W</th>
-            <th>1M</th>
-            <th>3M</th>
+            <th className="sort-header" onClick={() => toggleSort('ltpVs52WHigh')}>
+            LTP vs<br />52W High {sortConfig.field === 'ltpVs52WHigh' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </th>
+            <th className="sort-header" onClick={() => toggleSort('1D')}>
+            1D {sortConfig.field === '1D' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </th>
+            <th className="sort-header" onClick={() => toggleSort('1W')}>
+            1W {sortConfig.field === '1W' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </th>
+            <th className="sort-header" onClick={() => toggleSort('1M')}>
+            1M {sortConfig.field === '1M' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </th>
+            <th className="sort-header" onClick={() => toggleSort('3M')}>
+            3M {sortConfig.field === '3M' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </th>
           </tr>
         </thead>
         <tbody>
             {Object.entries(industries)
             .sort(([, a], [, b]) => {
-              const valA = parseFloat(a.weightedReturns[sortField]) || 0;
-              const valB = parseFloat(b.weightedReturns[sortField]) || 0;
-              return valB - valA; // Sort descending
+              const valA = parseFloat(a.weightedReturns[sortConfig.field]) || 0;
+              const valB = parseFloat(b.weightedReturns[sortConfig.field]) || 0;
+              return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
             })
             .map(([industry, data], index) => (
               <React.Fragment key={industry}>
                 <tr className="border-t">
                   <td>{index + 1}</td> {/* use `index` instead of `idx` */}
                   <td className="p-2 cursor-pointer text-blue-600" onClick={() => toggleExpand(industry)}>
-                    {expanded[industry] ? '−' : '+'} {industry}
+                    {expanded[industry] ? '−' : '+'} {formatIndustryName(industry)} {"(" + data.stocks.length + ")"}
                   </td>
-                  <td>{data.stocks.length}</td>
-                  <td>{data.weightedReturns['ltpVs52WHigh']}</td>
+                  <td style={getColorStyle(data.weightedReturns['ltpVs52WHigh'])}>{data.weightedReturns['ltpVs52WHigh']}</td>
                   <td style={getColorStyle(data.weightedReturns['1D'])}>{data.weightedReturns['1D']}</td>
                   <td style={getColorStyle(data.weightedReturns['1W'])}>{data.weightedReturns['1W']}</td>
                   <td style={getColorStyle(data.weightedReturns['1M'])}>{data.weightedReturns['1M']}</td>
@@ -87,8 +101,7 @@ function App() {
                   <tr className="bg-blue-50 border-t">
                     <td></td> {/* use `index` instead of `idx` */}
                     <td className="symbol-cell">{stock.symbol}</td>
-                    <td className="text-sm"></td>
-                    <td className="text-sm">{stock.dummyData.ltpVs52WHigh}</td>
+                    <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
                     <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>
                     <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
                     <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>

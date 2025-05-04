@@ -26,3 +26,4 @@ source/server/node_modules/**
 **/*.xlsx
 **/*.xlsm
 docs/stock_ideas.docx
+source/server/data/updated_yahoo_with_tji - Copy.csv

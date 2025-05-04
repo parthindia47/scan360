@@ -49,6 +49,39 @@ import re
 import PyPDF2
 import pytesseract
 from pdf2image import convert_from_path
+from curl_cffi import requests
+from dataclasses import dataclass
+
+
+# =======================================================================
+# ========================== Classes ==================================
+@dataclass
+class CsvFile:
+    remote_url: str
+    local_url: str
+
+csv_list = {
+    "NSE": CsvFile(
+        remote_url="https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv",
+        local_url="stock_info/csv/EQUITY_L.csv"
+    ),
+    "CURRENCY": CsvFile(
+        remote_url="",
+        local_url="stock_info/csv/currency_pair.csv"
+    ),
+    "COMMODITY_ETF": CsvFile(
+        remote_url="",
+        local_url="stock_info/csv/commodity_etf.csv"
+    ),
+    "INDEX": CsvFile(
+        remote_url="",
+        local_url="stock_info/csv/index.csv"
+    )
+}
+
+
+# =======================================================================
+# ========================== Constants ==================================
 
 nseSegments = {"equities":"equities",
               "debt":"debt",
@@ -60,8 +93,9 @@ nseSegments = {"equities":"equities",
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
-scrappingStartingDate = datetime.datetime(2022, 1, 1)
+scrappingStartingDate = datetime.datetime(2024, 1, 1)
 current_datetime = datetime.datetime.now()
+current_date = current_datetime.date()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
 
 '''
@@ -167,12 +201,8 @@ avoid_subject = [
 ]
 
 accepted_extensions = ['pdf']
+market_cap_limit_cr = 1500
 
-market_cap_limit = 20000000000  # 2000 cr
-
-def rupees_to_crores(rupees):
-    crores = rupees / 10000000
-    return crores
 
 # =======================================================================
 # ========================== logging ====================================
@@ -206,6 +236,10 @@ def setup_logger(printing=False):
 logger1 = setup_logger()
 # ========================================================================
 # ========================== Helper Function =============================
+def rupees_to_crores(rupees):
+    crores = rupees / 10000000
+    return crores
+
 
 '''
 this function accept pandas data frame row
@@ -288,6 +322,44 @@ def getAllNseSymbols(local=False):
     else:
         print("Fetching remotely " + remote_url)
         response = requests.get(remote_url,headers=headers)
+        
+        # Save the CSV data to the local file path
+        with open(local_url, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        
+        # Read the local CSV data into a DataFrame
+        df = pd.read_csv(StringIO(response.text))
+        
+        # Convert the DataFrame to a dictionary
+        json_data = df.to_dict(orient='records')
+        
+        return json_data
+
+def getJsonFromCsvForSymbols(symbolType,local=True):
+    
+    if local:
+        if csv_list[symbolType].local_url == "":
+          print("No local URL for type " + symbolType)
+          return
+
+        # Get the absolute path of the local CSV file
+        abs_path = os.path.abspath(csv_list[symbolType].local_url)
+        print("Fetching locally " + abs_path)
+        
+        # Read the CSV data into a DataFrame
+        df = pd.read_csv(abs_path)
+        
+        # Convert the DataFrame to a dictionary
+        json_data = df.to_dict(orient='records')
+        
+        return json_data
+    else:
+        if csv_list[symbolType].remote_url == "":
+          print("No Remote URL for type " + symbolType)
+          return
+
+        print("Fetching remotely " + remote_url)
+        response = requests.get(csv_list[symbolType].remote_url,headers=headers)
         
         # Save the CSV data to the local file path
         with open(local_url, 'w', encoding='utf-8') as f:
@@ -533,8 +605,12 @@ def fetchJson(url,cookies=None):
     print("Fetching JSON " + url)
     try:
         # Send a GET request to the URL to download the JSON content
+        #print("Cookies Type:", type(cookies))
+        # for i, cookie in enumerate(cookies):
+        #     print(f"Cookie {i}: type={type(cookie)}, value={cookie}")
+
         if cookies:
-          headers["Cookie"] = '; '.join([f'{cookie.name}={cookie.value}' for cookie in cookies])
+          headers["Cookie"] = '; '.join([f"{k}={v}" for k, v in cookies.items()])
         response = requests.get(url,headers=headers)
         
         # Check if the request was successful (status code 200)
@@ -714,6 +790,23 @@ def downloadFileFromUrl(url, outputDir="."):
     except (requests.exceptions.RequestException, FileNotFoundError) as e:
         print("Error:", e)
 
+def ifStockFilterPass(ticker):
+    result = False
+    # get stock info
+    stockInfoList = readYFinStockInfo()
+    stockInfoDict = objList_to_dict(stockInfoList, "symbol")
+
+    # provide INPUT for symbol
+    stockInfoObj = stockInfoDict.get(getYFinTickerName(ticker))
+
+    if stockInfoObj:
+      if rupees_to_crores(stockInfoObj['marketCap']) > market_cap_limit_cr:
+        result = True
+    else:
+        print("** NO YAHOO FIN OBJ **")
+
+    return result
+
 def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
     attachmentKey = "attchmntFile"
 
@@ -727,6 +820,9 @@ def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
     # Iterate over the DataFrame rows
     for index, row in df.iterrows():
         # Check if the attachment key exists and is not NaN
+        if not ifStockFilterPass(row['symbol']):
+          continue
+
         print("Downloading " + str(index) + " of " + str(total_rows) + " ...")
         if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
             print(row[attachmentKey])  # Access row by column name
@@ -739,11 +835,12 @@ def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
 
 '''
 This is master function to fetch any type of fillings from NSE.
+step indicate how many days step it should fetch the data.
 
 Example:
 fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
 '''
-def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delay=5):
+def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delaySec=5):
     jsonObjMaster = []
     start_date = fromDate
     final_end_date = toDate  # Rename to avoid confusion
@@ -774,7 +871,7 @@ def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delay=5)
         # Move to the next iteration (next step after the current end_date)
         start_date = end_date + datetime.timedelta(days=1)
 
-        time.sleep(delay)  # Delay between API requests
+        time.sleep(delaySec)  # Delay between API requests
 
     return jsonObjMaster
 
@@ -987,6 +1084,8 @@ will return ticker history between start_date and end_date
 if it is not supported by yFin will return None
 '''
 def getyFinTickerCandles(yFinTicker,start_date,end_date):
+    session = requests.Session(impersonate="chrome")
+
     try:
       tickerInformation = yf.Ticker(yFinTicker)
       tickerHistory = tickerInformation.history(start=start_date, end=end_date)
@@ -1114,7 +1213,7 @@ return list of objects [{},{},{}]
 '''
 
 def readYFinStockInfo():
-    local_url = "stock_info\\yFinStockInfo.csv"
+    local_url = "stock_info\\csv\\yFinStockInfo_NSE.csv"
     json_data = None
 
     if os.path.exists(local_url):
@@ -1132,10 +1231,14 @@ Note:
     in yahoo finance all stock ticker are appended by ".NS"
 '''
 def getYFinTickerName(NseTicker, exchange="NSE"):
-    if exchange == "NSE":
+    if exchange == "NSE" or exchange == "COMMODITY_ETF":
         return NseTicker + ".NS"
     elif exchange == "BSE":
         return NseTicker + ".BO"
+    elif exchange == "CURRENCY":
+        return NseTicker + "=X"
+    elif exchange == "INDEX":
+        return "^" + NseTicker
 
 '''
 This function fetch and save stock info like market cap, stock price, 
@@ -1222,13 +1325,13 @@ Example:
     fetchYFinTickerCandles(nseStockList,partial=True)
 
 '''
-def fetchYFinTickerCandles(nseStockList, delaySec=6, partial=False):
+def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
     # start_date = scrappingStartingDate
     # end_date = datetime.datetime.now(ist_timezone)
 
-    start_date = datetime.datetime(2012, 1, 1)
+    start_date = scrappingStartingDate
     end_date = datetime.datetime.now(ist_timezone)
 
     for idx, obj in enumerate(nseStockList):
@@ -1238,7 +1341,7 @@ def fetchYFinTickerCandles(nseStockList, delaySec=6, partial=False):
         if partial and os.path.exists(csv_filename):
             continue
 
-        result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
+        result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"],symbolType), \
                                       start_date=start_date, \
                                       end_date=end_date)
         
@@ -1354,20 +1457,20 @@ def syncUpNseAnnouncements():
            
   df.reset_index(drop=True)
   df.set_index('hash', inplace=True)
-  print("df")
-  print(df)
+  # print("df")
+  # print(df)
 
   df_new.reset_index(drop=True)
   df_new.set_index('hash', inplace=True)
-  print("df_new")
-  print(df_new)
+  # print("df_new")
+  # print(df_new)
 
   concatenated_df = pd.concat([df, df_new])
   concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
   concatenated_df.reset_index(inplace=True)
 
-  print("concatenated_df")
-  print(concatenated_df)
+  # print("concatenated_df")
+  # print(concatenated_df)
 
   concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
 
@@ -1407,8 +1510,8 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6):
         #       " start_date " + str(start_date) + \
         #       " end_date " + str(end_date))
 
-        #if last_row_date >= current_date:
-        if last_row_date.date() >= date(2025, 4, 25):
+        if last_row_date >= current_date:
+        #if last_row_date.date() >= date(2025, 4, 25):
             print("All Synced up, skipping ...")
             continue
 
@@ -1556,6 +1659,7 @@ def nseStockFilterTest():
 
     print("Total counts : " + str(count))
 
+
 def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     attachmentKey = "attchmntFile"
     symbolKey = "symbol"
@@ -1598,7 +1702,7 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
                     if results:
                         #details from yahoo fin
                         if stockInfoObj:
-                              if rupees_to_crores(stockInfoObj['marketCap']) > 1500:
+                              if rupees_to_crores(stockInfoObj['marketCap']) > market_cap_limit_cr:
                                   print("==============================================================")
                                   print("Name: " + row[companyNameKey] + "\n" +
                                         "Title: " + row[titleKey] + "\n" +
@@ -1614,6 +1718,19 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 
     print("Out of " + str(len(df)) + " entry matches " + str(entryWithKeywords))
 
+'''
+'''
+def generateAnnouncementAnalysis():
+    fetchNseAnnouncements(start_date=datetime.datetime(2024, 5, 4), 
+                      end_date=datetime.datetime(2024, 5, 4),
+                      file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+
+    downloadFilesFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
+                            downloadDir="downloads")
+
+    searchKeywordsFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
+                              announcementKeywords,
+                              downloadDir="downloads")
 
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
@@ -1626,10 +1743,14 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 # result = getAllNseHolidays()
 # print(result)
 
-#yahooFinTesting("RELIANCE.NS",datetime.datetime(2024, 4, 15))
+# nseStockList = getAllNseSymbols(local=True)
+# syncUpYFinTickerCandles(nseStockList,delaySec=10)
 
-nseStockList = getAllNseSymbols(local=False)
-syncUpYFinTickerCandles(nseStockList,delaySec=15)
+# symbolType = "INDEX"
+# currencyList = getJsonFromCsvForSymbols(symbolType)
+# print(currencyList)
+# fetchYFinTickerCandles(currencyList,symbolType,delaySec=15,partial=True)
+
 #fetchYFinTickerCandles(nseStockList,delaySec=15,partial=True)
 #print(result)
 
@@ -1641,39 +1762,17 @@ syncUpYFinTickerCandles(nseStockList,delaySec=15)
 
 #syncUpCalculatePercentageForAnnouncement()
 
-#fetchNseAnnouncements()
-#syncUpNseAnnouncements()
-
-# fetchNseAnnouncements(start_date=datetime.datetime(2020, 1, 1), 
-#                       end_date=datetime.datetime(2020, 4, 1),
+# fetchNseAnnouncements(start_date=datetime.datetime(2025, 1, 1), 
+#                       end_date=current_datetime,
 #                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+#syncUpNseAnnouncements()
 #updatePercentageForAnnouncements()
 
 # downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
 #                     outputDir="downloads")
 
 
-# # Search for the keywords in the PDF
-# results = search_keywords_in_pdf(pdf_file_path, keywords)
-
-# # Print the results
-# for keyword, occurrences in results.items():
-#     print(f"Keyword: {keyword}")
-#     for line_number, line in occurrences:
-#         print(f"Line {line_number}: {line}")
-#     print("\n")
-
-
-# fetchNseAnnouncements(start_date=datetime.datetime(2024, 10, 17), 
-#                   end_date=datetime.datetime(2024, 10, 17),
-#                   file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
-
-# downloadFilesFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
-#                         downloadDir="downloads")
-
-# searchKeywordsFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
-#                           announcementKeywords,
-#                           downloadDir="downloads")
+# generateAnnouncementAnalysis()
 
 # nseStockList = getAllNseSymbols(local=False)
 # fetchYFinStockInfo(nseStockList,delay=3,partial=False)

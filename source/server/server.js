@@ -96,7 +96,7 @@ const loadIndustries = async () => {
         industryData[industry] = { stocks: [] };
       }
       industryData[industry].stocks.push({
-        symbol: row['symbol'],
+        symbol: row['longName'],
         marketCap: parseFloat(row['marketCap'] || '0'), // read market cap safely
         dummyData: {
           weight: 1,

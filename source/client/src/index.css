@@ -35,4 +35,13 @@ h1 {
   color: #4a90e2; /* light blue */
 }
 
+.sort-header {
+  cursor: pointer;
+  user-select: none;
+  padding-right: 6px;
+}
+
+.sort-header:hover {
+  color: #1976d2;
+}
 
