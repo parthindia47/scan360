@@ -1087,7 +1087,7 @@ def getyFinTickerCandles(yFinTicker,start_date,end_date):
     session = requests.Session(impersonate="chrome")
 
     try:
-      tickerInformation = yf.Ticker(yFinTicker)
+      tickerInformation = yf.Ticker(yFinTicker,session=session)
       tickerHistory = tickerInformation.history(start=start_date, end=end_date)
       if not tickerHistory.empty:
         return tickerHistory
@@ -1743,8 +1743,8 @@ def generateAnnouncementAnalysis():
 # result = getAllNseHolidays()
 # print(result)
 
-# nseStockList = getAllNseSymbols(local=True)
-# syncUpYFinTickerCandles(nseStockList,delaySec=10)
+nseStockList = getAllNseSymbols(local=True)
+syncUpYFinTickerCandles(nseStockList,delaySec=10)
 
 # symbolType = "INDEX"
 # currencyList = getJsonFromCsvForSymbols(symbolType)

@@ -9,6 +9,7 @@ app.use(cors());
 
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
+const announcementPath = path.join(__dirname, '../../nse_fillings/announcements.csv');
 
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
@@ -136,6 +137,25 @@ app.get('/industries', async (req, res) => {
     await loadIndustries();
   }
   res.json(industryData);
+});
+
+app.get('/api/announcements', (req, res) => {
+  const results = [];
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  fs.createReadStream(announcementPath)
+    .pipe(csv())
+    .on('data', (row) => {
+      const dtStr = row.an_dt || row.sort_date || '';
+      const parsed = new Date(dtStr);
+
+      if (!isNaN(parsed) && parsed >= twoDaysAgo) {
+        results.push(row);
+      }
+    })
+    .on('end', () => res.json(results))
+    .on('error', err => res.status(500).json({ error: 'Failed to load announcements' }));
 });
 
 app.listen(5000, () => {
