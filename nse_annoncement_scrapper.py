@@ -29,13 +29,34 @@ C:\Program Files\Tesseract-OCR
 C:\poppler-24.08.0
 C:\poppler-24.08.0\Library\bin
 
+NSE websites:
+https://www.nseindia.com/
+https://www.niftyindices.com/
+https://iinvest.cogencis.com/
+https://charting.nseindia.com/
+https://unofficed.com/nse-python/documentation/nsepy
+
+IPO:
+https://zerodha.com/ipo/
+https://www.nseindia.com/companies-listing/corporate-filings-offer-documents
+https://upstox.com/news/market-news/
+https://www.nseindia.com/market-data/all-upcoming-issues-ipo
+https://www.nseindia.com/market-data/new-stock-exchange-listings-recent
+https://www.nseindia.com/market-data/live-market-indices
+
+
+Events:
+https://www.nseindia.com/companies-listing/corporate-filings-event-calendar
+https://www.nseindia.com/companies-listing/corporate-filings-board-meetings
+
+https://serpapi.com/google-finance-api
+
 """
 import os
 import requests
 import json
 import time
-import datetime
-from datetime import date
+from datetime import datetime, timezone, timedelta, date
 import yfinance as yf
 import pytz  # Import pytz module for timezone support
 import pandas as pd
@@ -51,7 +72,11 @@ import pytesseract
 from pdf2image import convert_from_path
 from curl_cffi import requests
 from dataclasses import dataclass
-
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -93,8 +118,8 @@ nseSegments = {"equities":"equities",
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
-scrappingStartingDate = datetime.datetime(2024, 1, 1)
-current_datetime = datetime.datetime.now()
+scrappingStartingDate = datetime(2024, 1, 1)
+current_datetime = datetime.now()
 current_date = current_datetime.date()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -226,7 +251,7 @@ def setup_logger(printing=False):
       logger.addHandler(console_handler)
 
     # Create file handler and set level to debug
-    file_handler = logging.FileHandler(f"logs//log_file_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
+    file_handler = logging.FileHandler(f"logs//log_file_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -913,10 +938,10 @@ end_date 2024-04-13 00:00:00+05:30
 
 
 Example usage
-result = fetchPercentageChange1Day("BRIGADE.NS", datetime.datetime(2024, 4, 12))
+result = fetchPercentageChange1Day("BRIGADE.NS", datetime(2024, 4, 12))
 print("1d % change " + str(result))
 
-result = calculatePercentageDifference("BRIGADE.NS", datetime.datetime(2024, 4, 3))
+result = calculatePercentageDifference("BRIGADE.NS", datetime(2024, 4, 3))
 print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
 
 '''
@@ -932,7 +957,7 @@ def fetchPercentageChange1Day(yFinTicker, date, nextDay=False):
     print("inputDate " + str(date_ist))
     print("dayNum " + str(dayNum))
 
-    if date_ist >= datetime.datetime.now(ist_timezone):
+    if date_ist >= datetime.now(ist_timezone):
         print("Date cannot be higher or equal to today's date")
         return None
 
@@ -981,7 +1006,7 @@ def fetchPercentageChange1Day(yFinTicker, date, nextDay=False):
 This is a custom function, it will calculate % change from next day
 
 example
-result = calculatePercentageDifference("BRIGADE.NS", datetime.datetime(2024, 4, 3))
+result = calculatePercentageDifference("BRIGADE.NS", datetime(2024, 4, 3))
 print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
 
 start_date:  2024-04-04 00:00:00+05:30
@@ -1010,8 +1035,8 @@ def calculatePercentageDifference(yFinTicker, date):
     # Calculate the end date by adding num_days while skipping weekends
     end_date = add_business_days(start_date, num_days)
 
-    if start_date >= datetime.datetime.now(ist_timezone) or \
-      end_date >= datetime.datetime.now(ist_timezone):
+    if start_date >= datetime.now(ist_timezone) or \
+      end_date >= datetime.now(ist_timezone):
         print("Date cannot be higher or equal to today's date")
         return None
 
@@ -1069,8 +1094,18 @@ def processJsonToDfForNseFilling(jsonObj):
 #yahooFinTesting("RELIANCE.NS")
 '''    
 def getyFinTickerInfo(yFinTicker, sub="INFO"):
+    session = requests.Session()
+
+    # Optional: Impersonate Chrome using headers
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/113.0.0.0 Safari/537.36"
+    })
+    
     try:
-      tickerInformation = yf.Ticker(yFinTicker)
+      tickerInformation = yf.Ticker(yFinTicker, session=session)
+      #print(dir(tickerInformation))
 
       if sub == "INFO":
         return tickerInformation.info
@@ -1084,7 +1119,12 @@ will return ticker history between start_date and end_date
 if it is not supported by yFin will return None
 '''
 def getyFinTickerCandles(yFinTicker,start_date,end_date):
-    session = requests.Session(impersonate="chrome")
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/113.0.0.0 Safari/537.36"
+    })
 
     try:
       tickerInformation = yf.Ticker(yFinTicker,session=session)
@@ -1165,7 +1205,7 @@ def getPercentageChangeList(json_data):
 
   for idx,obj in enumerate(json_data):
       symbol = obj["symbol"].replace(" ", "")
-      annDate = datetime.datetime.strptime(obj["an_dt"], date_format)
+      annDate = datetime.strptime(obj["an_dt"], date_format)
       hash = obj["hash"]
       pcChange = getPercentageChange(symbol,annDate,hash)
       if pcChange["Open"] is None:
@@ -1329,10 +1369,10 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
     # start_date = scrappingStartingDate
-    # end_date = datetime.datetime.now(ist_timezone)
+    # end_date = datetime.now(ist_timezone)
 
     start_date = scrappingStartingDate
-    end_date = datetime.datetime.now(ist_timezone)
+    end_date = datetime.now(ist_timezone)
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1360,16 +1400,16 @@ Fetch all NSE announcements between start date and end date and store it in a
 csv file.
 
 Args:
-    start_date (datetime.datetime): start date
-    end_date (datetime.datetime): end date
+    start_date (datetime): start date
+    end_date (datetime): end date
     file_name (str): file name to be stored
 
 Returns:
     None
 
 Example:
-    fetchNseAnnouncements(start_date=datetime.datetime(2014, 1, 1), 
-                      end_date=datetime.datetime(2020, 4, 1),
+    fetchNseAnnouncements(start_date=datetime(2014, 1, 1), 
+                      end_date=datetime(2020, 4, 1),
                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 '''
 def fetchNseAnnouncements(start_date, end_date, file_name):
@@ -1436,7 +1476,7 @@ if there is no default index then pandas allot incremental numbers and index.
 '''
 def syncUpNseAnnouncements():
   csv_filename = "nse_fillings\\announcements.csv"
-  current_date = datetime.datetime.now()
+  current_date = datetime.now()
 
   # Read the CSV data into a DataFrame
   df = pd.read_csv(csv_filename)
@@ -1484,7 +1524,7 @@ https://stackoverflow.com/questions/50686970/understanding-why-drop-duplicates-i
 '''
 def syncUpYFinTickerCandles(nseStockList, delaySec=6):
     ist_timezone = pytz.timezone('Asia/Kolkata')
-    current_date = datetime.datetime.now(ist_timezone)
+    current_date = datetime.now(ist_timezone)
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1500,8 +1540,8 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6):
             df['Date'] = pd.to_datetime(df['Date']) 
 
             last_row_date = df.iloc[-1]['Date']    
-            start_date = last_row_date + datetime.timedelta(days=1) # next day
-            end_date = current_date + datetime.timedelta(days=1)
+            start_date = last_row_date + timedelta(days=1) # next day
+            end_date = current_date + timedelta(days=1)
         except Exception as e:
             print("An error occurred:", e)
             continue
@@ -1721,8 +1761,8 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 '''
 '''
 def generateAnnouncementAnalysis():
-    fetchNseAnnouncements(start_date=datetime.datetime(2024, 5, 4), 
-                      end_date=datetime.datetime(2024, 5, 4),
+    fetchNseAnnouncements(start_date=datetime(2024, 5, 4), 
+                      end_date=datetime(2024, 5, 4),
                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 
     downloadFilesFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
@@ -1732,19 +1772,257 @@ def generateAnnouncementAnalysis():
                               announcementKeywords,
                               downloadDir="downloads")
 
+
+'''
+https://charting.nseindia.com/?symbol=RELIANCE-EQ
+
+{
+    "exch": "N",
+    "tradingSymbol": "RELIANCE-EQ",
+    "fromDate": 1746719996,
+    "toDate": 1746761008,
+    "timeInterval": 1,
+    "chartPeriod": "D",
+    "chartStart": 0
+}
+
+{
+    "exch": "N",
+    "tradingSymbol": "RELIANCE-EQ",
+    "fromDate": 1746719996,
+    "toDate": 1746761069,
+    "timeInterval": 1,
+    "chartPeriod": "D",
+    "chartStart": 0
+}
+'''
+def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
+    url = "https://charting.nseindia.com//Charts/ChartData/"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Content-Type": "application/json; charset=utf-8",
+        "Origin": "https://charting.nseindia.com",
+        "Referer": "https://charting.nseindia.com/",
+        "Accept": "*/*"
+    }
+
+    # Payload from browser's request
+    payload = {
+        "exch": "N",
+        "tradingSymbol": symbol,
+        "fromDate": 0,                         # Epoch start
+        "toDate": 1746759039,                  # Future date
+        "timeInterval": interval,              # 1 for 1 day interval
+        "chartPeriod": period,                 # "D" for Daily
+        "chartStart": 0
+    }
+
+    session = requests.Session()
+    session.headers.update(headers)
+
+    # Initial request to set cookies (optional, helps with bot protection)
+    session.get("https://charting.nseindia.com", timeout=5)
+
+    # Actual POST request
+    response = session.post(url, data=json.dumps(payload), timeout=10)
+    #print(response.text)
+
+    if response.status_code == 200:
+        data = response.json()
+        timestamps = data["t"]
+        opens = data["o"]
+        highs = data["h"]
+        lows = data["l"]
+        closes = data["c"]
+        volumes = data["v"]
+
+        print("Date       | Open  | High  | Low   | Close | Volume")
+        print("-----------|-------|-------|-------|-------|--------")
+
+        for i in range(len(timestamps)):
+            dt = datetime.fromtimestamp(timestamps[i], tz=timezone.utc)
+            ts = dt.strftime("%Y-%m-%d")
+            #ts = timestamps[i] if i < len(opens) else "-"
+            
+            o = opens[i] if i < len(opens) else "-"
+            h = highs[i] if i < len(highs) else "-"
+            l = lows[i] if i < len(lows) else "-"
+            c = closes[i] if i < len(closes) else "-"
+            v = volumes[i] if i < len(volumes) else "-"
+            print(f"{ts} | {o:<5} | {h:<5} | {l:<5} | {c:<5} | {v}")
+    else:
+        print(f"❌ Request failed: {response.status_code}")
+        print(response.text)
+        return None
+
+
+
+def fetch_cogencis_news(isin="INE002A01018", page=1, page_size=20):
+    url = "https://data.cogencis.com/api/v1/web/news/stories"
+
+    # Query parameters as dict (cleaner than embedding in URL)
+    params = {
+        "sWebNews": "true",
+        "forWebSite": "true",
+        "pageNo": page,
+        "pageSize": page_size,
+        "isins": isin
+    }
+
+    # Headers
+    headers = {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDY4MjQ2MDAsImRhdGEiOnsidXNlcl9pZCI6NzY1LCJhcHBzIjoiY21zLHJhcGksY21zLHJhcGksY21zLHJhcGkiLCJyb2xlcyI6InZpZXcifSwiaWF0IjoxNzQ2NzM4MjAwfQ.U6hdgSbW3Hsl3Sbmg2YrPVsCf9rYTO2hvVvEWhooxFc",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://iinvest.cogencis.com",
+        "Referer": "https://iinvest.cogencis.com"
+    }
+
+    # Start a session to handle cookies
+    session = requests.Session()
+    session.headers.update(headers)
+
+    # Perform the GET request
+    response = session.get(url, params=params)
+
+    if response.status_code == 200:
+        news_data = response.json()
+        stories = news_data.get("response", {}).get("data", [])
+        #print(stories)
+        
+        print(f"📰 News for ISIN {isin} (page {page}):\n")
+
+        for story in stories:
+            headline = story.get("headline", "N/A")
+            time = story.get("sourceDateTime", "N/A")
+            source = story.get("sourceName", "N/A")
+            link = story.get("sourceLink", "N/A")
+            print(f"📅 {time} | 🗞 {headline} | 🔗 {link} ({source})\n")
+        
+        return stories
+    else:
+        print(f"❌ Request failed: {response.status_code}")
+        print(response.text)
+        return None
+
+def fetch_ipo_news_from_cogencis():
+    url = "https://data.cogencis.com/api/v1/web/news/stories"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://iinvest.cogencis.com",
+        "Referer": "https://iinvest.cogencis.com/",
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDY5OTY5MjEsImRhdGEiOnsidXNlcl9pZCI6NzY1LCJhcHBzIjoiY21zLHJhcGksY21zLHJhcGksY21zLHJhcGkiLCJyb2xlcyI6InZpZXcifSwiaWF0IjoxNzQ2OTEwNTIxfQ.ete16FXBDKU4oQVs3P6_EZRxbm0ZsWXsvleZ_mJo4jU"
+    }
+
+    params = {
+        "subSections": "ipo-news",
+        "isWebNews": "true",
+        "forWebSite": "true",
+        "pageNo": 1,
+        "pageSize": 50
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+
+    if response.status_code != 200:
+        print("❌ Failed:", response.status_code)
+        print(response.text)
+        return
+
+    data = response.json()
+    articles = data.get("response", {}).get("data", [])
+
+    print(f"✅ {len(articles)} IPO news articles:\n")
+    for a in articles:
+        print(f"📰 {a.get('headline')}")
+        print(f"📅 {a.get('sourceDateTime')}")
+        print(f"🗞 Source: {a.get('sourceName')}")
+        print(f"🔗 Link: {a.get('sourceLink')}\n")
+        
+
+def fetch_mcx_bhavcopy_html():
+    options = Options()
+    options.add_argument("--headless")  # remove this line if you want to see browser
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.get("https://www.mcxindia.com/market-data/bhavcopy")
+
+    html = driver.page_source
+    driver.quit()
+
+    print(html)
+    
+def get_nse_commodity_spot_rates(file_path):
+    url = "https://www.nseindia.com/api/refrates?index=commodityspotrates"
+    home_url = "https://www.nseindia.com/commodity-getquote"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Referer": home_url,
+        "Accept-Language": "en-US,en;q=0.9",
+        "DNT": "1"
+    }
+
+    session = requests.Session()
+    session.headers.update(headers)
+
+    # Step 1: Warm-up request to homepage (to get cookies)
+    try:
+        session.get("https://www.nseindia.com", timeout=5)
+    except Exception as e:
+        print(f"⚠️ Warm-up request failed: {e}")
+
+    # Step 2: Actual API call
+    response = session.get(url, timeout=10)
+
+    if response.status_code == 200:
+        json_data = response.json()
+        
+        spot_data = json_data.get("data", [])  # ✅ Only this part is saved
+
+        if not spot_data:
+            raise Exception("❌ No spot price data found.")
+        
+        df = pd.DataFrame(spot_data)
+        df.to_csv(file_path, index=False)
+        print(f"✅ Saved spot prices to: {file_path}")
+        
+        return spot_data
+    else:
+        raise Exception(f"❌ Failed to fetch spot prices, status: {response.status_code}")
+
+
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
 
 
 # ==========================================================================
 # ============================  SCRIPT RUN =================================
+# Run it
+print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
 
+
+#print(get_bhavcopy("12-05-2025"))
 
 # result = getAllNseHolidays()
 # print(result)
 
-nseStockList = getAllNseSymbols(local=True)
-syncUpYFinTickerCandles(nseStockList,delaySec=10)
+# nseStockList = getAllNseSymbols(local=True)
+# syncUpYFinTickerCandles(nseStockList,delaySec=10)
+
+# fetch_ipo_news_from_cogencis()
+
+# get_nse_chart_data("RELIANCE-EQ")
+# fetch_cogencis_news(isin="INE002A01018")
 
 # symbolType = "INDEX"
 # currencyList = getJsonFromCsvForSymbols(symbolType)
@@ -1754,15 +2032,16 @@ syncUpYFinTickerCandles(nseStockList,delaySec=10)
 #fetchYFinTickerCandles(nseStockList,delaySec=15,partial=True)
 #print(result)
 
-#fetchYFinStockInfo(nseStockList,partial=False)
+# nseStockList = getAllNseSymbols(local=True)
+# fetchYFinStockInfo(nseStockList,partial=False)
 
 #fetchNseAnnouncements()
 
-#getPercentageChange(None,datetime.datetime(2024, 2, 1))
+#getPercentageChange(None,datetime(2024, 2, 1))
 
 #syncUpCalculatePercentageForAnnouncement()
 
-# fetchNseAnnouncements(start_date=datetime.datetime(2025, 1, 1), 
+# fetchNseAnnouncements(start_date=datetime(2025, 1, 1), 
 #                       end_date=current_datetime,
 #                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 #syncUpNseAnnouncements()
