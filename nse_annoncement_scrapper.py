@@ -208,9 +208,6 @@ announcementKeywords = [
 "Movement in price"
 ]
 
-'''
-"SWSOLAR"
-'''
 avoid_tickers = [
   "RNAVAL",
   "CANFINHOME",
@@ -400,9 +397,10 @@ def getJsonFromCsvForSymbols(symbolType,local=True):
 
 
 '''
-==> Equity based
+==> Main URL
 https://www.nseindia.com/get-quotes/equity?symbol=RAYMOND
 
+==> APIs
 total market cap, trade volume etc
 https://www.nseindia.com/api/quote-equity?symbol=RAYMOND&section=trade_info
 
@@ -414,6 +412,7 @@ https://www.nseindia.com/api/top-corp-info?symbol=RAYMOND&market=equities
 
 meta-data
 https://www.nseindia.com/api/equity-meta-info?symbol=RAYMOND
+
 '''
 def getNseStockInfo(nseTicker):
     pass
@@ -469,6 +468,9 @@ https://www.nseindia.com/api/corporates/offerdocs/equity/companylist
 https://www.nseindia.com/api/corporates/offerdocs?index=equities&company=Adani%20Wilmar%20Limited
 https://www.nseindia.com/api/corporates/offerdocs?index=equities&isin=IDERR
 
+# events
+https://www.nseindia.com/api/event-calendar?index=equities&symbol=AARON&issuer=Aaron%20Industries%20Limited&subject=Other%20business%20matters
+
 
 Always Replace special characters example
 space - %20
@@ -495,7 +497,8 @@ def getJsonUrlQuery(urlType,
         "boardMeetings": "https://www.nseindia.com/api/corporate-board-meetings?index=",
         "corporateActions": "https://www.nseindia.com/api/corporates-corporateActions?index=",
         "financialResults":"https://www.nseindia.com/api/corporates-financial-results?index=",
-        "offerDocs":"https://www.nseindia.com/api/corporates/offerdocs?index="
+        "offerDocs":"https://www.nseindia.com/api/corporates/offerdocs?index=",
+        "events":"https://www.nseindia.com/api/event-calendar?index="
     }
 
     baseUrl = baseUrls[urlType] + nseSegments[index]
@@ -561,6 +564,11 @@ def getSchemaUrl(urlType,index):
         "debt":"CF-debt-offer-document.json",
         "sme":"CF-sme-offer-document.json"
     }
+    
+    eventSchema = {
+      "equities":"CF-event-calendar.json",
+      "sme":"CF-event-calendar-sme.json"
+    }
 
     schemaObjs = {
         "announcement":announcementSchema,
@@ -568,7 +576,8 @@ def getSchemaUrl(urlType,index):
         "boardMeetings":boardMeetingSchema,
         "corporateActions":corporateActionSchema,
         "financialResults":financialResultsSchema,
-        "offerDocs":offerDocumentSchema
+        "offerDocs":offerDocumentSchema,
+        "events":eventSchema
     }
 
     schemaBaseUrl = schemaBaseUrl + schemaObjs[urlType][index]
@@ -581,7 +590,8 @@ def getBaseUrl(urlType):
         "boardMeetings": "https://www.nseindia.com/companies-listing/corporate-filings-board-meetings",
         "corporateActions": "https://www.nseindia.com/companies-listing/corporate-filings-actions",
         "financialResults":"https://www.nseindia.com/companies-listing/corporate-filings-financial-results",
-        "offerDocs":"https://www.nseindia.com/companies-listing/corporate-filings-offer-documents"
+        "offerDocs":"https://www.nseindia.com/companies-listing/corporate-filings-offer-documents",
+        "events":"https://www.nseindia.com/companies-listing/corporate-filings-event-calendar"
     }
 
     baseUrl = baseUrls[urlType]
@@ -594,7 +604,8 @@ def getSubjectUrl(urlType,index):
         "boardMeetings": "https://www.nseindia.com/api/corporate-board-meetings-subject?index=",
         "corporateActions": "https://www.nseindia.com/api/corporates-corporateActions-subject?index=",
         "financialResults":"",
-        "offerDocs":""
+        "offerDocs":"",
+        "events":"https://www.nseindia.com/api/eventCalender-equities"
     }
     return  subjectUrls[urlType] + nseSegments[index]
 
@@ -611,7 +622,8 @@ def getCompaniesListUrl(urlType,index):
         "boardMeetings": "",
         "corporateActions": "https://www.nseindia.com/api/corporates-corporateActions-debtcompany",
         "financialResults":"",
-        "offerDocs":"https://www.nseindia.com/api/corporates/offerdocs/equity/companylist"
+        "offerDocs":"https://www.nseindia.com/api/corporates/offerdocs/equity/companylist",
+        "events":""
     }
     return companiesListUrl[urlType]
 
@@ -882,7 +894,7 @@ def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delaySec
 
     while start_date <= final_end_date:
         # Calculate the dynamic end date, making sure it doesn't exceed the final end date
-        end_date = start_date + datetime.timedelta(days=step)
+        end_date = start_date + timedelta(days=step)
         if end_date > final_end_date:
             end_date = final_end_date
 
@@ -894,7 +906,7 @@ def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delaySec
         jsonObjMaster.extend(jsonObj)
 
         # Move to the next iteration (next step after the current end_date)
-        start_date = end_date + datetime.timedelta(days=1)
+        start_date = end_date + timedelta(days=1)
 
         time.sleep(delaySec)  # Delay between API requests
 
@@ -1090,6 +1102,17 @@ def processJsonToDfForNseFilling(jsonObj):
 
   return df
 
+
+def processJsonToDfForEvents(jsonObj):
+  # Convert the list of dictionaries to a DataFrame
+  df = pd.DataFrame(jsonObj)
+  df['date'] = pd.to_datetime(df['date'])
+  df = df.sort_values(by='date')
+
+  # compute hash of all rows
+  df['hash'] = df.apply(compute_hash, axis=1)
+
+  return df
 '''
 #yahooFinTesting("RELIANCE.NS")
 '''    
@@ -1419,6 +1442,28 @@ def fetchNseAnnouncements(start_date, end_date, file_name):
 
   # Convert the list of dictionaries to a DataFrame
   df = processJsonToDfForNseFilling(master_json_list)
+  df.reset_index(drop=True)
+  df.set_index('hash', inplace=True)
+
+  #remove if any duplicate
+  df = df[~df.index.duplicated()]
+  df.to_csv(file_name, encoding='utf-8')
+
+  print("Data saved to " + file_name)
+
+'''
+Example:
+    fetchNseAnnouncements(start_date=datetime(2025, 19, 5), 
+                      end_date=datetime(2025, 25, 5),
+                      file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
+'''
+def fetchNseEvents(start_date, end_date, file_name):
+
+  master_json_list = fetchNseJsonObj(urlType="events", index="equities", fromDate=start_date, toDate=end_date)
+  print("total entries " + str(len(master_json_list)))
+
+  # Convert the list of dictionaries to a DataFrame
+  df = processJsonToDfForEvents(master_json_list)
   df.reset_index(drop=True)
   df.set_index('hash', inplace=True)
 
@@ -2008,7 +2053,11 @@ def get_nse_commodity_spot_rates(file_path):
 # ==========================================================================
 # ============================  SCRIPT RUN =================================
 # Run it
-print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
+# print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
+
+fetchNseEvents(start_date=datetime(2025, 5, 19), 
+                  end_date=datetime(2025, 5, 25),
+                  file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
 
 
 #print(get_bhavcopy("12-05-2025"))
