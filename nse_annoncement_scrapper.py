@@ -35,6 +35,8 @@ https://www.niftyindices.com/
 https://iinvest.cogencis.com/
 https://charting.nseindia.com/
 https://unofficed.com/nse-python/documentation/nsepy
+https://github.com/meticulousCraftman/TickerStore
+
 
 IPO:
 https://zerodha.com/ipo/
@@ -48,8 +50,9 @@ https://www.nseindia.com/market-data/live-market-indices
 Events:
 https://www.nseindia.com/companies-listing/corporate-filings-event-calendar
 https://www.nseindia.com/companies-listing/corporate-filings-board-meetings
-
 https://serpapi.com/google-finance-api
+https://www.nseindia.com/companies-listing/corporate-integrated-filing
+
 
 """
 import os
@@ -397,25 +400,75 @@ def getJsonFromCsvForSymbols(symbolType,local=True):
 
 
 '''
+MarketCap, PE, PB, Book Value, Debt, RoE, RoCE, Face Value, Div Yield [ check ]:
+
 ==> Main URL
-https://www.nseindia.com/get-quotes/equity?symbol=RAYMOND
+https://www.nseindia.com/get-quotes/equity?symbol=RELIANCE
 
 ==> APIs
 total market cap, trade volume etc
-https://www.nseindia.com/api/quote-equity?symbol=RAYMOND&section=trade_info
+https://www.nseindia.com/api/quote-equity?symbol=RELIANCE&section=trade_info
 
-prices and quote
-https://www.nseindia.com/api/quote-equity?symbol=RAYMOND
+prices, symbol pe, issued size, face value, close price
+https://www.nseindia.com/api/quote-equity?symbol=RELIANCE
 
-financial results, announcement etc.
-https://www.nseindia.com/api/top-corp-info?symbol=RAYMOND&market=equities
+announcement, corporate actions, shareholding pattern, financial results, board meetings etc.
+https://www.nseindia.com/api/top-corp-info?symbol=RELIANCE&market=equities
 
 meta-data
-https://www.nseindia.com/api/equity-meta-info?symbol=RAYMOND
+https://www.nseindia.com/api/equity-meta-info?symbol=RELIANCE
 
 '''
-def getNseStockInfo(nseTicker):
-    pass
+def nsefetch(payload):
+    try:
+        output = requests.get(payload,headers=headers).json()
+        #print(output)
+    except ValueError:
+        s =requests.Session()
+        output = s.get("http://nseindia.com",headers=headers)
+        output = s.get(payload,headers=headers).json()
+    return output
+      
+def nsesymbolpurify(symbol):
+    symbol = symbol.replace('&','%26') #URL Parse for Stocks Like M&M Finance
+    return symbol
+  
+def nse_quote(symbol):
+    #https://forum.unofficed.com/t/nsetools-get-quote-is-not-fetching-delivery-data-and-delivery-can-you-include-this-as-part-of-feature-request/1115/4
+    symbol = nsesymbolpurify(symbol)
+    payload = nsefetch('https://www.nseindia.com/api/quote-equity?symbol='+symbol)
+    return payload
+    
+  
+def invest_getStockInfo():
+    # Setup Chrome options
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # Run in headless mode (no GUI)
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    # Path to your downloaded chromedriver
+    chrome_driver_path = "chromedriver.exe"  # Change this to your actual path
+
+    # Launch browser
+    service = Service(chrome_driver_path)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
+    # Open the URL
+    url = "https://iinvest.cogencis.com/ine002a01018/relindus/ns/reliance/reliance-industries_?tab=overview"
+    driver.get(url)
+
+    # Wait for JS to load (increase time if page takes long)
+    time.sleep(5)
+
+    # Get the page body content
+    body = driver.find_element("tag name", "body").get_attribute("innerHTML")
+    print(body)
+
+    # Close the browser
+    driver.quit()
+  
+  
 
 # ==========================================================================
 # ========================== NSE URL Function ==============================
@@ -428,7 +481,7 @@ filter = [company,Subject,time,FnO]
 "https://www.nseindia.com/api/corporate-announcements?index=equities&from_date=10-04-2024&to_date=11-04-2024"
 "https://www.nseindia.com/api/corporate-announcements?index=equities&from_date=9-04-2024&to_date=11-04-2024&fo_sec=true"
 "https://www.nseindia.com/api/corporate-announcements?index=equities&symbol=SUBEX&issuer=Subex%20Limited"
-https://www.nseindia.com/api/corporate-announcements?index=equities&subject=Amalgamation%20%2F%20Merger
+"https://www.nseindia.com/api/corporate-announcements?index=equities&subject=Amalgamation%20%2F%20Merger"
 
 # arrangements
 index = [Equity/debt]
@@ -484,7 +537,7 @@ print(getAnnouncementUrlQuery("equities", symbol="SUBEX", issuer="Subex Limited"
 print(getAnnouncementUrlQuery("equities", subject="Amalgamation / Merger"))  # Subject-wise search
 '''
 def getJsonUrlQuery(urlType,
-                index, 
+                index=None,
                 fromDate = None, 
                 toDate = None, 
                 symbol = None, 
@@ -522,6 +575,18 @@ def getJsonUrlQuery(urlType,
     # Handling FnO search
     if isOnlyFnO:
         baseUrl += "&fo_sec=true"
+    
+    return baseUrl
+  
+def getSymbolJsonUrlQuery(urlType,
+                symbol=None):
+    baseUrls = {
+        "stockQuote":"https://www.nseindia.com/api/quote-equity?symbol=",
+        "stockInfo":"https://www.nseindia.com/api/top-corp-info?symbol=",
+        "integratedResults":"https://www.nseindia.com/api/corp-info?symbol=RELIANCE&corpType=integratedFilingFinancials&market=equities"
+    }
+
+    baseUrl = baseUrls[urlType] + symbol
     
     return baseUrl
 
@@ -583,7 +648,7 @@ def getSchemaUrl(urlType,index):
     schemaBaseUrl = schemaBaseUrl + schemaObjs[urlType][index]
     return schemaBaseUrl
 
-def getBaseUrl(urlType):
+def getBaseUrl(urlType,symbol=None):
     baseUrls = {
         "announcement":"https://www.nseindia.com/companies-listing/corporate-filings-announcements" ,
         "arrangement":"https://www.nseindia.com/companies-listing/corporate-filings-scheme-document",
@@ -591,10 +656,14 @@ def getBaseUrl(urlType):
         "corporateActions": "https://www.nseindia.com/companies-listing/corporate-filings-actions",
         "financialResults":"https://www.nseindia.com/companies-listing/corporate-filings-financial-results",
         "offerDocs":"https://www.nseindia.com/companies-listing/corporate-filings-offer-documents",
-        "events":"https://www.nseindia.com/companies-listing/corporate-filings-event-calendar"
+        "events":"https://www.nseindia.com/companies-listing/corporate-filings-event-calendar",
+        "stockQuote": "https://www.nseindia.com/get-quotes/equity?symbol=",
+        "stockInfo":"https://www.nseindia.com/get-quotes/equity?symbol="
     }
 
     baseUrl = baseUrls[urlType]
+    if symbol:
+      baseUrl = baseUrl + symbol
     return baseUrl
     
 def getSubjectUrl(urlType,index):
@@ -877,15 +946,20 @@ step indicate how many days step it should fetch the data.
 Example:
 fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
 '''
-def fetchNseJsonObj(urlType, index, fromDate=None, toDate=None, step=7, delaySec=5):
+def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None, step=7, delaySec=5):
     jsonObjMaster = []
     start_date = fromDate
     final_end_date = toDate  # Rename to avoid confusion
 
     # First, get response from the main URL to fetch cookies
-    response = fetchUrl(getBaseUrl(urlType=urlType))
+    response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
     print(response)
-
+    
+    if symbol:
+        jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
+        jsonObj = fetchJson(jsonUrl, response.cookies)
+        return jsonObj
+      
     # Ensure step is set properly if start and end dates are the same or close together
     if start_date == final_end_date:
         step = 0  # If dates are the same, no step needed
@@ -1127,7 +1201,9 @@ def getyFinTickerInfo(yFinTicker, sub="INFO"):
     })
     
     try:
-      tickerInformation = yf.Ticker(yFinTicker, session=session)
+      print("fetching " + yFinTicker)
+      tickerInformation = yf.Ticker(yFinTicker)
+      #print(tickerInformation)
       #print(dir(tickerInformation))
 
       if sub == "INFO":
@@ -2052,12 +2128,16 @@ def get_nse_commodity_spot_rates(file_path):
 
 # ==========================================================================
 # ============================  SCRIPT RUN =================================
+# resp = fetchNseJsonObj("stockQuote", symbol="RELIANCE")
+resp = fetchNseJsonObj("stockInfo", symbol="RELIANCE")
+print(resp)
+  
 # Run it
 # print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
 
-fetchNseEvents(start_date=datetime(2025, 5, 19), 
-                  end_date=datetime(2025, 5, 25),
-                  file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
+# fetchNseEvents(start_date=datetime(2025, 5, 19), 
+#                   end_date=datetime(2025, 5, 25),
+#                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
 
 
 #print(get_bhavcopy("12-05-2025"))
