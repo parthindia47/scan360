@@ -117,7 +117,10 @@ nseSegments = {"equities":"equities",
               "sse":"sse",
               "mf":"mf",
               "municipalBond":"municipalBond",
-              "invitsreits":"invitsreits"}
+              "invitsreits":"invitsreits",
+              "qip":"qip",
+              "inPrinciple":"FIPREFIP",
+              "inListing":"FIPREFLS"}
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
@@ -524,6 +527,23 @@ https://www.nseindia.com/api/corporates/offerdocs?index=equities&isin=IDERR
 # events
 https://www.nseindia.com/api/event-calendar?index=equities&symbol=AARON&issuer=Aaron%20Industries%20Limited&subject=Other%20business%20matters
 
+# integrated results
+https://www.nseindia.com/api/integrated-filing-results?index=equities&symbol=BATAINDIA&issuer=Bata%20India%20Limited&period_ended=all&type=Integrated%20Filing-%20Financials
+
+# scheme of arrangement
+https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme?index=equities&issuer=New%20Delhi%20Television%20Limited&type=New%20Delhi%20Television%20Limited
+
+# credit Rating
+https://www.nseindia.com/api/corporate-credit-rating?index=&from_date=30-11-2024&to_date=30-05-2025&issuer=State%20Bank%20Of%20India
+
+# shareholding pattern
+https://www.nseindia.com/api/corporate-share-holdings-master?index=equities&symbol=RELIANCE&issuer=Reliance%20Industries%20Limited
+
+# annual Reports
+https://www.nseindia.com/api/annual-reports?index=equities&symbol=RELIANCE
+
+# rights issue
+https://www.nseindia.com/api/corporates/offerdocs/rights?index=equities&from_date=02-03-2025&to_date=30-05-2025
 
 Always Replace special characters example
 space - %20
@@ -551,7 +571,17 @@ def getJsonUrlQuery(urlType,
         "corporateActions": "https://www.nseindia.com/api/corporates-corporateActions?index=",
         "financialResults":"https://www.nseindia.com/api/corporates-financial-results?index=",
         "offerDocs":"https://www.nseindia.com/api/corporates/offerdocs?index=",
-        "events":"https://www.nseindia.com/api/event-calendar?index="
+        "events":"https://www.nseindia.com/api/event-calendar?index=",
+        "integratedResults":"https://www.nseindia.com/api/integrated-filing-results?index=",
+        "resultsComparison":"https://www.nseindia.com/api/results-comparision?index=",
+        "schemeOfArrangement":"https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme?index=",
+        "creditRating":"https://www.nseindia.com/api/corporate-credit-rating?index=",
+        "insiderTrading":"https://www.nseindia.com/api/corporates-pit?index=",
+        "shareholdingPattern": "https://www.nseindia.com/api/corporate-share-holdings-master?index=",
+        "annualReports":"https://www.nseindia.com/api/annual-reports?index=",
+        "rightsFilings": "https://www.nseindia.com/api/corporates/offerdocs/rights?index=",
+        "qipFilings": "https://www.nseindia.com/api/corporates/offerdocs/rights?index=",
+        "prefIssue":"https://www.nseindia.com/api/corporate-further-issues-pref?index="
     }
 
     baseUrl = baseUrls[urlType] + nseSegments[index]
@@ -563,8 +593,11 @@ def getJsonUrlQuery(urlType,
         baseUrl += f"&from_date={fromDate_str}&to_date={toDate_str}"
     
     # Handling company-wise search
-    if symbol and issuer:
-        baseUrl += f"&symbol={symbol}&issuer={issuer}"
+    if symbol:
+        baseUrl += f"&symbol={symbol}"
+        
+    if issuer:
+        baseUrl += f"&issuer={issuer}"
     
     # Handling subject-wise search
     if subject:
@@ -583,10 +616,20 @@ def getSymbolJsonUrlQuery(urlType,
     baseUrls = {
         "stockQuote":"https://www.nseindia.com/api/quote-equity?symbol=",
         "stockInfo":"https://www.nseindia.com/api/top-corp-info?symbol=",
-        "integratedResults":"https://www.nseindia.com/api/corp-info?symbol=RELIANCE&corpType=integratedFilingFinancials&market=equities"
     }
 
     baseUrl = baseUrls[urlType] + symbol
+    
+    return baseUrl
+
+def getTopicJsonQuery(urlType):
+    baseUrls = {
+        "ipoCurrentIssues":"https://www.nseindia.com/api/ipo-current-issue",
+        "publicPastIssues":"https://www.nseindia.com/api/public-past-issues",
+        "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo"
+    }
+
+    baseUrl = baseUrls[urlType]
     
     return baseUrl
 
@@ -658,12 +701,30 @@ def getBaseUrl(urlType,symbol=None):
         "offerDocs":"https://www.nseindia.com/companies-listing/corporate-filings-offer-documents",
         "events":"https://www.nseindia.com/companies-listing/corporate-filings-event-calendar",
         "stockQuote": "https://www.nseindia.com/get-quotes/equity?symbol=",
-        "stockInfo":"https://www.nseindia.com/get-quotes/equity?symbol="
+        "stockInfo":"https://www.nseindia.com/get-quotes/equity?symbol=",
+        "ipoCurrentIssues":"https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
+        "publicPastIssues":"https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
+        "upcomingIssues":"https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
+        "integratedResults":"https://www.nseindia.com/companies-listing/corporate-integrated-filing",
+        "resultsComparison": "https://www.nseindia.com/companies-listing/corporate-filings-financial-results-comparision",
+        "schemeOfArrangement":"https://www.nseindia.com/companies-listing/corporate-filings-scheme-document",
+        "creditRating":"https://www.nseindia.com/companies-listing/debt-centralised-database/crd",
+        "insiderTrading":"https://www.nseindia.com/companies-listing/corporate-filings-insider-trading",
+        "shareholdingPattern":"https://www.nseindia.com/companies-listing/corporate-filings-shareholding-pattern",
+        "annualReports":"https://www.nseindia.com/companies-listing/corporate-filings-annual-reports",
+        "rightsFilings":"https://www.nseindia.com/companies-listing/corporate-filings-rights",
+        "qipFilings":"https://www.nseindia.com/companies-listing/corporate-filings-rights",
+        "prefIssue":"https://www.nseindia.com/companies-listing/corporate-filings-PREF",
     }
+    
+    symbolBaseUrl = ["stockQuote", "stockInfo"]
 
     baseUrl = baseUrls[urlType]
-    if symbol:
-      baseUrl = baseUrl + symbol
+    
+    if urlType in symbolBaseUrl:
+      if symbol:
+        baseUrl = baseUrl + symbol
+        
     return baseUrl
     
 def getSubjectUrl(urlType,index):
@@ -708,7 +769,7 @@ def getAllNseHolidays():
 Fetch any Json from URL
 '''
 def fetchJson(url,cookies=None):
-    print("Fetching JSON " + url)
+    print("Fetching JSON Object : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
         #print("Cookies Type:", type(cookies))
@@ -734,7 +795,7 @@ returns the response of given url
 should pass base/first urls which "do not need cookies" to access.
 '''
 def fetchUrl(url):
-    print("Fetching URL : " + url)
+    print("Fetching Base URL : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
         response = requests.get(url,headers=headers)
@@ -955,10 +1016,20 @@ def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None
     response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
     print(response)
     
-    if symbol:
+    if not symbol and not index:
+      jsonUrl = getTopicJsonQuery(urlType=urlType)
+      jsonObj = fetchJson(jsonUrl, response.cookies)
+      return jsonObj
+    
+    if symbol and not index:
         jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
         jsonObj = fetchJson(jsonUrl, response.cookies)
         return jsonObj
+    
+    if not fromDate and not toDate:
+        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol)
+        jsonObj = fetchJson(jsonUrl, response.cookies)
+        return jsonObj        
       
     # Ensure step is set properly if start and end dates are the same or close together
     if start_date == final_end_date:
@@ -973,7 +1044,7 @@ def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None
             end_date = final_end_date
 
         # Fetch the JSON object using the calculated start and end date
-        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, fromDate=start_date, toDate=end_date)
+        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol, fromDate=start_date, toDate=end_date)
         jsonObj = fetchJson(jsonUrl, response.cookies)
 
         # Extend the list with the fetched data
@@ -2129,9 +2200,42 @@ def get_nse_commodity_spot_rates(file_path):
 # ==========================================================================
 # ============================  SCRIPT RUN =================================
 # resp = fetchNseJsonObj("stockQuote", symbol="RELIANCE")
-resp = fetchNseJsonObj("stockInfo", symbol="RELIANCE")
-print(resp)
+# resp = fetchNseJsonObj("stockInfo", symbol="RELIANCE")
+# print(resp)
+
+# resp = fetchNseJsonObj("upcomingIssues")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="integratedResults", index="equities")
+# print(resp)
   
+# resp = fetchNseJsonObj(urlType="resultsComparison", index="equities", symbol="RELIANCE")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="schemeOfArrangement", index="equities")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="creditRating", index="equities")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="insiderTrading", index="equities")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="shareholdingPattern", index="equities")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="annualReports", index="equities", symbol="RELIANCE")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="rightsFilings", index="equities")
+# print(resp)
+
+# resp = fetchNseJsonObj(urlType="qipFilings", index="qip")
+# print(resp)
+
+resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
+print(resp)
+
 # Run it
 # print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
 
