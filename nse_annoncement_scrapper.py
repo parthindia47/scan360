@@ -759,7 +759,7 @@ def getCompaniesListUrl(urlType,index):
 
 def getAllNseHolidays():
     url = "https://www.nseindia.com/api/holiday-master?type=trading"
-    response = fetchJson(url)
+    response = fetchGetJson(url)
     return response
 
 # ==========================================================================
@@ -768,7 +768,7 @@ def getAllNseHolidays():
 '''
 Fetch any Json from URL
 '''
-def fetchJson(url,cookies=None):
+def fetchGetJson(url,cookies=None):
     print("Fetching JSON Object : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
@@ -1018,17 +1018,17 @@ def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None
     
     if not symbol and not index:
       jsonUrl = getTopicJsonQuery(urlType=urlType)
-      jsonObj = fetchJson(jsonUrl, response.cookies)
+      jsonObj = fetchGetJson(jsonUrl, response.cookies)
       return jsonObj
     
     if symbol and not index:
         jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
-        jsonObj = fetchJson(jsonUrl, response.cookies)
+        jsonObj = fetchGetJson(jsonUrl, response.cookies)
         return jsonObj
     
     if not fromDate and not toDate:
         jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol)
-        jsonObj = fetchJson(jsonUrl, response.cookies)
+        jsonObj = fetchGetJson(jsonUrl, response.cookies)
         return jsonObj        
       
     # Ensure step is set properly if start and end dates are the same or close together
@@ -1045,7 +1045,7 @@ def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None
 
         # Fetch the JSON object using the calculated start and end date
         jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol, fromDate=start_date, toDate=end_date)
-        jsonObj = fetchJson(jsonUrl, response.cookies)
+        jsonObj = fetchGetJson(jsonUrl, response.cookies)
 
         # Extend the list with the fetched data
         jsonObjMaster.extend(jsonObj)

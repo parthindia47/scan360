@@ -39,6 +39,80 @@ https://pulse.zerodha.com/
 
 '''
 
+headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
+
+'''
+returns the response of given url
+should pass base/first urls which "do not need cookies" to access.
+'''
+def fetchUrl(url):
+    print("Fetching Base URL : " + url)
+    try:
+        # Send a GET request to the URL to download the JSON content
+        response = requests.get(url,headers=headers)
+        
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+          return response
+        else:
+            print("Failed to fetch. Status code:", response.status_code)
+    except Exception as e:
+        print("An error occurred:", e)
+        
+def fetchPostJson(url, cookies=None, payload=None):
+    print("Fetching JSON Object : " + url)
+    try:
+        # Send a GET request to the URL to download the JSON content
+        #print("Cookies Type:", type(cookies))
+        # for i, cookie in enumerate(cookies):
+        #     print(f"Cookie {i}: type={type(cookie)}, value={cookie}")
+
+        if cookies:
+          headers["Cookie"] = '; '.join([f"{k}={v}" for k, v in cookies.items()])
+        response = requests.post(url, headers=headers, json=payload)
+        
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # Parse the JSON content
+            jsonData = response.json()
+            return jsonData
+        else:
+            print("Failed to download JSON. Status code:", response.status_code)
+    except Exception as e:
+        print("An error occurred:", e)
+
+def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
+  baseUrls = {
+      "economicCalender":"https://web.sensibull.com/stock-market-calendar/economic-calendar" ,
+      "resultCalender":"https://web.sensibull.com/stock-market-calendar/stock-results-calendar",
+  }
+  
+  jsonUrls = {
+      "economicCalender":"https://oxide.sensibull.com/v1/compute/market_global_events",
+      "resultCalender":"https://oxide.sensibull.com/v1/compute/market_stock_events",
+  }
+  payload = {}
+
+  if fromDate and toDate:
+      # Convert datetime to string in YYYY-MM-DD format
+      from_date_str = fromDate.strftime('%Y-%m-%d')
+      to_date_str = toDate.strftime('%Y-%m-%d')
+    
+      payload = {
+          "countries": [],
+          "impacts": [],
+          "from_date": from_date_str,
+          "to_date": to_date_str
+      }
+  
+  # First, get response from the main URL to fetch cookies
+  response = fetchUrl(url=baseUrls[urlType])
+  print(response)
+  jsonObj = fetchPostJson(jsonUrls[urlType], response.cookies, payload)
+  print(jsonObj)
+  return jsonObj
+
+
 def google_rss_feed_example():
   # Google News RSS query
   query = "Dredging Corporation"
@@ -97,7 +171,7 @@ def google_search_example():
   for url in results:
       print(url)
       
-def buissnes_standard():
+def business_standard():
   url = "https://www.business-standard.com/search?type=news&q=welspun"
   response = requests.get(url)
   soup = BeautifulSoup(response.text, "html.parser")
@@ -112,4 +186,7 @@ def buissnes_standard():
 # get_redirected_url("https://news.google.com/rss/articles/CBMi2wFBVV95cUxPR0tSSHdwcTRzMUpiTUV0aFFIcE5hYU5xSlh6c3YzUUdOZHBSUktiWU4xeGtSNzFScE5ndGVRRHMybHJOMkJDUkpJWElYVC12MTZ6alJaMzFFS3ZOTXpLTnJ1QTRfdEhUbjJRWnFrT1E5SkFLTzJMYXNyQjBodFJuYW9vNERkM3lMWUhzR2hZWGQ5R3E5V1pCZjBvemFRbElqUzhfMFRPSjJGNU93M2tSQnNBbWJvelJNbWNOTzFUM21yUVFRQ2dXd3JTNW55cTdvcmh0T1NaVjVBc2c?oc=5", True)
 
 
-google_rss_feed_example()
+fromDate = datetime(2025, 5, 28)
+toDate = datetime(2025, 6, 2)
+resp = sensiBullDataScrapper(urlType="resultCalender")
+print(resp)
