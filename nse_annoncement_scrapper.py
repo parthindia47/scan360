@@ -2233,8 +2233,8 @@ def get_nse_commodity_spot_rates(file_path):
 # resp = fetchNseJsonObj(urlType="qipFilings", index="qip")
 # print(resp)
 
-resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
-print(resp)
+# resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
+# print(resp)
 
 # Run it
 # print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
@@ -2249,8 +2249,8 @@ print(resp)
 # result = getAllNseHolidays()
 # print(result)
 
-# nseStockList = getAllNseSymbols(local=True)
-# syncUpYFinTickerCandles(nseStockList,delaySec=10)
+nseStockList = getAllNseSymbols(local=True)
+syncUpYFinTickerCandles(nseStockList,delaySec=10)
 
 # fetch_ipo_news_from_cogencis()
 

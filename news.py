@@ -39,6 +39,120 @@ https://pulse.zerodha.com/
 
 '''
 
+international = [
+  "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en&gl=US&ceid=US:en",
+  "http://feeds.bbci.co.uk/news/world/rss.xml"
+]
+
+national = [
+  "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
+  "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"
+]
+
+news_rss = {
+  "indian_news_rss_feeds": [
+    {
+      "portal": "The Hindu",
+      "rss_home": "https://www.thehindu.com/rssfeeds/",
+      "feeds": [
+        { "title": "National News", "url": "https://www.thehindu.com/news/national/feeder/default.rss" },
+        { "title": "International News", "url": "https://www.thehindu.com/news/international/feeder/default.rss" }
+      ]
+    },
+    {
+      "portal": "Times of India",
+      "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
+      "feeds": [
+        { "title": "Top Stories", "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" },
+        { "title": "India News", "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" }
+      ]
+    },
+    {
+      "portal": "Hindustan Times",
+      "rss_home": "https://www.hindustantimes.com/rss-feeds",
+      "feeds": [
+        { "title": "India News", "url": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml" },
+        { "title": "World News", "url": "https://www.hindustantimes.com/feeds/rss/world-news/rssfeed.xml" }
+      ]
+    },
+    {
+      "portal": "Indian Express",
+      "rss_home": "https://indianexpress.com/rss/",
+      "feeds": [
+        { "title": "Latest News", "url": "https://indianexpress.com/feed/" },
+        { "title": "India News", "url": "https://indianexpress.com/section/india/feed/" }
+      ]
+    },
+    {
+      "portal": "NDTV",
+      "rss_home": "https://www.ndtv.com/rss",
+      "feeds": [
+        { "title": "Top Stories", "url": "https://feeds.feedburner.com/ndtvnews-top-stories" }
+      ]
+    },
+    {
+      "portal": "Zee News",
+      "rss_home": "https://zeenews.india.com/rss",
+      "feeds": [
+        { "title": "India News", "url": "https://zeenews.india.com/rss/india-news.xml" },
+        { "title": "World News", "url": "https://zeenews.india.com/rss/world-news.xml" }
+      ]
+    },
+    {
+      "portal": "News18",
+      "rss_home": "https://www.news18.com/rss/",
+      "feeds": [
+        { "title": "India", "url": "https://www.news18.com/rss/india.xml" },
+        { "title": "World", "url": "https://www.news18.com/rss/world.xml" }
+      ]
+    },
+    {
+      "portal": "Moneycontrol",
+      "rss_home": "https://www.moneycontrol.com/rss/",
+      "feeds": [
+        { "title": "Business News", "url": "https://www.moneycontrol.com/rss/news.xml" }
+      ]
+    },
+    {
+      "portal": "Economic Times",
+      "rss_home": "https://economictimes.indiatimes.com/rss.cms",
+      "feeds": [
+        { "title": "Top Stories", "url": "https://economictimes.indiatimes.com/rssfeedstopstories.cms" },
+        { "title": "Economy", "url": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms" }
+      ]
+    },
+    {
+      "portal": "India Today",
+      "rss_home": "https://www.indiatoday.in/rss",
+      "feeds": [
+        { "title": "Top News", "url": "https://www.indiatoday.in/rss/1206514" }
+      ]
+    },
+    {
+      "portal": "Deccan Chronicle",
+      "rss_home": "https://www.deccanchronicle.com/rss",
+      "feeds": [
+        { "title": "Main Feed", "url": "https://www.deccanchronicle.com/rss_feed" }
+      ]
+    },
+    {
+      "portal": "Scroll.in",
+      "rss_home": "https://scroll.in/",
+      "feeds": [
+        { "title": "All Articles", "url": "https://scroll.in/feed" }
+      ]
+    },
+    {
+      "portal": "The Wire",
+      "rss_home": "https://thewire.in/rss",
+      "feeds": [
+        { "title": "Main Feed", "url": "https://thewire.in/rss" }
+      ]
+    }
+  ]
+}
+
+
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
 '''
