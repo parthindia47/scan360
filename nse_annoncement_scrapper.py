@@ -36,6 +36,7 @@ https://iinvest.cogencis.com/
 https://charting.nseindia.com/
 https://unofficed.com/nse-python/documentation/nsepy
 https://github.com/meticulousCraftman/TickerStore
+https://www.nseindia.com/all-reports
 
 
 IPO:
@@ -53,6 +54,8 @@ https://www.nseindia.com/companies-listing/corporate-filings-board-meetings
 https://serpapi.com/google-finance-api
 https://www.nseindia.com/companies-listing/corporate-integrated-filing
 
+knowledge:
+https://unofficed.com/courses/mastering-algotrading-beginners-guide-nsepython/lessons/how-to-find-the-beta-of-indian-stocks-using-python/
 
 """
 import os
@@ -1717,6 +1720,7 @@ https://stackoverflow.com/questions/50686970/understanding-why-drop-duplicates-i
 def syncUpYFinTickerCandles(nseStockList, delaySec=6):
     ist_timezone = pytz.timezone('Asia/Kolkata')
     current_date = datetime.now(ist_timezone)
+    unsupported_tickers = []
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1779,7 +1783,13 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6):
                 print("An error occurred:", e)
         else:
            print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
-
+           unsupported_tickers.append(obj["SYMBOL"])
+           
+    if unsupported_tickers:
+      df = pd.DataFrame(unsupported_tickers)
+      csv_filename = "stock_info\\yFinUnsupportedTickers_syncUpYFinTickerCandles.csv"
+      df.to_csv(csv_filename, index=False, encoding='utf-8')
+      print("saved " + csv_filename)
 
 '''
 use separate = True if you want to store current delta in a separate file, it 
@@ -1965,6 +1975,9 @@ def generateAnnouncementAnalysis():
                               downloadDir="downloads")
 
 
+# ==========================================================================
+# =========================== NSE Extra functions =========================
+
 '''
 https://charting.nseindia.com/?symbol=RELIANCE-EQ
 
@@ -2048,7 +2061,6 @@ def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
         print(f"❌ Request failed: {response.status_code}")
         print(response.text)
         return None
-
 
 
 def fetch_cogencis_news(isin="INE002A01018", page=1, page_size=20):
@@ -2192,7 +2204,85 @@ def get_nse_commodity_spot_rates(file_path):
     else:
         raise Exception(f"❌ Failed to fetch spot prices, status: {response.status_code}")
 
+'''
+print(get_bhavcopy("12-05-2025"))
+'''
+def get_bhavcopy(date=None):
+    if date is None:
+        date = datetime.today().strftime("%d-%m-%Y")
 
+    date_str = date.replace("-", "")
+    url = f"https://archives.nseindia.com/products/content/sec_bhavdata_full_{date_str}.csv"
+
+    try:
+        df = pd.read_csv(url)
+        df.columns = df.columns.str.strip().str.upper()  # Normalize column names
+        print(f"✅ Bhavcopy loaded for {date}")
+        return df
+    except Exception as e:
+        print(f"❌ Failed to load Bhavcopy for {date}: {e}")
+        return pd.DataFrame()
+
+def get_bulkdeals():
+    payload=pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv")
+    return payload
+
+def get_blockdeals():
+    payload=pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
+    return payload
+
+"""
+Converts NSE Bhavcopy row to Yahoo Finance-style OHLCV data for a given symbol.
+
+Parameters:
+- bhavcopy_df (pd.DataFrame): Output of get_bhavcopy()
+- symbol (str): Stock symbol (e.g., 'ZYDUSWELL')
+
+Returns:
+- pd.DataFrame: Yahoo Finance-style dataframe with one row
+
+
+Bhav Copy Output
+SYMBOL    SERIES DATE1   PREV_CLOSE OPEN_PRICE HIGH_PRICE LOW_PRICE  LAST_PRICE CLOSE_PRICE AVG_PRICE TTL_TRD_QNTY  TURNOVER_LACS   NO_OF_TRADES DELIV_QTY  DELIV_PER
+ZYDUSWELL EQ     04-Jun  1949.70    1950.00    1965.40    1894.00    1899.00    1900.10     1915.31   143636        2751.08         6551         120854      84.14
+
+
+Yahoo Fin Object
+                             Open         High     Low        Close  Volume  Dividends  Stock Splits
+Date
+2025-06-04 00:00:00+05:30  1950.0  1965.400024  1894.0  1900.099976  143561        0.0           0.0
+"""
+def convert_to_yahoo_style(bhavcopy_df, symbol):
+    bhavcopy_df.columns = bhavcopy_df.columns.str.strip().str.upper()
+
+    row = bhavcopy_df[
+        (bhavcopy_df['SYMBOL'] == symbol.upper()) & 
+        (bhavcopy_df['SERIES'].str.strip() == 'EQ')
+    ]
+
+    if row.empty:
+        print(f"❌ Symbol '{symbol}' not found.")
+        return pd.DataFrame()
+
+    row = row.iloc[0]
+
+    # Proper datetime with IST timezone
+    date = pd.to_datetime(row['DATE1'].strip(), format='%d-%b-%Y')
+    date = date.tz_localize('Asia/Kolkata')
+
+    yahoo_row = {
+        'Open': float(row['OPEN_PRICE']),
+        'High': float(row['HIGH_PRICE']),
+        'Low': float(row['LOW_PRICE']),
+        'Close': float(row['CLOSE_PRICE']),
+        'Volume': int(row['TTL_TRD_QNTY']),
+        'Dividends': 0.0,
+        'Stock Splits': 0.0
+    }
+
+    yahoo_df = pd.DataFrame([yahoo_row], index=[date])
+    yahoo_df.index.name = "Date"  # ✅ Match Yahoo Finance format
+    return yahoo_df
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
 
@@ -2244,13 +2334,23 @@ def get_nse_commodity_spot_rates(file_path):
 #                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
 
 
-#print(get_bhavcopy("12-05-2025"))
+result = get_bhavcopy("04-06-2020")
+result2 = convert_to_yahoo_style(result, "RELIANCE")
+print(result2)
+
+# result = getyFinTickerCandles(getYFinTickerName("ZYDUSWELL"), \
+#                               start_date=datetime(2025, 6, 4), \
+#                               end_date=datetime(2025, 6, 5))
+# print(result)
 
 # result = getAllNseHolidays()
 # print(result)
 
-nseStockList = getAllNseSymbols(local=True)
-syncUpYFinTickerCandles(nseStockList,delaySec=10)
+# nseStockList = getAllNseSymbols(local=True)
+# syncUpYFinTickerCandles(nseStockList,delaySec=10)
+
+
+
 
 # fetch_ipo_news_from_cogencis()
 
