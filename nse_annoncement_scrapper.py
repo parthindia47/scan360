@@ -1439,6 +1439,35 @@ def readYFinStockInfo():
     
     return json_data
 
+def getBhavCopyNameForTicker(NseTicker):
+    ticker_map = {
+      "ADORWELD":"ADOR",
+      "AHL":"",
+      "AMIORG":"ACUTAAS",
+      "ATFL":"",
+      "BLUECHIP":"",
+      "CAREERP":"",
+      "HIL":"",
+      "ISEC":"",
+      "JPASSOCIAT":"",
+      "JYOTI-RE1":"",
+      "KALYANI":"KALYANIFRG",
+      "MARSHALL":"",
+      "MORARJEE":"",
+      "MRO-TEK":"",
+      "NIRAJISPAT":"",
+      "ORTEL":"",
+      "RANEENGINE":"",
+      "RBL":"RBLBANK",
+      "SICALLOG":"",
+      "SUULD":"",
+      "SUVENPHAR":"SUVEN",
+      "THANG-RE":"THANGAMAYL",
+      "ZOMATO":"ETERNAL",
+    }
+    
+    return ticker_map.get(NseTicker.upper(), NseTicker.upper())
+
 '''
 Note:
     in yahoo finance all stock ticker are appended by ".NS"
@@ -1717,10 +1746,14 @@ Drop Duplicate with Datetime
 https://stackoverflow.com/questions/46489695/drop-duplicates-not-working-in-pandas
 https://stackoverflow.com/questions/50686970/understanding-why-drop-duplicates-is-not-working
 '''
-def syncUpYFinTickerCandles(nseStockList, delaySec=6):
+def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
     current_date = datetime.now(ist_timezone)
     unsupported_tickers = []
+    bhavCopy = None
+    
+    if useNseBhavCopy:
+      bhavCopy = get_bhavcopy("11-06-2025")
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1750,10 +1783,13 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6):
         #if last_row_date.date() >= date(2025, 4, 25):
             print("All Synced up, skipping ...")
             continue
-
-        result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
-                                      start_date=start_date, \
-                                      end_date=end_date)
+        
+        if useNseBhavCopy:
+          result = convert_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
+        else:
+          result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
+                                        start_date=start_date, \
+                                        end_date=end_date)
         
         if result is not None and not result.empty:
             df.reset_index(drop=True)
@@ -1778,7 +1814,8 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6):
             try:
                 concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
                 print("Saved " + csv_filename)
-                time.sleep(delaySec)
+                if not useNseBhavCopy:
+                    time.sleep(delaySec)
             except Exception as e:
                 print("An error occurred:", e)
         else:
@@ -2213,6 +2250,7 @@ def get_bhavcopy(date=None):
 
     date_str = date.replace("-", "")
     url = f"https://archives.nseindia.com/products/content/sec_bhavdata_full_{date_str}.csv"
+    print("fetching " + url)
 
     try:
         df = pd.read_csv(url)
@@ -2256,8 +2294,8 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
     bhavcopy_df.columns = bhavcopy_df.columns.str.strip().str.upper()
 
     row = bhavcopy_df[
-        (bhavcopy_df['SYMBOL'] == symbol.upper()) & 
-        (bhavcopy_df['SERIES'].str.strip() == 'EQ')
+        (bhavcopy_df['SYMBOL'] == symbol.upper()) &
+        (bhavcopy_df['SERIES'].str.strip().isin(['EQ', 'BE', 'BZ']))
     ]
 
     if row.empty:
@@ -2334,9 +2372,9 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 #                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
 
 
-result = get_bhavcopy("04-06-2020")
-result2 = convert_to_yahoo_style(result, "RELIANCE")
-print(result2)
+# result = get_bhavcopy("11-06-2020")
+# result2 = convert_to_yahoo_style(result, "RELIANCE")
+# print(result2)
 
 # result = getyFinTickerCandles(getYFinTickerName("ZYDUSWELL"), \
 #                               start_date=datetime(2025, 6, 4), \
@@ -2346,8 +2384,8 @@ print(result2)
 # result = getAllNseHolidays()
 # print(result)
 
-# nseStockList = getAllNseSymbols(local=True)
-# syncUpYFinTickerCandles(nseStockList,delaySec=10)
+nseStockList = getAllNseSymbols(local=True)
+syncUpYFinTickerCandles(nseStockList,delaySec=10, useNseBhavCopy=True)
 
 
 

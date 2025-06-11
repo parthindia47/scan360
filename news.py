@@ -226,7 +226,6 @@ def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
   print(jsonObj)
   return jsonObj
 
-
 def google_rss_feed_example():
   # Google News RSS query
   query = "Dredging Corporation"
