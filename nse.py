@@ -57,6 +57,8 @@ https://www.nseindia.com/companies-listing/corporate-integrated-filing
 knowledge:
 https://unofficed.com/courses/mastering-algotrading-beginners-guide-nsepython/lessons/how-to-find-the-beta-of-indian-stocks-using-python/
 
+commodity_expiry = ["30-MAY-2025","30-JUN-2025","31-JUL-2025","29-AUG-2025","30-SEP-2025","31-OCT-2025"]
+
 """
 import os
 import requests
@@ -83,6 +85,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
+from mcx import download_mcx_bhavcopy
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -107,6 +110,10 @@ csv_list = {
     "INDEX": CsvFile(
         remote_url="",
         local_url="stock_info/csv/index.csv"
+    ),
+    "COMMODITY_NSE": CsvFile(
+        remote_url="",
+        local_url="stock_info/csv/commodity_nse.csv"
     )
 }
 
@@ -123,7 +130,8 @@ nseSegments = {"equities":"equities",
               "invitsreits":"invitsreits",
               "qip":"qip",
               "inPrinciple":"FIPREFIP",
-              "inListing":"FIPREFLS"}
+              "inListing":"FIPREFLS",
+              "commodityspotrates":"commodityspotrates"}
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
@@ -308,6 +316,11 @@ def calculatePercentage(open,close):
     per = round(per,2)
     return per
 
+def get_value_by_key(input_array, search_key, search_value, return_key):
+    for item in input_array:
+        if item.get(search_key) == search_value:
+            return item.get(return_key)
+    return None  # If no match is found
 # ==========================================================================
 # ========================== NSE Helper Function ===========================
 
@@ -389,11 +402,11 @@ def getJsonFromCsvForSymbols(symbolType,local=True):
           print("No Remote URL for type " + symbolType)
           return
 
-        print("Fetching remotely " + remote_url)
+        print("Fetching remotely " + csv_list[symbolType].remote_url)
         response = requests.get(csv_list[symbolType].remote_url,headers=headers)
         
         # Save the CSV data to the local file path
-        with open(local_url, 'w', encoding='utf-8') as f:
+        with open(csv_list[symbolType].local_url, 'w', encoding='utf-8') as f:
             f.write(response.text)
         
         # Read the local CSV data into a DataFrame
@@ -564,6 +577,7 @@ def getJsonUrlQuery(urlType,
                 fromDate = None, 
                 toDate = None, 
                 symbol = None, 
+                instrumentType = None,
                 issuer = None,
                 subject = None,
                 isOnlyFnO = False):
@@ -584,17 +598,25 @@ def getJsonUrlQuery(urlType,
         "annualReports":"https://www.nseindia.com/api/annual-reports?index=",
         "rightsFilings": "https://www.nseindia.com/api/corporates/offerdocs/rights?index=",
         "qipFilings": "https://www.nseindia.com/api/corporates/offerdocs/rights?index=",
-        "prefIssue":"https://www.nseindia.com/api/corporate-further-issues-pref?index="
+        "prefIssue":"https://www.nseindia.com/api/corporate-further-issues-pref?index=",
+        "commoditySpotAll":"https://www.nseindia.com/api/refrates?index=",
+        "commodityIndividual":"https://www.nseindia.com/api/historical/com/derivatives?"
     }
-
-    baseUrl = baseUrls[urlType] + nseSegments[index]
     
+    baseUrl = baseUrls[urlType]
+    
+    if index:
+        baseUrl += nseSegments[index]
+
     # Handling time-wise search
     if fromDate and toDate:
         fromDate_str = fromDate.strftime("%d-%m-%Y")  # Convert Python date to string in "dd-mm-yyyy" format
         toDate_str = toDate.strftime("%d-%m-%Y")      # Convert Python date to string in "dd-mm-yyyy" format
         baseUrl += f"&from_date={fromDate_str}&to_date={toDate_str}"
     
+    if instrumentType:
+        baseUrl += f"&instrumentType={instrumentType}"
+        
     # Handling company-wise search
     if symbol:
         baseUrl += f"&symbol={symbol}"
@@ -611,7 +633,7 @@ def getJsonUrlQuery(urlType,
     # Handling FnO search
     if isOnlyFnO:
         baseUrl += "&fo_sec=true"
-    
+       
     return baseUrl
   
 def getSymbolJsonUrlQuery(urlType,
@@ -718,6 +740,8 @@ def getBaseUrl(urlType,symbol=None):
         "rightsFilings":"https://www.nseindia.com/companies-listing/corporate-filings-rights",
         "qipFilings":"https://www.nseindia.com/companies-listing/corporate-filings-rights",
         "prefIssue":"https://www.nseindia.com/companies-listing/corporate-filings-PREF",
+        "commoditySpotAll":"https://www.nseindia.com/commodity-getquote",
+        "commodityIndividual":"https://www.nseindia.com/commodity-getquote",
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -1010,7 +1034,15 @@ step indicate how many days step it should fetch the data.
 Example:
 fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
 '''
-def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None, step=7, delaySec=5):
+def fetchNseJsonObj(urlType, 
+                    index=None, 
+                    symbol=None, 
+                    instrumentType=None, 
+                    fromDate=None, 
+                    toDate=None, 
+                    step=7, 
+                    delaySec=5, 
+                    listExtractKey=None):
     jsonObjMaster = []
     start_date = fromDate
     final_end_date = toDate  # Rename to avoid confusion
@@ -1024,7 +1056,7 @@ def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None
       jsonObj = fetchGetJson(jsonUrl, response.cookies)
       return jsonObj
     
-    if symbol and not index:
+    if symbol and not index and not instrumentType:
         jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
         jsonObj = fetchGetJson(jsonUrl, response.cookies)
         return jsonObj
@@ -1047,11 +1079,19 @@ def fetchNseJsonObj(urlType, index=None, symbol=None, fromDate=None, toDate=None
             end_date = final_end_date
 
         # Fetch the JSON object using the calculated start and end date
-        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol, fromDate=start_date, toDate=end_date)
+        jsonUrl = getJsonUrlQuery(urlType=urlType, 
+                                  index=index, 
+                                  symbol=symbol, 
+                                  instrumentType=instrumentType, 
+                                  fromDate=start_date, 
+                                  toDate=end_date)
         jsonObj = fetchGetJson(jsonUrl, response.cookies)
 
         # Extend the list with the fetched data
-        jsonObjMaster.extend(jsonObj)
+        if listExtractKey:
+          jsonObjMaster.extend(jsonObj.get(listExtractKey, []))
+        else:
+          jsonObjMaster.extend(jsonObj)
 
         # Move to the next iteration (next step after the current end_date)
         start_date = end_date + timedelta(days=1)
@@ -1570,9 +1610,6 @@ Example:
 def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
-    # start_date = scrappingStartingDate
-    # end_date = datetime.now(ist_timezone)
-
     start_date = scrappingStartingDate
     end_date = datetime.now(ist_timezone)
 
@@ -1753,18 +1790,15 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy("11-06-2025")
+      bhavCopy = get_bhavcopy("13-06-2025")
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
         csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
-        #csv_filename = "temp\\3IINFOLTD.csv"
-        #obj["SYMBOL"] = "3IINFOLTD"
 
         # Read the CSV data into a DataFrame
         try:
             df = pd.read_csv(csv_filename)
-
             # Parse the 'Date' column as datetime
             df['Date'] = pd.to_datetime(df['Date']) 
 
@@ -2099,7 +2133,6 @@ def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
         print(response.text)
         return None
 
-
 def fetch_cogencis_news(isin="INE002A01018", page=1, page_size=20):
     url = "https://data.cogencis.com/api/v1/web/news/stories"
 
@@ -2149,7 +2182,8 @@ def fetch_cogencis_news(isin="INE002A01018", page=1, page_size=20):
         return None
 
 def fetch_ipo_news_from_cogencis():
-    url = "https://data.cogencis.com/api/v1/web/news/stories"
+    base_url = "https://iinvest.cogencis.com/news/ipo-news"
+    api_url = "https://data.cogencis.com/api/v1/web/news/stories"
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -2168,7 +2202,7 @@ def fetch_ipo_news_from_cogencis():
         "pageSize": 50
     }
 
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(api_url, headers=headers, params=params)
 
     if response.status_code != 200:
         print("❌ Failed:", response.status_code)
@@ -2184,63 +2218,8 @@ def fetch_ipo_news_from_cogencis():
         print(f"📅 {a.get('sourceDateTime')}")
         print(f"🗞 Source: {a.get('sourceName')}")
         print(f"🔗 Link: {a.get('sourceLink')}\n")
-        
 
-def fetch_mcx_bhavcopy_html():
-    options = Options()
-    options.add_argument("--headless")  # remove this line if you want to see browser
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver.get("https://www.mcxindia.com/market-data/bhavcopy")
-
-    html = driver.page_source
-    driver.quit()
-
-    print(html)
-    
-def get_nse_commodity_spot_rates(file_path):
-    url = "https://www.nseindia.com/api/refrates?index=commodityspotrates"
-    home_url = "https://www.nseindia.com/commodity-getquote"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        "Accept": "*/*",
-        "Referer": home_url,
-        "Accept-Language": "en-US,en;q=0.9",
-        "DNT": "1"
-    }
-
-    session = requests.Session()
-    session.headers.update(headers)
-
-    # Step 1: Warm-up request to homepage (to get cookies)
-    try:
-        session.get("https://www.nseindia.com", timeout=5)
-    except Exception as e:
-        print(f"⚠️ Warm-up request failed: {e}")
-
-    # Step 2: Actual API call
-    response = session.get(url, timeout=10)
-
-    if response.status_code == 200:
-        json_data = response.json()
-        
-        spot_data = json_data.get("data", [])  # ✅ Only this part is saved
-
-        if not spot_data:
-            raise Exception("❌ No spot price data found.")
-        
-        df = pd.DataFrame(spot_data)
-        df.to_csv(file_path, index=False)
-        print(f"✅ Saved spot prices to: {file_path}")
-        
-        return spot_data
-    else:
-        raise Exception(f"❌ Failed to fetch spot prices, status: {response.status_code}")
-
+      
 '''
 print(get_bhavcopy("12-05-2025"))
 '''
@@ -2364,9 +2343,6 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 # resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
 # print(resp)
 
-# Run it
-# print(get_nse_commodity_spot_rates("output\\nse_spot_prices.csv"))
-
 # fetchNseEvents(start_date=datetime(2025, 5, 19), 
 #                   end_date=datetime(2025, 5, 25),
 #                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
@@ -2384,11 +2360,11 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 # result = getAllNseHolidays()
 # print(result)
 
-nseStockList = getAllNseSymbols(local=True)
-syncUpYFinTickerCandles(nseStockList,delaySec=10, useNseBhavCopy=True)
+# nseStockList = getAllNseSymbols(local=True)
+# syncUpYFinTickerCandles(nseStockList,delaySec=10, useNseBhavCopy=True)
 
-
-
+# res = fetch_ipo_news_from_cogencis()
+# print(res)
 
 # fetch_ipo_news_from_cogencis()
 
@@ -2434,6 +2410,29 @@ syncUpYFinTickerCandles(nseStockList,delaySec=10, useNseBhavCopy=True)
 
 # bseStockList = getAllBseSymbol(local=True)
 # fetchYFinStockInfo(bseStockList,delay=3,partial=True,exchange="BSE")
+
+# resp = fetchNseJsonObj("commoditySpotAll", index="commodityspotrates")
+# print(resp)
+
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# instrumentType = get_value_by_key(commodityNseList, "SYMBOL", "SILVER", "instrumentType")
+# resp = fetchNseJsonObj("commodityIndividual", 
+#                        symbol="SILVER", 
+#                        instrumentType=instrumentType,
+#                        fromDate=datetime(2025, 6, 13), 
+#                        toDate=datetime(2025, 6, 13),
+#                        delaySec=2,
+#                        listExtractKey="data")
+# print(resp)
+
+resp = download_mcx_bhavcopy(
+    start_date=date(2025, 6, 10),
+    end_date=date(2025, 6, 11),
+    download_dir=r"C:\temp"
+)
+
+print(resp)
+
 
 # *************************************************************************
 
