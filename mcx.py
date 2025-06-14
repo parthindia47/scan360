@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
 def remove_all_csv_files(folder_path):
     csv_files = glob.glob(os.path.join(folder_path, "*.csv"))
@@ -25,12 +26,12 @@ also this function should avoid duplicate entries.
 '''
 def download_mcx_bhavcopy(start_date, end_date, download_dir, instrument_value="FUTCOM"):
     # Prepare date range and result container
-    date_range_df = pd.date_range(start_date, end_date).strftime("%d-%m-%Y")
+    date_range_df = pd.date_range(start_date, end_date).strftime("%d/%m/%Y")
     combined_df = pd.DataFrame()
 
     # Chrome options
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
@@ -59,6 +60,7 @@ def download_mcx_bhavcopy(start_date, end_date, download_dir, instrument_value="
             driver.execute_script("arguments[0].removeAttribute('readonly')", input_date)
             input_date.clear()
             input_date.send_keys(date_str)
+            input_date.send_keys(Keys.TAB)     # ⬅️ Closes date picker
             
             # ✅ Print current value of the input field
             current_val = driver.execute_script("return arguments[0].value;", input_date)
@@ -71,7 +73,7 @@ def download_mcx_bhavcopy(start_date, end_date, download_dir, instrument_value="
 
             # Click Show
             driver.find_element(By.ID, "btnShowDatewise").click()
-            time.sleep(60)
+            time.sleep(30)
 
             # Download CSV
             csv_link = wait.until(EC.element_to_be_clickable((By.ID, "lnkExpToCSV")))
