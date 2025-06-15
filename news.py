@@ -13,6 +13,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import time
 from datetime import datetime
+import pandas as pd
+import re
 
 '''
 1. Moneycontrol
@@ -36,6 +38,13 @@ https://web.sensibull.com/stock-market-calendar/economic-calendar
 
 pulse:
 https://pulse.zerodha.com/
+
+https://www.newscatcherapi.com/blog/google-news-rss-search-parameters-the-missing-documentaiton
+
+currently implemented scrappers:
+1. sensibull
+2. 
+
 
 '''
 
@@ -160,6 +169,14 @@ returns the response of given url
 should pass base/first urls which "do not need cookies" to access.
 '''
 def fetchUrl(url):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://iinvest.cogencis.com",
+        "Referer": "https://iinvest.cogencis.com/"
+    }
+    
     print("Fetching Base URL : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
@@ -184,6 +201,35 @@ def fetchPostJson(url, cookies=None, payload=None):
         if cookies:
           headers["Cookie"] = '; '.join([f"{k}={v}" for k, v in cookies.items()])
         response = requests.post(url, headers=headers, json=payload)
+        
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # Parse the JSON content
+            jsonData = response.json()
+            return jsonData
+        else:
+            print("Failed to download JSON. Status code:", response.status_code)
+    except Exception as e:
+        print("An error occurred:", e)
+
+def fetchGetJson(url, cookies=None, payload=None):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://iinvest.cogencis.com",
+        "Referer": "https://iinvest.cogencis.com/",
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTAwODUyNzUsImRhdGEiOnsidXNlcl9pZCI6NzY1LCJhcHBzIjoiY21zLHJhcGksY21zLHJhcGksY21zLHJhcGkiLCJyb2xlcyI6InZpZXcifSwiaWF0IjoxNzQ5OTk4ODc1fQ.VuYO-3yVE5wBPIXOfkSvGkRXh4OO6tVGfT3PDbDtv74"
+    }
+    print("Fetching JSON Object : " + url)
+    try:
+        # Send a GET request to the URL to download the JSON content
+        #print("Cookies Type:", type(cookies))
+        # for i, cookie in enumerate(cookies):
+        #     print(f"Cookie {i}: type={type(cookie)}, value={cookie}")
+        if cookies:
+          headers["Cookie"] = '; '.join([f"{k}={v}" for k, v in cookies.items()])
+        response = requests.get(url, headers=headers)
         
         # Check if the request was successful (status code 200)
         if response.status_code == 200:
@@ -226,29 +272,53 @@ def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
   print(jsonObj)
   return jsonObj
 
-def google_rss_feed_example():
-  # Google News RSS query
-  query = "Dredging Corporation"
-  rss_url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}"
-
-  feed = feedparser.parse(rss_url)
+def cogencisDataScrapper(urlType,isin="INE002A01018", page=1, page_size=20, fromDate=None,toDate=None):
+  baseUrls = {
+      "stockNews":"https://iinvest.cogencis.com/" ,
+      "ipoNews":"https://iinvest.cogencis.com/news/ipo-news",
+  }
   
-  # Sort entries by 'published' date ascending
-  sorted_entries = sorted(
-      feed.entries,
-      key=lambda entry: datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
-  )
+  jsonUrls = {
+      "stockNews":"https://data.cogencis.com/api/v1/web/news/stories",
+      "ipoNews":"https://data.cogencis.com/api/v1/web/news/stories?subSections=ipo-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16",
+  }
 
-  for entry in feed.entries:  # Limit to 3 for demo
-      print("🔹 Title:", entry.title)
-      print("🔗 Google Link:", entry.link)
-      print("🔗 Published:", entry.published)
-      print("🔗 Source:", entry.source.href)
+  # First, get response from the main URL to fetch cookies
+  response = fetchUrl(url=baseUrls[urlType])
+  # print(response)
+  # print(response.cookies)
+  jsonObj = fetchGetJson(jsonUrls[urlType], cookies=response.cookies)
+  print(jsonObj)
+  return jsonObj
+  
 
-      print("=" * 100)
+def fetch_google_rss_news(query, language="en", country="IN"):
+    ceid = f"{country}:{language}"
+    rss_url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl={language}-{country}&gl={country}&ceid={ceid}"
+    feed = feedparser.parse(rss_url)
+
+    if not feed.entries:
+        return pd.DataFrame(), []
+
+    sorted_entries = sorted(
+        feed.entries,
+        key=lambda entry: datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
+    )
+
+    data = []
+    for entry in sorted_entries:
+        data.append({
+            "title": entry.title,
+            "link": entry.link,
+            "published": entry.published,
+            "source": entry.source.href if hasattr(entry, 'source') else None
+        })
+
+    df = pd.DataFrame(data)
+    return df, data  # You can choose to use the DataFrame or the JSON-like list
       
 def get_redirected_url(initial_url, headless=True):
-    download_dir = r"C:\work"
+    download_dir = r"C:\temp"
     chrome_options = Options()
     if headless:
       chrome_options.add_argument("--headless=new")  # Chrome 109+ requires `new`
@@ -277,12 +347,13 @@ def get_redirected_url(initial_url, headless=True):
 
     return final_url
       
-def google_search_example():
-  query = 'site:business-standard.com "Welspun"'
-  results = list(search(query, num=5))
+def google_search(query: str, num_results: int = 5):
+    urls = list(search(query, num=num_results))
 
-  for url in results:
-      print(url)
+    df = pd.DataFrame(urls, columns=["URL"])
+    json_result = df.to_dict(orient="records")  # JSON-compatible list of dicts
+
+    return df, json_result
       
 def business_standard():
   url = "https://www.business-standard.com/search?type=news&q=welspun"
@@ -298,8 +369,24 @@ def business_standard():
 #google_rss_feed_example()
 # get_redirected_url("https://news.google.com/rss/articles/CBMi2wFBVV95cUxPR0tSSHdwcTRzMUpiTUV0aFFIcE5hYU5xSlh6c3YzUUdOZHBSUktiWU4xeGtSNzFScE5ndGVRRHMybHJOMkJDUkpJWElYVC12MTZ6alJaMzFFS3ZOTXpLTnJ1QTRfdEhUbjJRWnFrT1E5SkFLTzJMYXNyQjBodFJuYW9vNERkM3lMWUhzR2hZWGQ5R3E5V1pCZjBvemFRbElqUzhfMFRPSjJGNU93M2tSQnNBbWJvelJNbWNOTzFUM21yUVFRQ2dXd3JTNW55cTdvcmh0T1NaVjVBc2c?oc=5", True)
 
+# ==========================================================================
+# ============================  SCRIPT RUN =================================
 
-fromDate = datetime(2025, 5, 28)
-toDate = datetime(2025, 6, 2)
-resp = sensiBullDataScrapper(urlType="resultCalender")
+# fromDate = datetime(2025, 5, 28)
+# toDate = datetime(2025, 6, 2)
+# resp = sensiBullDataScrapper(urlType="resultCalender")
+# print(resp)
+
+# Example usage:
+# df, json_data = fetch_google_rss_news("Premier Energies Limited")
+# print(json_data)
+
+# url = "https://news.google.com/rss/articles/CBMizgFBVV95cUxNNndidkN3MEdXSUhwUXRTclJQRjlQZ1EwdmFFc3laWWhzRVhyT3pHWHFlczFtQTU3d1pRb1Y3UExpdnlXd1FuNVFfai1FSDNXVHJObE5sYS1tT1AyQVd4elphNGRpM1pDMnkyWHA3elV0ZXhSZUJRTUtXU3NONm5vVTdVTEJ4YUUycFNHalJBSEx4U0Rra29KWEJYb2Q0M28weVhzb1ZRcTRiZlhYcVhOQ29aTHFCa0lvc1lqNWUzNE5aeGpONnBCRkRXeS14d9IB0wFBVV95cUxQVERNbGMyTzJYeFNfTnk5bV9nQTJnT05kbjN4TXdLNkg1T2JERDBhU0lUSlN4NlY4TUdMV0FjeEFuZ0oyb0hUTG02ZnA3U2FpQmxhYzNUX2ppdEJKTVZraHNXNzhTNmpSNzdLNE9BNkYzaEo0ejVPczRsTUV1a3FsZVpSREZtd2I1WnZza2NQX0dsUS13OU56bXdscFI5UmQxVkVXbTdTaTNYeVUxQnpBYWhJN19iOXJneGRaUFNhWTAwUzctcGw2YXl0djh4Qmd0MFF3?oc=5"
+# resp = get_redirected_url(url)
+# print(resp)
+
+# df, json_obj = google_search('site:business-standard.com "Welspun"', num_results=5)
+# print(df)
+
+resp = cogencisDataScrapper("ipoNews")
 print(resp)

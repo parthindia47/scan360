@@ -184,12 +184,12 @@ announcementKeywords = [
 "settlement",
 "Raising of funds",
 "Rating",
-"clarification"
+"clarification",
 "Partnership",      #newly_added
 "Joint venture",
 "Collaboration",
 "Capital expenditure",
-"capacity addition"
+"capacity addition",
 "Strategic alliance",
 "Revenue growth",
 "Profit increase",
@@ -487,7 +487,6 @@ def invest_getStockInfo():
     # Close the browser
     driver.quit()
   
-  
 
 # ==========================================================================
 # ========================== NSE URL Function ==============================
@@ -603,6 +602,8 @@ def getJsonUrlQuery(urlType,
         "commodityIndividual":"https://www.nseindia.com/api/historical/com/derivatives?"
     }
     
+    short_date_style = ["commodityIndividual"]
+    
     baseUrl = baseUrls[urlType]
     
     if index:
@@ -612,7 +613,10 @@ def getJsonUrlQuery(urlType,
     if fromDate and toDate:
         fromDate_str = fromDate.strftime("%d-%m-%Y")  # Convert Python date to string in "dd-mm-yyyy" format
         toDate_str = toDate.strftime("%d-%m-%Y")      # Convert Python date to string in "dd-mm-yyyy" format
-        baseUrl += f"&from_date={fromDate_str}&to_date={toDate_str}"
+        if urlType in short_date_style:
+          baseUrl += f"&from={fromDate_str}&to={toDate_str}"
+        else:
+          baseUrl += f"&from_date={fromDate_str}&to_date={toDate_str}"
     
     if instrumentType:
         baseUrl += f"&instrumentType={instrumentType}"
@@ -785,11 +789,6 @@ def getCompaniesListUrl(urlType,index):
         "events":""
     }
     return companiesListUrl[urlType]
-
-def getAllNseHolidays():
-    url = "https://www.nseindia.com/api/holiday-master?type=trading"
-    response = fetchGetJson(url)
-    return response
 
 # ==========================================================================
 # ============================ URL fetch Function ==========================
@@ -1025,7 +1024,6 @@ def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
             downloadFileFromUrl(row[attachmentKey],downloadDir)
             time.sleep(delay)  # Pause execution for 2 seconds
 
-
 # ==========================================================================
 # ==============================  Fetch JSON ===============================
 
@@ -1044,28 +1042,31 @@ def fetchNseJsonObj(urlType,
                     toDate=None, 
                     step=7, 
                     delaySec=5, 
-                    listExtractKey=None):
+                    listExtractKey=None,
+                    cookies=None):
     jsonObjMaster = []
     start_date = fromDate
     final_end_date = toDate  # Rename to avoid confusion
 
     # First, get response from the main URL to fetch cookies
-    response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
-    print(response)
+    if not cookies:
+      response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
+      cookies = response.cookies
+      print(response)
     
     if not symbol and not index:
       jsonUrl = getTopicJsonQuery(urlType=urlType)
-      jsonObj = fetchGetJson(jsonUrl, response.cookies)
+      jsonObj = fetchGetJson(jsonUrl, cookies)
       return jsonObj
     
     if symbol and not index and not instrumentType:
         jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
-        jsonObj = fetchGetJson(jsonUrl, response.cookies)
+        jsonObj = fetchGetJson(jsonUrl, cookies)
         return jsonObj
     
     if not fromDate and not toDate:
         jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol)
-        jsonObj = fetchGetJson(jsonUrl, response.cookies)
+        jsonObj = fetchGetJson(jsonUrl, cookies)
         return jsonObj        
       
     # Ensure step is set properly if start and end dates are the same or close together
@@ -1087,19 +1088,22 @@ def fetchNseJsonObj(urlType,
                                   instrumentType=instrumentType, 
                                   fromDate=start_date, 
                                   toDate=end_date)
-        jsonObj = fetchGetJson(jsonUrl, response.cookies)
+        jsonObj = fetchGetJson(jsonUrl, cookies)
 
         # Extend the list with the fetched data
-        if listExtractKey:
-          jsonObjMaster.extend(jsonObj.get(listExtractKey, []))
-        else:
-          jsonObjMaster.extend(jsonObj)
+        if jsonObj:
+          if listExtractKey:
+            jsonObjMaster.extend(jsonObj.get(listExtractKey, []))
+          else:
+            jsonObjMaster.extend(jsonObj)
 
         # Move to the next iteration (next step after the current end_date)
         start_date = end_date + timedelta(days=1)
 
         time.sleep(delaySec)  # Delay between API requests
 
+    if isinstance(jsonObjMaster, list):
+        jsonObjMaster = pd.DataFrame(jsonObjMaster)
     return jsonObjMaster
 
 # ==========================================================================
@@ -1724,7 +1728,43 @@ def updatePercentageForAnnouncements():
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
+def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
+    ist_timezone = pytz.timezone('Asia/Kolkata')
 
+    start_date = datetime(2024, 1, 1).astimezone(ist_timezone)
+    end_date = datetime.now(ist_timezone)
+    
+    response = fetchUrl(getBaseUrl("commodityIndividual"))
+    cookies = response.cookies
+
+    for idx, obj in enumerate(nseCommodityList):
+        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        csv_filename = "charts\\nse_commodity\\" + obj["SYMBOL"] + ".csv"
+
+        if partial and os.path.exists(csv_filename):
+            continue
+
+        instrumentType = get_value_by_key(nseCommodityList, "SYMBOL", obj["SYMBOL"], "instrumentType")
+        result = fetchNseJsonObj("commodityIndividual", 
+                              symbol=obj["SYMBOL"], 
+                              instrumentType=instrumentType,
+                              fromDate=start_date, 
+                              toDate=end_date,
+                              delaySec=delaySec,
+                              listExtractKey="data",
+                              cookies=cookies)
+        
+        result = convert_nse_commodity_to_yahoo_style(result)
+        
+        if result is not None and not result.empty:
+            # Assuming df is your DataFrame containing historical data
+            # Reset the index to include 'Date' as a regular column
+            result.reset_index(inplace=True)
+            result.to_csv(csv_filename, index=False, encoding='utf-8')
+            print("saved " + csv_filename)
+            time.sleep(delaySec)
+        else:
+           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
 # ==========================================================================
 # ============================  Sync Up API ================================
 # sync up function are used so that only delta difference get downloaded not 
@@ -1976,7 +2016,6 @@ def nseStockFilterTest():
 
     print("Total counts : " + str(count))
 
-
 def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     attachmentKey = "attchmntFile"
     symbolKey = "symbol"
@@ -2048,7 +2087,6 @@ def generateAnnouncementAnalysis():
     searchKeywordsFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
                               announcementKeywords,
                               downloadDir="downloads")
-
 
 # ==========================================================================
 # =========================== NSE Extra functions =========================
@@ -2286,8 +2324,7 @@ def fetch_ipo_news_from_cogencis():
         print(f"📅 {a.get('sourceDateTime')}")
         print(f"🗞 Source: {a.get('sourceName')}")
         print(f"🔗 Link: {a.get('sourceLink')}\n")
-
-      
+  
 '''
 print(get_bhavcopy("12-05-2025"))
 '''
@@ -2368,6 +2405,44 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
     yahoo_df = pd.DataFrame([yahoo_row], index=[date])
     yahoo_df.index.name = "Date"  # ✅ Match Yahoo Finance format
     return yahoo_df
+  
+def convert_nse_commodity_to_yahoo_style(df):
+    # Step 1: Convert date columns to datetime
+    df['COM_TIMESTAMP'] = pd.to_datetime(df['COM_TIMESTAMP'], format="%d-%b-%Y")
+    df['COM_EXPIRY_DT'] = pd.to_datetime(df['COM_EXPIRY_DT'], format="%d-%b-%Y")
+
+    # Step 2: Filter rows where expiry is on/after timestamp
+    valid_rows = df[df['COM_EXPIRY_DT'] >= df['COM_TIMESTAMP']]
+
+    # Step 3: For each COM_TIMESTAMP, find the row with the closest expiry
+    closest_rows = valid_rows.loc[
+        valid_rows.groupby('COM_TIMESTAMP')['COM_EXPIRY_DT'].idxmin()
+    ]
+
+    # Step 4: Convert COM_TIMESTAMP to timezone-aware datetime (IST)
+    ist = pytz.timezone('Asia/Kolkata')
+    closest_rows['Date'] = closest_rows['COM_TIMESTAMP'].apply(
+        lambda x: ist.localize(datetime.combine(x.date(), datetime.min.time()))
+    )
+
+    # Step 5: Create Yahoo Finance style DataFrame
+    yf_df = closest_rows.set_index('Date')[['COM_SETTLE_PRICE']].rename(
+        columns={'COM_SETTLE_PRICE': 'Close'}
+    )
+
+    for col in ['Open', 'High', 'Low']:
+        yf_df[col] = yf_df['Close']
+    yf_df['Volume'] = 0
+    yf_df['Dividends'] = 0.0
+    yf_df['Stock Splits'] = 0.0
+
+    # Rearrange columns
+    yf_df = yf_df[['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits']]
+
+    # keep='last' will keep the last occurrence
+    yf_df = yf_df[~yf_df.index.duplicated(keep='last')]
+
+    return yf_df
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
 
@@ -2425,11 +2500,8 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 #                               end_date=datetime(2025, 6, 5))
 # print(result)
 
-# result = getAllNseHolidays()
-# print(result)
-
-# nseStockList = getAllNseSymbols(local=True)
-# syncUpYFinTickerCandles(nseStockList,delaySec=10, useNseBhavCopy=True)
+# nseStockList = getAllNseSymbols(local=False)
+# syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=False)
 
 # res = fetch_ipo_news_from_cogencis()
 # print(res)
@@ -2482,6 +2554,7 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 # resp = fetchNseJsonObj("commoditySpotAll", index="commodityspotrates")
 # print(resp)
 
+
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # instrumentType = get_value_by_key(commodityNseList, "SYMBOL", "SILVER", "instrumentType")
 # resp = fetchNseJsonObj("commodityIndividual", 
@@ -2493,6 +2566,11 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 #                        listExtractKey="data")
 # print(resp)
 
+
+nseCommodityList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+fetchNseCommodity(nseCommodityList, delaySec=6, partial=False)
+
+
 # resp = download_mcx_bhavcopy(
 #     start_date=date(2025, 6, 10),
 #     end_date=date(2025, 6, 11),
@@ -2500,7 +2578,6 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 # )
 
 # print(resp)
-
 
 # *************************************************************************
 
