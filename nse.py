@@ -651,7 +651,8 @@ def getTopicJsonQuery(urlType):
     baseUrls = {
         "ipoCurrentIssues":"https://www.nseindia.com/api/ipo-current-issue",
         "publicPastIssues":"https://www.nseindia.com/api/public-past-issues",
-        "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo"
+        "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo",
+        "tradingHoliday":"https://www.nseindia.com/api/holiday-master?type=trading"
     }
 
     baseUrl = baseUrls[urlType]
@@ -742,6 +743,7 @@ def getBaseUrl(urlType,symbol=None):
         "prefIssue":"https://www.nseindia.com/companies-listing/corporate-filings-PREF",
         "commoditySpotAll":"https://www.nseindia.com/commodity-getquote",
         "commodityIndividual":"https://www.nseindia.com/commodity-getquote",
+        "tradingHoliday":"https://www.nseindia.com/resources/exchange-communication-holidays"
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -1819,6 +1821,8 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
             continue
         
         if useNseBhavCopy:
+          #1. fetch all bhav copies for given dates - remove holidays and weekends
+          #2. iterate and concat the results
           result = convert_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
         else:
           result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
@@ -2048,6 +2052,70 @@ def generateAnnouncementAnalysis():
 
 # ==========================================================================
 # =========================== NSE Extra functions =========================
+
+def fetch_public_holidays(local=True):
+    file_path = "stock_info/csv/trading_holidays.csv"
+
+    if local:
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+        else:
+            print(f"Local file not found at {file_path}. Fetching from source...")
+            local = False  # Fall back to fetch if file doesn't exist
+
+    if not local:
+        try:
+            resp = fetchNseJsonObj("tradingHoliday")
+            data = resp.get("FO", [])
+            df = pd.DataFrame(data)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            df.to_csv(file_path, index=False)
+        except Exception as e:
+            print(f"Failed to fetch data from source: {e}")
+            df = pd.DataFrame()  # Return empty DataFrame on failure
+
+    return df
+  
+'''
+date2 = datetime.strptime("14-Mar-2025", "%d-%b-%Y")
+print(is_trading_day(date2))  # Output: False (Republic Day, Sunday)
+
+date2 = datetime.strptime("18-Jan-2025", "%d-%b-%Y")
+print(is_trading_day(date2))  # Output: True (Tuesday, not a holiday)
+
+date2 = datetime.strptime("22-Jan-2025", "%d-%b-%Y")
+print(is_trading_day(date2))  # Output: True (Tuesday, not a holiday)
+'''  
+def is_trading_day(date_to_check):
+
+    holidays_df = fetch_public_holidays(local=True)
+
+    # Convert holiday column to datetime
+    holidays_df['tradingDate'] = pd.to_datetime(
+        holidays_df['tradingDate'], format='%d-%b-%Y', errors='coerce'
+    )
+    
+    # Extract date part only for comparison
+    holiday_dates = holidays_df['tradingDate'].dt.date
+
+    input_date = date_to_check.date()
+
+    # 🐞 Debugging Print
+    # print("Checking date:", input_date)
+    # print("Holiday list sample:", holiday_dates.head(10).tolist())
+
+    # Weekend check
+    if date_to_check.weekday() >= 5:
+        #print("❌ It's a weekend.")
+        return False
+
+    # Holiday check
+    if input_date in holiday_dates.values:
+        #print("❌ It's a holiday.")
+        return False
+
+    #print("✅ It's a trading day.")
+    return True
 
 '''
 https://charting.nseindia.com/?symbol=RELIANCE-EQ
@@ -2425,13 +2493,13 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
 #                        listExtractKey="data")
 # print(resp)
 
-resp = download_mcx_bhavcopy(
-    start_date=date(2025, 6, 10),
-    end_date=date(2025, 6, 11),
-    download_dir=r"C:\temp"
-)
+# resp = download_mcx_bhavcopy(
+#     start_date=date(2025, 6, 10),
+#     end_date=date(2025, 6, 11),
+#     download_dir=r"C:\temp"
+# )
 
-print(resp)
+# print(resp)
 
 
 # *************************************************************************
