@@ -1,0 +1,214 @@
+{
+  "data": [
+    {
+      "symbol": "GOLD",
+      "lotSize": "10 Grams",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "98946",
+      "spotPrice2": "98904",
+      "lastSpotPrice": "98904",
+      "attachment": "https://nsearchives.nseindia.com/archives/com/spot/Participantfiles_16062025_2.xlsx",
+      "category": None,
+      "quotation": "10 Grams"
+    },
+    {
+      "symbol": "GOLD1G",
+      "lotSize": "1 Grams",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "9934",
+      "spotPrice2": "9930",
+      "lastSpotPrice": "9930",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Grams"
+    },
+    {
+      "symbol": "GOLDGUINEA",
+      "lotSize": "8 Grams",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "79475",
+      "spotPrice2": "79441",
+      "lastSpotPrice": "79441",
+      "attachment": "null",
+      "category": None,
+      "quotation": "8 Grams"
+    },
+    {
+      "symbol": "GOLDM",
+      "lotSize": "10 Grams",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "98946",
+      "spotPrice2": "98904",
+      "lastSpotPrice": "98904",
+      "attachment": "https://nsearchives.nseindia.com/archives/com/spot/Participantfiles_16062025_2.xlsx",
+      "category": None,
+      "quotation": "10 Grams"
+    },
+    {
+      "symbol": "SILVER",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "106107",
+      "spotPrice2": "106305",
+      "lastSpotPrice": "106305",
+      "attachment": "https://nsearchives.nseindia.com/archives/com/spot/Participantfiles_16062025_2.xlsx",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "SILVERM",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "106107",
+      "spotPrice2": "106305",
+      "lastSpotPrice": "106305",
+      "attachment": "https://nsearchives.nseindia.com/archives/com/spot/Participantfiles_16062025_2.xlsx",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "SILVERMIC",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "106107",
+      "spotPrice2": "106305",
+      "lastSpotPrice": "106305",
+      "attachment": "https://nsearchives.nseindia.com/archives/com/spot/Participantfiles_16062025_2.xlsx",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "CRUDEOIL",
+      "lotSize": "1 Barrel",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "6283",
+      "spotPrice2": None,
+      "lastSpotPrice": "6283",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Barrel"
+    },
+    {
+      "symbol": "CRUDEOILM",
+      "lotSize": "1 Barrel",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "6283",
+      "spotPrice2": None,
+      "lastSpotPrice": "6283",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Barrel"
+    },
+    {
+      "symbol": "NATGASMINI",
+      "lotSize": "1 mmBtu",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "308.3",
+      "spotPrice2": None,
+      "lastSpotPrice": "308.3",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 mmBtu"
+    },
+    {
+      "symbol": "NATURALGAS",
+      "lotSize": "1 mmBtu",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "308.3",
+      "spotPrice2": None,
+      "lastSpotPrice": "308.3",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 mmBtu"
+    },
+    {
+      "symbol": "ALUMINI",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "242",
+      "lastSpotPrice": "242",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "ALUMINIUM",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "242",
+      "lastSpotPrice": "242",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "COPPER",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": "882",
+      "spotPrice2": "881",
+      "lastSpotPrice": "881",
+      "attachment": "https://nsearchives.nseindia.com/archives/com/spot/Participantfiles_16062025_2.xlsx",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "LEAD",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "179",
+      "lastSpotPrice": "179",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "LEADMINI",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "179",
+      "lastSpotPrice": "179",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "NICKEL",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "1320",
+      "lastSpotPrice": "1320",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "ZINC",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "256",
+      "lastSpotPrice": "256",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    },
+    {
+      "symbol": "ZINCMINI",
+      "lotSize": "1 Kg",
+      "updatedDate": "16-JUN-2025",
+      "spotPrice": None,
+      "spotPrice2": "256",
+      "lastSpotPrice": "256",
+      "attachment": "null",
+      "category": None,
+      "quotation": "1 Kg"
+    }
+  ],
+  "goldCustomDutyRate": "7611"
+}

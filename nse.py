@@ -1731,7 +1731,7 @@ def updatePercentageForAnnouncements():
 def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
-    start_date = datetime(2024, 1, 1).astimezone(ist_timezone)
+    start_date = datetime(2023, 1, 1).astimezone(ist_timezone)
     end_date = datetime.now(ist_timezone)
     
     response = fetchUrl(getBaseUrl("commodityIndividual"))
@@ -1832,7 +1832,7 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy("13-06-2025")
+      bhavCopy = get_bhavcopy("16-06-2025")
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1944,6 +1944,90 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
       csv_filename = "output\\unsupportedSymbols" + "_" + str(processed["processed_hash"]) + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
+
+def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
+    ist_timezone = pytz.timezone('Asia/Kolkata')
+    current_date = datetime.now(ist_timezone)
+    unsupported_tickers = []
+    bhavCopy = None
+    
+    if useNseBhavCopy:
+      bhavCopy = fetchNseJsonObj("commoditySpotAll", index="commodityspotrates")
+    else:
+      response = fetchUrl(getBaseUrl("commodityIndividual"))
+      cookies = response.cookies
+
+    for idx, obj in enumerate(nseCommodityList):
+        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        csv_filename = "charts\\nse_commodity\\" + obj["SYMBOL"] + ".csv"
+
+        # Read the CSV data into a DataFrame
+        try:
+            df = pd.read_csv(csv_filename)
+            # Parse the 'Date' column as datetime
+            df['Date'] = pd.to_datetime(df['Date']) 
+
+            last_row_date = df.iloc[-1]['Date']    
+            start_date = last_row_date + timedelta(days=1) # next day
+            end_date = current_date + timedelta(days=1)
+        except Exception as e:
+            print("An error occurred:", e)
+            continue
+
+        # print("last_row_date " + str(last_row_date) + \
+        #       " start_date " + str(start_date) + \
+        #       " end_date " + str(end_date))
+
+        if last_row_date >= current_date:
+        #if last_row_date.date() >= date(2025, 4, 25):
+            print("All Synced up, skipping ...")
+            continue
+        
+        if useNseBhavCopy:
+          #1. fetch all bhav copies for given dates - remove holidays and weekends
+          #2. iterate and concat the results
+          result = convert_nse_spot_commodity_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
+          print(result)
+        else:
+          instrumentType = get_value_by_key(nseCommodityList, "SYMBOL", obj["SYMBOL"], "instrumentType")
+          result = fetchNseJsonObj("commodityIndividual", 
+                                symbol=obj["SYMBOL"], 
+                                instrumentType=instrumentType,
+                                fromDate=start_date, 
+                                toDate=end_date,
+                                delaySec=delaySec,
+                                listExtractKey="data",
+                                cookies=cookies)
+          result = convert_nse_commodity_to_yahoo_style(result)
+        
+        if result is not None and not result.empty:
+            df.reset_index(drop=True)
+            df.set_index('Date', inplace=True)
+
+            df.index = df.index.tz_convert(ist_timezone)
+            result.index = result.index.tz_convert(ist_timezone)
+
+            concatenated_df = pd.concat([df, result])
+            concatenated_df = concatenated_df[~concatenated_df.index.duplicated(keep='last')]
+            concatenated_df.reset_index(inplace=True)
+
+            try:
+                concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
+                print("Saved " + csv_filename)
+                if not useNseBhavCopy:
+                    time.sleep(delaySec)
+            except Exception as e:
+                print("An error occurred:", e)
+        else:
+           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+           unsupported_tickers.append(obj["SYMBOL"])
+           
+    if unsupported_tickers:
+      df = pd.DataFrame(unsupported_tickers)
+      csv_filename = "stock_info\\yFinUnsupportedTickers_syncUpNseCommodity.csv"
+      df.to_csv(csv_filename, index=False, encoding='utf-8')
+      print("saved " + csv_filename)
+
 
 def yahooFinTesting(yFinTicker, date):
     # Set the timezone to UTC
@@ -2406,10 +2490,43 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
     yahoo_df.index.name = "Date"  # ✅ Match Yahoo Finance format
     return yahoo_df
   
+def convert_nse_spot_commodity_to_yahoo_style(bhavcopy_json, symbol):
+    ist = pytz.timezone("Asia/Kolkata")
+    records = bhavcopy_json.get("data", [])
+
+    for entry in records:
+        if entry.get("symbol", "").upper() == symbol.upper():
+            try:
+                date_obj = datetime.strptime(entry["updatedDate"], "%d-%b-%Y")
+            except ValueError:
+                date_obj = datetime.strptime(entry["updatedDate"], "%d-%b-%y")
+
+            # Localize the datetime object to IST
+            date_obj = ist.localize(date_obj)
+
+            price = float(entry["lastSpotPrice"].replace(",", ""))
+
+            df = pd.DataFrame([{
+                "Date": pd.to_datetime(date_obj),
+                "Open": price,
+                "High": price,
+                "Low": price,
+                "Close": price,
+                "Volume": 0,
+                "Dividends": 0.0,
+                "Stock Splits": 0.0
+            }])
+
+            df.set_index("Date", inplace=True)
+            return df
+
+    print(f"❌ Symbol '{symbol}' not found.")
+    return pd.DataFrame()
+  
 def convert_nse_commodity_to_yahoo_style(df):
     # Step 1: Convert date columns to datetime
-    df['COM_TIMESTAMP'] = pd.to_datetime(df['COM_TIMESTAMP'], format="%d-%b-%Y")
-    df['COM_EXPIRY_DT'] = pd.to_datetime(df['COM_EXPIRY_DT'], format="%d-%b-%Y")
+    df['COM_TIMESTAMP'] = pd.to_datetime(df['COM_TIMESTAMP'], format="%d-%b-%Y", errors='coerce')
+    df['COM_EXPIRY_DT'] = pd.to_datetime(df['COM_EXPIRY_DT'], format="%d-%b-%Y", errors='coerce')
 
     # Step 2: Filter rows where expiry is on/after timestamp
     valid_rows = df[df['COM_EXPIRY_DT'] >= df['COM_TIMESTAMP']]
@@ -2501,7 +2618,10 @@ def convert_nse_commodity_to_yahoo_style(df):
 # print(result)
 
 # nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=False)
+# syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=True)
+
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 
 # res = fetch_ipo_news_from_cogencis()
 # print(res)
@@ -2567,8 +2687,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 # print(resp)
 
 
-nseCommodityList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-fetchNseCommodity(nseCommodityList, delaySec=6, partial=False)
+# nseCommodityList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# fetchNseCommodity(nseCommodityList, delaySec=6, partial=False)
 
 
 # resp = download_mcx_bhavcopy(
