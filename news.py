@@ -42,9 +42,9 @@ https://pulse.zerodha.com/
 https://www.newscatcherapi.com/blog/google-news-rss-search-parameters-the-missing-documentaiton
 
 currently implemented scrappers:
-1. sensibull
-2. 
-
+1. Sensibull
+2. Cogencis
+3. Google
 
 '''
 
@@ -164,19 +164,13 @@ news_rss = {
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
+# ==========================================================================
+# ============================  Fetch Function =============================
 '''
 returns the response of given url
 should pass base/first urls which "do not need cookies" to access.
 '''
-def fetchUrl(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://iinvest.cogencis.com",
-        "Referer": "https://iinvest.cogencis.com/"
-    }
-    
+def fetchUrl(url, headers=None, payload=None):
     print("Fetching Base URL : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
@@ -212,15 +206,7 @@ def fetchPostJson(url, cookies=None, payload=None):
     except Exception as e:
         print("An error occurred:", e)
 
-def fetchGetJson(url, cookies=None, payload=None):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://iinvest.cogencis.com",
-        "Referer": "https://iinvest.cogencis.com/",
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTAwODUyNzUsImRhdGEiOnsidXNlcl9pZCI6NzY1LCJhcHBzIjoiY21zLHJhcGksY21zLHJhcGksY21zLHJhcGkiLCJyb2xlcyI6InZpZXcifSwiaWF0IjoxNzQ5OTk4ODc1fQ.VuYO-3yVE5wBPIXOfkSvGkRXh4OO6tVGfT3PDbDtv74"
-    }
+def fetchGetJson(url, headers=None, cookies=None, payload=None):
     print("Fetching JSON Object : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
@@ -241,6 +227,9 @@ def fetchGetJson(url, cookies=None, payload=None):
     except Exception as e:
         print("An error occurred:", e)
 
+
+# ==========================================================================
+# ============================  sensiBull ==================================
 def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
   baseUrls = {
       "economicCalender":"https://web.sensibull.com/stock-market-calendar/economic-calendar" ,
@@ -272,26 +261,146 @@ def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
   print(jsonObj)
   return jsonObj
 
-def cogencisDataScrapper(urlType,isin="INE002A01018", page=1, page_size=20, fromDate=None,toDate=None):
-  baseUrls = {
-      "stockNews":"https://iinvest.cogencis.com/" ,
-      "ipoNews":"https://iinvest.cogencis.com/news/ipo-news",
+
+# ==========================================================================
+# ============================  cogencis ===================================
+'''
+Latest News:
+https://data.cogencis.com/api/v1/web/news/stories?pageNo=1&pageSize=16
+
+Global News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=global-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Market News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=market-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Top News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=top-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+corporate News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=corporate-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+earning New:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=earnings-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Individual Stock News:
+https://data.cogencis.com/api/v1/web/news/stories?sWebNews=true&forWebSite=true&pageNo=1&pageSize=20&isins=ine002a01018
+
+IPO News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=ipo-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Trending News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=trending-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Other:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=others&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Industry News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=industry-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Mutual fund News:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=mutual-fund-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+Municipal Bonds:
+https://data.cogencis.com/api/v1/web/news/stories?subSections=municipal-bonds&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16
+
+'''
+def getCogencisToken():
+  with open("stock_info/temp/congnis_token.txt", "r") as file:
+      content = file.read()
+  
+  #print(content)
+  return content
+
+def getCogencisJsonUrl(urlType,isins=None, pageNo=1, pageSize=20):
+  subSectionsList = {
+    "global-news":"global-news",
+    "market-new":"market-new",
+    "top-news":"top-news",
+    "corporate-news":"corporate-news",
+    "earnings-news":"earnings-news",
+    "ipo-news":"ipo-news",
+    "trending-news":"trending-news",
+    "others":"others",
+    "industry-news":"industry-news",
+    "mutual-fund-news":"mutual-fund-news",
+    "municipal-bonds":"municipal-bonds",
+    "individual-stock":None,
+    "latest-news":None
   }
   
-  jsonUrls = {
-      "stockNews":"https://data.cogencis.com/api/v1/web/news/stories",
-      "ipoNews":"https://data.cogencis.com/api/v1/web/news/stories?subSections=ipo-news&isWebNews=true&forWebSite=true&pageNo=1&pageSize=16",
+  isWebNews=True
+  forWebsite=True
+  
+  baseUrl = "https://data.cogencis.com/api/v1/web/news/stories?"
+  subSection = subSectionsList[urlType]
+  
+  if subSection:
+    baseUrl += f"subSections={subSection}"
+    
+  if isWebNews:
+    baseUrl += f"&isWebNew=true"
+    
+  if forWebsite:
+    baseUrl += f"&forWebSite=true"
+    
+  if pageNo:
+    baseUrl += f"&pageNo={pageNo}"
+
+  if pageSize:
+    baseUrl += f"&pageSize={pageSize}"
+    
+  if isins:
+    baseUrl += f"&isins={isins}"
+    
+  return baseUrl
+  
+def cogencisDataScrapper(urlType,isins=None, pageNo=1, pageSize=20):
+  baseUrl = "https://iinvest.cogencis.com/"
+  
+  headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*",
+      "Origin": "https://iinvest.cogencis.com",
+      "Referer": "https://iinvest.cogencis.com/"
   }
 
   # First, get response from the main URL to fetch cookies
-  response = fetchUrl(url=baseUrls[urlType])
+  response = fetchUrl(url=baseUrl, headers=headers)
   # print(response)
   # print(response.cookies)
-  jsonObj = fetchGetJson(jsonUrls[urlType], cookies=response.cookies)
-  print(jsonObj)
+  authToken = getCogencisToken()
+  headers["Authorization"] = authToken
+  jsonUrl = getCogencisJsonUrl(urlType,isins=isins, pageNo=pageNo, pageSize=pageSize)
+  jsonObj = fetchGetJson(url=jsonUrl, headers=headers, cookies=response.cookies)
   return jsonObj
   
+def testCogencisScrapper():
 
+  #individual stock
+  #news_data = cogencisDataScrapper("individual-stock", isins="INE002A01018")
+
+  #latest news
+  #news_data = cogencisDataScrapper("latest-news")
+
+  #ipo news
+  #news_data = cogencisDataScrapper("ipo-news")
+
+  #global news
+  news_data = cogencisDataScrapper("global-news")
+
+
+  stories = news_data.get("response", {}).get("data", [])
+  for story in stories:
+      headline = story.get("headline", "N/A")
+      time = story.get("sourceDateTime", "N/A")
+      source = story.get("sourceName", "N/A")
+      link = story.get("sourceLink", "N/A")
+      print(f"📅 {time} | 🗞 {headline} | 🔗 {link} ({source})\n")
+      
+# ==========================================================================
+# ============================  Google RSS =================================
 def fetch_google_rss_news(query, language="en", country="IN"):
     ceid = f"{country}:{language}"
     rss_url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl={language}-{country}&gl={country}&ceid={ceid}"
@@ -355,17 +464,6 @@ def google_search(query: str, num_results: int = 5):
 
     return df, json_result
       
-def business_standard():
-  url = "https://www.business-standard.com/search?type=news&q=welspun"
-  response = requests.get(url)
-  soup = BeautifulSoup(response.text, "html.parser")
-
-  # Example: Extract search result titles and links
-  for link in soup.select("div.search-result a"):
-      title = link.get_text(strip=True)
-      href = link["href"]
-      print(title, "=>", "https://www.business-standard.com" + href)
-
 #google_rss_feed_example()
 # get_redirected_url("https://news.google.com/rss/articles/CBMi2wFBVV95cUxPR0tSSHdwcTRzMUpiTUV0aFFIcE5hYU5xSlh6c3YzUUdOZHBSUktiWU4xeGtSNzFScE5ndGVRRHMybHJOMkJDUkpJWElYVC12MTZ6alJaMzFFS3ZOTXpLTnJ1QTRfdEhUbjJRWnFrT1E5SkFLTzJMYXNyQjBodFJuYW9vNERkM3lMWUhzR2hZWGQ5R3E5V1pCZjBvemFRbElqUzhfMFRPSjJGNU93M2tSQnNBbWJvelJNbWNOTzFUM21yUVFRQ2dXd3JTNW55cTdvcmh0T1NaVjVBc2c?oc=5", True)
 
@@ -388,5 +486,6 @@ def business_standard():
 # df, json_obj = google_search('site:business-standard.com "Welspun"', num_results=5)
 # print(df)
 
-resp = cogencisDataScrapper("ipoNews")
-print(resp)
+
+
+

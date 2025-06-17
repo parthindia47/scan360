@@ -457,36 +457,6 @@ def nse_quote(symbol):
     symbol = nsesymbolpurify(symbol)
     payload = nsefetch('https://www.nseindia.com/api/quote-equity?symbol='+symbol)
     return payload
-    
-  
-def invest_getStockInfo():
-    # Setup Chrome options
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode (no GUI)
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
-
-    # Path to your downloaded chromedriver
-    chrome_driver_path = "chromedriver.exe"  # Change this to your actual path
-
-    # Launch browser
-    service = Service(chrome_driver_path)
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-
-    # Open the URL
-    url = "https://iinvest.cogencis.com/ine002a01018/relindus/ns/reliance/reliance-industries_?tab=overview"
-    driver.get(url)
-
-    # Wait for JS to load (increase time if page takes long)
-    time.sleep(5)
-
-    # Get the page body content
-    body = driver.find_element("tag name", "body").get_attribute("innerHTML")
-    print(body)
-
-    # Close the browser
-    driver.quit()
-  
 
 # ==========================================================================
 # ========================== NSE URL Function ==============================
@@ -1832,7 +1802,7 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy("16-06-2025")
+      bhavCopy = get_bhavcopy("17-06-2025")
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1987,7 +1957,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
           #1. fetch all bhav copies for given dates - remove holidays and weekends
           #2. iterate and concat the results
           result = convert_nse_spot_commodity_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
-          print(result)
+          #print(result)
         else:
           instrumentType = get_value_by_key(nseCommodityList, "SYMBOL", obj["SYMBOL"], "instrumentType")
           result = fetchNseJsonObj("commodityIndividual", 
@@ -2323,92 +2293,6 @@ def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
         print(response.text)
         return None
 
-def fetch_cogencis_news(isin="INE002A01018", page=1, page_size=20):
-    url = "https://data.cogencis.com/api/v1/web/news/stories"
-
-    # Query parameters as dict (cleaner than embedding in URL)
-    params = {
-        "sWebNews": "true",
-        "forWebSite": "true",
-        "pageNo": page,
-        "pageSize": page_size,
-        "isins": isin
-    }
-
-    # Headers
-    headers = {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDY4MjQ2MDAsImRhdGEiOnsidXNlcl9pZCI6NzY1LCJhcHBzIjoiY21zLHJhcGksY21zLHJhcGksY21zLHJhcGkiLCJyb2xlcyI6InZpZXcifSwiaWF0IjoxNzQ2NzM4MjAwfQ.U6hdgSbW3Hsl3Sbmg2YrPVsCf9rYTO2hvVvEWhooxFc",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://iinvest.cogencis.com",
-        "Referer": "https://iinvest.cogencis.com"
-    }
-
-    # Start a session to handle cookies
-    session = requests.Session()
-    session.headers.update(headers)
-
-    # Perform the GET request
-    response = session.get(url, params=params)
-
-    if response.status_code == 200:
-        news_data = response.json()
-        stories = news_data.get("response", {}).get("data", [])
-        #print(stories)
-        
-        print(f"📰 News for ISIN {isin} (page {page}):\n")
-
-        for story in stories:
-            headline = story.get("headline", "N/A")
-            time = story.get("sourceDateTime", "N/A")
-            source = story.get("sourceName", "N/A")
-            link = story.get("sourceLink", "N/A")
-            print(f"📅 {time} | 🗞 {headline} | 🔗 {link} ({source})\n")
-        
-        return stories
-    else:
-        print(f"❌ Request failed: {response.status_code}")
-        print(response.text)
-        return None
-
-def fetch_ipo_news_from_cogencis():
-    base_url = "https://iinvest.cogencis.com/news/ipo-news"
-    api_url = "https://data.cogencis.com/api/v1/web/news/stories"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Origin": "https://iinvest.cogencis.com",
-        "Referer": "https://iinvest.cogencis.com/",
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDY5OTY5MjEsImRhdGEiOnsidXNlcl9pZCI6NzY1LCJhcHBzIjoiY21zLHJhcGksY21zLHJhcGksY21zLHJhcGkiLCJyb2xlcyI6InZpZXcifSwiaWF0IjoxNzQ2OTEwNTIxfQ.ete16FXBDKU4oQVs3P6_EZRxbm0ZsWXsvleZ_mJo4jU"
-    }
-
-    params = {
-        "subSections": "ipo-news",
-        "isWebNews": "true",
-        "forWebSite": "true",
-        "pageNo": 1,
-        "pageSize": 50
-    }
-
-    response = requests.get(api_url, headers=headers, params=params)
-
-    if response.status_code != 200:
-        print("❌ Failed:", response.status_code)
-        print(response.text)
-        return
-
-    data = response.json()
-    articles = data.get("response", {}).get("data", [])
-
-    print(f"✅ {len(articles)} IPO news articles:\n")
-    for a in articles:
-        print(f"📰 {a.get('headline')}")
-        print(f"📅 {a.get('sourceDateTime')}")
-        print(f"🗞 Source: {a.get('sourceName')}")
-        print(f"🔗 Link: {a.get('sourceLink')}\n")
-  
 '''
 print(get_bhavcopy("12-05-2025"))
 '''
@@ -2609,8 +2493,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 
 
 # result = get_bhavcopy("11-06-2020")
-# result2 = convert_to_yahoo_style(result, "RELIANCE")
-# print(result2)
+# # result2 = convert_to_yahoo_style(result, "RELIANCE")
+# print(result)
 
 # result = getyFinTickerCandles(getYFinTickerName("ZYDUSWELL"), \
 #                               start_date=datetime(2025, 6, 4), \
@@ -2620,16 +2504,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 # nseStockList = getAllNseSymbols(local=False)
 # syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=True)
 
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
-
-# res = fetch_ipo_news_from_cogencis()
-# print(res)
-
-# fetch_ipo_news_from_cogencis()
-
-# get_nse_chart_data("RELIANCE-EQ")
-# fetch_cogencis_news(isin="INE002A01018")
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 
 # symbolType = "INDEX"
 # currencyList = getJsonFromCsvForSymbols(symbolType)
@@ -2698,6 +2574,13 @@ syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 # )
 
 # print(resp)
+
+# **************************** Daily Sync Up ********************************
+# nseStockList = getAllNseSymbols(local=False)
+# syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=True)
+
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 
 # *************************************************************************
 
