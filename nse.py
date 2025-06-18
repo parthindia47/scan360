@@ -1497,6 +1497,8 @@ def getYFinTickerName(NseTicker, exchange="NSE"):
         return NseTicker + "=X"
     elif exchange == "GLOBAL_INDEX":
         return "^" + NseTicker
+    else:
+        return NseTicker
 
 '''
 This function fetch and save stock info like market cap, stock price, 
@@ -1802,7 +1804,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy("17-06-2025")
+      bhavCopy = get_bhavcopy("18-06-2025")
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -2585,14 +2587,16 @@ def convert_nse_commodity_to_yahoo_style(df):
 
 # print(resp)
 
-syncUpYahooFinOther()
+# syncUpYahooFinOther()
 
 # **************************** Daily Sync Up ********************************
 # nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=True)
+# syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
+
+# syncUpYahooFinOther()
 
 # *************************************************************************
 
