@@ -463,7 +463,64 @@ def google_search(query: str, num_results: int = 5):
     json_result = df.to_dict(orient="records")  # JSON-compatible list of dicts
 
     return df, json_result
-      
+
+# ==========================================================================
+# ============================  Grow =================================
+
+def getGrowJsonUrl(urlType):
+  sectionsList = {
+    "openIpo":"open",
+    "upcomingIpo":"upcoming",
+    "closedIpo":"closed",
+  }
+  
+  baseUrl = "https://groww.in/v1/api/primaries/v1/ipo/"
+  section = sectionsList[urlType]
+  
+  if section:
+    baseUrl += f"{section}"
+    
+  return baseUrl
+  
+  
+'''
+https://groww.in/v1/api/primaries/v1/ipo/open
+https://groww.in/v1/api/primaries/v1/ipo/upcoming
+https://groww.in/v1/api/primaries/v1/ipo/closed
+
+'''
+def growIpoDataScrapper(urlType):
+  baseUrl = "https://groww.in/ipo"
+  
+  headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*",
+      "Origin": "https://groww.in/ipo",
+      "Referer": "https://groww.in/ipo"
+  }
+
+  # First, get response from the main URL to fetch cookies
+  response = fetchUrl(url=baseUrl, headers=headers)
+  # print(response)
+  # print(response.cookies)
+  # authToken = getCogencisToken()
+  #headers["Authorization"] = authToken
+  #jsonUrl = getCogencisJsonUrl(urlType,isins=isins, pageNo=pageNo, pageSize=pageSize)
+  jsonUrl = getGrowJsonUrl(urlType)
+  jsonObj = fetchGetJson(url=jsonUrl, headers=headers, cookies=response.cookies)
+  return jsonObj
+
+def testGrowScrapper():
+  resp = growIpoDataScrapper("openIpo")
+  print(resp)
+
+  resp = growIpoDataScrapper("upcomingIpo")
+  print(resp)
+  
+  resp = growIpoDataScrapper("closedIpo")
+  print(resp)
+
 #google_rss_feed_example()
 # get_redirected_url("https://news.google.com/rss/articles/CBMi2wFBVV95cUxPR0tSSHdwcTRzMUpiTUV0aFFIcE5hYU5xSlh6c3YzUUdOZHBSUktiWU4xeGtSNzFScE5ndGVRRHMybHJOMkJDUkpJWElYVC12MTZ6alJaMzFFS3ZOTXpLTnJ1QTRfdEhUbjJRWnFrT1E5SkFLTzJMYXNyQjBodFJuYW9vNERkM3lMWUhzR2hZWGQ5R3E5V1pCZjBvemFRbElqUzhfMFRPSjJGNU93M2tSQnNBbWJvelJNbWNOTzFUM21yUVFRQ2dXd3JTNW55cTdvcmh0T1NaVjVBc2c?oc=5", True)
 
@@ -485,7 +542,6 @@ def google_search(query: str, num_results: int = 5):
 
 # df, json_obj = google_search('site:business-standard.com "Welspun"', num_results=5)
 # print(df)
-
 
 
 
