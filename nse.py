@@ -107,9 +107,9 @@ csv_list = {
         remote_url="",
         local_url="stock_info/csv/commodity_etf.csv"
     ),
-    "INDEX": CsvFile(
+    "GLOBAL_INDEX": CsvFile(
         remote_url="",
-        local_url="stock_info/csv/index.csv"
+        local_url="stock_info/csv/global_index.csv"
     ),
     "COMMODITY_NSE": CsvFile(
         remote_url="",
@@ -1495,7 +1495,7 @@ def getYFinTickerName(NseTicker, exchange="NSE"):
         return NseTicker + ".BO"
     elif exchange == "CURRENCY":
         return NseTicker + "=X"
-    elif exchange == "INDEX":
+    elif exchange == "GLOBAL_INDEX":
         return "^" + NseTicker
 
 '''
@@ -1795,7 +1795,7 @@ Drop Duplicate with Datetime
 https://stackoverflow.com/questions/46489695/drop-duplicates-not-working-in-pandas
 https://stackoverflow.com/questions/50686970/understanding-why-drop-duplicates-is-not-working
 '''
-def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
+def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy = False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
     current_date = datetime.now(ist_timezone)
     unsupported_tickers = []
@@ -1835,12 +1835,14 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
           #2. iterate and concat the results
           result = convert_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
         else:
-          result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"]), \
+          result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"],symbolType), \
                                         start_date=start_date, \
                                         end_date=end_date)
+          print(result)
         
         if result is not None and not result.empty:
             df.reset_index(drop=True)
+            df['Date'] = pd.to_datetime(df['Date'], utc=True)  # Ensures UTC, avoids FutureWarning
             df.set_index('Date', inplace=True)
 
             df.index = df.index.tz_convert(ist_timezone)
@@ -1875,6 +1877,13 @@ def syncUpYFinTickerCandles(nseStockList, delaySec=6, useNseBhavCopy = False):
       csv_filename = "stock_info\\yFinUnsupportedTickers_syncUpYFinTickerCandles.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
+      
+def syncUpYahooFinOther():
+  symbolTypeList = ["GLOBAL_INDEX","CURRENCY","COMMODITY_ETF"]
+  for symbolType in symbolTypeList:
+    symbolList = getJsonFromCsvForSymbols(symbolType)
+    print(symbolList)
+    syncUpYFinTickerCandles(symbolList,symbolType,delaySec=5)
 
 '''
 use separate = True if you want to store current delta in a separate file, it 
@@ -2444,6 +2453,7 @@ def convert_nse_commodity_to_yahoo_style(df):
     yf_df = yf_df[~yf_df.index.duplicated(keep='last')]
 
     return yf_df
+
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
 
@@ -2507,7 +2517,7 @@ def convert_nse_commodity_to_yahoo_style(df):
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 
-# symbolType = "INDEX"
+# symbolType = "GLOBAL_INDEX"
 # currencyList = getJsonFromCsvForSymbols(symbolType)
 # print(currencyList)
 # fetchYFinTickerCandles(currencyList,symbolType,delaySec=15,partial=True)
@@ -2574,6 +2584,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 # )
 
 # print(resp)
+
+syncUpYahooFinOther()
 
 # **************************** Daily Sync Up ********************************
 # nseStockList = getAllNseSymbols(local=False)
