@@ -12,7 +12,7 @@ from googlesearch import search
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import re
 
@@ -47,118 +47,81 @@ currently implemented scrappers:
 3. Google
 
 '''
-
-international = [
-  "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en&gl=US&ceid=US:en",
-  "http://feeds.bbci.co.uk/news/world/rss.xml"
-]
-
-national = [
-  "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
-  "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"
-]
-
 news_rss = {
-  "indian_news_rss_feeds": [
-    {
-      "portal": "The Hindu",
+    "The Hindu":{
       "rss_home": "https://www.thehindu.com/rssfeeds/",
-      "feeds": [
-        { "title": "National News", "url": "https://www.thehindu.com/news/national/feeder/default.rss" },
-        { "title": "International News", "url": "https://www.thehindu.com/news/international/feeder/default.rss" }
-      ]
+      "feeds":{ 
+         "india": "https://www.thehindu.com/news/national/feeder/default.rss",
+         "world": "https://www.thehindu.com/news/international/feeder/default.rss" 
+        }
     },
-    {
-      "portal": "Times of India",
+    "Times of India":{
       "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
-      "feeds": [
-        { "title": "Top Stories", "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" },
-        { "title": "India News", "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" }
-      ]
+      "feeds": { 
+        "feed": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
+        "india": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" 
+      }
     },
-    {
-      "portal": "Hindustan Times",
+    "Hindustan Times":{
       "rss_home": "https://www.hindustantimes.com/rss-feeds",
-      "feeds": [
-        { "title": "India News", "url": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml" },
-        { "title": "World News", "url": "https://www.hindustantimes.com/feeds/rss/world-news/rssfeed.xml" }
-      ]
+      "feeds": {
+        "india": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+        "world": "https://www.hindustantimes.com/feeds/rss/world-news/rssfeed.xml"
+      }
     },
-    {
-      "portal": "Indian Express",
+    "Indian Express":{
       "rss_home": "https://indianexpress.com/rss/",
-      "feeds": [
-        { "title": "Latest News", "url": "https://indianexpress.com/feed/" },
-        { "title": "India News", "url": "https://indianexpress.com/section/india/feed/" }
-      ]
+      "feeds": { 
+        "feed": "https://indianexpress.com/feed/",
+        "india": "https://indianexpress.com/section/india/feed/"
+      }
     },
-    {
-      "portal": "NDTV",
+    "NDTV":{
       "rss_home": "https://www.ndtv.com/rss",
-      "feeds": [
-        { "title": "Top Stories", "url": "https://feeds.feedburner.com/ndtvnews-top-stories" }
-      ]
+      "feeds":
+        { "feed": "https://feeds.feedburner.com/ndtvnews-top-stories" }
     },
-    {
-      "portal": "Zee News",
+    "Zee News":{
       "rss_home": "https://zeenews.india.com/rss",
-      "feeds": [
-        { "title": "India News", "url": "https://zeenews.india.com/rss/india-news.xml" },
-        { "title": "World News", "url": "https://zeenews.india.com/rss/world-news.xml" }
-      ]
+      "feeds": { 
+        "india": "https://zeenews.india.com/rss/india-news.xml",
+        "world": "https://zeenews.india.com/rss/world-news.xml" 
+      }
     },
-    {
-      "portal": "News18",
+    "News18":{
       "rss_home": "https://www.news18.com/rss/",
-      "feeds": [
-        { "title": "India", "url": "https://www.news18.com/rss/india.xml" },
-        { "title": "World", "url": "https://www.news18.com/rss/world.xml" }
-      ]
+      "feeds":{ 
+        "india": "https://www.news18.com/rss/india.xml",
+        "world": "https://www.news18.com/rss/world.xml" 
+      }
     },
-    {
-      "portal": "Moneycontrol",
-      "rss_home": "https://www.moneycontrol.com/rss/",
-      "feeds": [
-        { "title": "Business News", "url": "https://www.moneycontrol.com/rss/news.xml" }
-      ]
-    },
-    {
-      "portal": "Economic Times",
+    "Economic Times":{
       "rss_home": "https://economictimes.indiatimes.com/rss.cms",
-      "feeds": [
-        { "title": "Top Stories", "url": "https://economictimes.indiatimes.com/rssfeedstopstories.cms" },
-        { "title": "Economy", "url": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms" }
-      ]
+      "feeds": { 
+        "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+        "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms" 
+      }
     },
-    {
-      "portal": "India Today",
+    "India Today":{
       "rss_home": "https://www.indiatoday.in/rss",
-      "feeds": [
-        { "title": "Top News", "url": "https://www.indiatoday.in/rss/1206514" }
-      ]
+      "feeds":{ 
+        "india": "https://www.indiatoday.in/rss/1206514",
+        "world": "https://www.indiatoday.in/rss/1206577" 
+      }
     },
-    {
-      "portal": "Deccan Chronicle",
-      "rss_home": "https://www.deccanchronicle.com/rss",
-      "feeds": [
-        { "title": "Main Feed", "url": "https://www.deccanchronicle.com/rss_feed" }
-      ]
+    "Google News":{
+      "rss_home": "https://www.indiatoday.in/rss",
+      "feeds": { 
+        "india": "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
+        "world": "https://news.google.com/rss/?hl=en&gl=US&ceid=US:en" 
+      }
     },
-    {
-      "portal": "Scroll.in",
-      "rss_home": "https://scroll.in/",
-      "feeds": [
-        { "title": "All Articles", "url": "https://scroll.in/feed" }
-      ]
+    "BBC":{
+      "rss_home": "https://www.bbc.co.uk/news/10628494",
+      "feeds": { 
+        "world": "http://feeds.bbci.co.uk/news/world/rss.xml"
+      },
     },
-    {
-      "portal": "The Wire",
-      "rss_home": "https://thewire.in/rss",
-      "feeds": [
-        { "title": "Main Feed", "url": "https://thewire.in/rss" }
-      ]
-    }
-  ]
 }
 
 
@@ -520,6 +483,35 @@ def testGrowScrapper():
   
   resp = growIpoDataScrapper("closedIpo")
   print(resp)
+  
+
+def fetch_rss_to_json_df(base_url, fromDate=None, toDate=None):
+    # Parse feed
+    feed = feedparser.parse(base_url)
+
+    # Extract and clean data
+    data = []
+    for entry in feed.entries:
+        published_dt = datetime(*entry.published_parsed[:6])  # Convert struct_time to datetime
+
+        # Apply date filter if specified
+        if fromDate and published_dt < fromDate:
+            continue
+        if toDate and published_dt > toDate:
+            continue
+
+        data.append({
+            "title": entry.title,
+            "link": entry.link,
+            "published": entry.published,
+            "published_parsed": published_dt.isoformat(),
+            "summary": entry.summary,
+            "source": entry.get("source", {}).get("title", "Unknown")
+        })
+
+    df = pd.DataFrame(data)
+    return df, data
+
 
 #google_rss_feed_example()
 # get_redirected_url("https://news.google.com/rss/articles/CBMi2wFBVV95cUxPR0tSSHdwcTRzMUpiTUV0aFFIcE5hYU5xSlh6c3YzUUdOZHBSUktiWU4xeGtSNzFScE5ndGVRRHMybHJOMkJDUkpJWElYVC12MTZ6alJaMzFFS3ZOTXpLTnJ1QTRfdEhUbjJRWnFrT1E5SkFLTzJMYXNyQjBodFJuYW9vNERkM3lMWUhzR2hZWGQ5R3E5V1pCZjBvemFRbElqUzhfMFRPSjJGNU93M2tSQnNBbWJvelJNbWNOTzFUM21yUVFRQ2dXd3JTNW55cTdvcmh0T1NaVjVBc2c?oc=5", True)
@@ -541,6 +533,11 @@ def testGrowScrapper():
 # print(resp)
 
 # df, json_obj = google_search('site:business-standard.com "Welspun"', num_results=5)
+# print(df)
+
+# from_date = datetime.now() - timedelta(days=1)
+# to_date = datetime.now()
+# df, json_obj = fetch_rss_to_json_df(news_rss["Hindustan Times"]["feeds"]["world"], fromDate=from_date, toDate=to_date)
 # print(df)
 
 
