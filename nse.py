@@ -1497,6 +1497,8 @@ def getYFinTickerName(NseTicker, exchange="NSE"):
         return NseTicker + "=X"
     elif exchange == "GLOBAL_INDEX":
         return "^" + NseTicker
+    elif exchange == "NSE_CHARTING":
+        return NseTicker + "-EQ"
     else:
         return NseTicker
 
@@ -1561,7 +1563,7 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
 
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\yFinUnsupportedTickers_" + exchange + ".csv"
+      csv_filename = "stock_info\\yFinUnsupportedTickers_fetchYFinStockInfo_" + exchange + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
@@ -1585,7 +1587,7 @@ Example:
     fetchYFinTickerCandles(nseStockList,partial=True)
 
 '''
-def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False):
+def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, useNseCharting=False):
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
     start_date = scrappingStartingDate
@@ -1598,10 +1600,15 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False):
         if partial and os.path.exists(csv_filename):
             continue
 
-        result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"],symbolType), \
-                                      start_date=start_date, \
-                                      end_date=end_date)
+        if useNseCharting:
+          symbolType = "NSE_CHARTING"
+          result = get_nse_chart_data(getYFinTickerName(obj["SYMBOL"],symbolType))
+        else:
+          result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"],symbolType), \
+                                        start_date=start_date, \
+                                        end_date=end_date)
         
+        print(result)
         if result is not None and not result.empty:
             # Assuming df is your DataFrame containing historical data
             # Reset the index to include 'Date' as a regular column
@@ -1804,7 +1811,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy("19-06-2025")
+      bhavCopy = get_bhavcopy("20-06-2025")
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -2242,8 +2249,35 @@ https://charting.nseindia.com/?symbol=RELIANCE-EQ
     "chartPeriod": "D",
     "chartStart": 0
 }
+
+response
+{
+    "s": "Ok",
+    "t": [
+        1750436099
+    ],
+    "o": [
+        24787.65
+    ],
+    "h": [
+        25136.2
+    ],
+    "l": [
+        24783.65
+    ],
+    "c": [
+        25112.4
+    ],
+    "v": [
+        1
+    ]
+}
+
+https://www.nseindia.com/market-data/live-market-indices
+https://www.nseindia.com/market-data/index-performances
+https://www.nseindia.com/market-data/live-market-indices/heatmap
 '''
-def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
+def get_nse_chart_data(symbol="RELIANCE", interval=1, period="D", fromDate=None, toDate=None, printData=None):
     url = "https://charting.nseindia.com//Charts/ChartData/"
 
     headers = {
@@ -2254,15 +2288,19 @@ def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
         "Referer": "https://charting.nseindia.com/",
         "Accept": "*/*"
     }
+    symbol = getYFinTickerName(symbol,"NSE_CHARTING")
 
-    # Payload from browser's request
+    # Convert datetime to epoch (in seconds)
+    from_epoch = 0 if fromDate is None else int(fromDate.timestamp())
+    to_epoch = int(toDate.timestamp()) if toDate else int(datetime.now().timestamp())
+
     payload = {
         "exch": "N",
         "tradingSymbol": symbol,
-        "fromDate": 0,                         # Epoch start
-        "toDate": 1746759039,                  # Future date
-        "timeInterval": interval,              # 1 for 1 day interval
-        "chartPeriod": period,                 # "D" for Daily
+        "fromDate": from_epoch,
+        "toDate": to_epoch,
+        "timeInterval": interval,
+        "chartPeriod": period,
         "chartStart": 0
     }
 
@@ -2278,27 +2316,32 @@ def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
 
     if response.status_code == 200:
         data = response.json()
-        timestamps = data["t"]
-        opens = data["o"]
-        highs = data["h"]
-        lows = data["l"]
-        closes = data["c"]
-        volumes = data["v"]
+        
+        if printData:
+          timestamps = data["t"]
+          opens = data["o"]
+          highs = data["h"]
+          lows = data["l"]
+          closes = data["c"]
+          volumes = data["v"]
 
-        print("Date       | Open  | High  | Low   | Close | Volume")
-        print("-----------|-------|-------|-------|-------|--------")
+          print("Date       | Open  | High  | Low   | Close | Volume")
+          print("-----------|-------|-------|-------|-------|--------")
 
-        for i in range(len(timestamps)):
-            dt = datetime.fromtimestamp(timestamps[i], tz=timezone.utc)
-            ts = dt.strftime("%Y-%m-%d")
-            #ts = timestamps[i] if i < len(opens) else "-"
-            
-            o = opens[i] if i < len(opens) else "-"
-            h = highs[i] if i < len(highs) else "-"
-            l = lows[i] if i < len(lows) else "-"
-            c = closes[i] if i < len(closes) else "-"
-            v = volumes[i] if i < len(volumes) else "-"
-            print(f"{ts} | {o:<5} | {h:<5} | {l:<5} | {c:<5} | {v}")
+          for i in range(len(timestamps)):
+              dt = datetime.fromtimestamp(timestamps[i], tz=timezone.utc)
+              ts = dt.strftime("%Y-%m-%d")
+              #ts = timestamps[i] if i < len(opens) else "-"
+              
+              o = opens[i] if i < len(opens) else "-"
+              h = highs[i] if i < len(highs) else "-"
+              l = lows[i] if i < len(lows) else "-"
+              c = closes[i] if i < len(closes) else "-"
+              v = volumes[i] if i < len(volumes) else "-"
+              print(f"{ts} | {o:<5} | {h:<5} | {l:<5} | {c:<5} | {v}")
+        
+        df = convert_nse_chart_data_to_yahoo_df(data)
+        return df
     else:
         print(f"❌ Request failed: {response.status_code}")
         print(response.text)
@@ -2307,7 +2350,7 @@ def get_nse_chart_data(symbol="RELIANCE-EQ", interval=1, period="D"):
 '''
 print(get_bhavcopy("12-05-2025"))
 '''
-def get_bhavcopy(date=None):
+def get_bhavcopy(date=None, saveCSV=False):
     if date is None:
         date = datetime.today().strftime("%d-%m-%Y")
 
@@ -2319,10 +2362,17 @@ def get_bhavcopy(date=None):
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip().str.upper()  # Normalize column names
         print(f"✅ Bhavcopy loaded for {date}")
+
+        if saveCSV:
+            filename = f"bhavcopy_{date_str}.csv"
+            df.to_csv(filename, index=False)
+            print(f"📁 Saved to {filename}")
+
         return df
     except Exception as e:
         print(f"❌ Failed to load Bhavcopy for {date}: {e}")
         return pd.DataFrame()
+
 
 def get_bulkdeals():
     payload=pd.read_csv("https://archives.nseindia.com/content/equities/bulk.csv")
@@ -2331,6 +2381,52 @@ def get_bulkdeals():
 def get_blockdeals():
     payload=pd.read_csv("https://archives.nseindia.com/content/equities/block.csv")
     return payload
+
+
+def convert_nse_chart_data_to_yahoo_df(data):
+    """
+    Converts NSE chart data to Yahoo Finance style DataFrame.
+
+    Parameters:
+    - data: dict with keys 't', 'o', 'h', 'l', 'c', 'v'
+
+    Returns:
+    - DataFrame with Yahoo style format: Open, High, Low, Close, Volume, Dividends, Stock Splits
+    """
+    
+    if not data or not data.get("t"):  # Check if data or timestamps are empty
+      return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume", "Dividends", "Stock Splits"])
+
+    timestamps = data.get("t", [])
+    opens = data.get("o", [])
+    highs = data.get("h", [])
+    lows = data.get("l", [])
+    closes = data.get("c", [])
+    volumes = data.get("v", [])
+
+    records = []
+    for i in range(len(timestamps)):
+        try:
+            dt = datetime.fromtimestamp(timestamps[i], tz=timezone.utc).astimezone()  # Local time
+            record = {
+                "Date": dt,
+                "Open": opens[i] if i < len(opens) else None,
+                "High": highs[i] if i < len(highs) else None,
+                "Low": lows[i] if i < len(lows) else None,
+                "Close": closes[i] if i < len(closes) else None,
+                "Volume": volumes[i] if i < len(volumes) else 0,
+                "Dividends": 0.0,
+                "Stock Splits": 0.0
+            }
+            records.append(record)
+        except Exception as e:
+            print(f"⚠️ Error processing index {i}: {e}")
+
+    df = pd.DataFrame(records)
+    df.set_index("Date", inplace=True)
+    df.sort_index(inplace=True)
+    return df
+
 
 """
 Converts NSE Bhavcopy row to Yahoo Finance-style OHLCV data for a given symbol.
@@ -2504,7 +2600,7 @@ def convert_nse_commodity_to_yahoo_style(df):
 #                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
 
 
-# result = get_bhavcopy("11-06-2020")
+# result = get_bhavcopy("20-06-2020",saveCSV=False)
 # # result2 = convert_to_yahoo_style(result, "RELIANCE")
 # print(result)
 
@@ -2514,7 +2610,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 # print(result)
 
 # nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,delaySec=7, useNseBhavCopy=True)
+# dummyList = [{"SYMBOL":"ISEC"}]
+# syncUpYFinTickerCandles(dummyList,symbolType=None,delaySec=7, useNseBhavCopy=False)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
@@ -2524,7 +2621,11 @@ def convert_nse_commodity_to_yahoo_style(df):
 # print(currencyList)
 # fetchYFinTickerCandles(currencyList,symbolType,delaySec=15,partial=True)
 
-#fetchYFinTickerCandles(nseStockList,delaySec=15,partial=True)
+# resp = getJsonFromCsvForSymbols(symbolType="NSE",local=False)
+# print(resp)
+
+# dummyList = [{"SYMBOL":"ISEC"}]
+# fetchYFinTickerCandles(dummyList,symbolType=None,delaySec=15,partial=False,useNseCharting=True)
 #print(result)
 
 # nseStockList = getAllNseSymbols(local=True)
@@ -2589,14 +2690,17 @@ def convert_nse_commodity_to_yahoo_style(df):
 
 # syncUpYahooFinOther()
 
+# resp = get_nse_chart_data(symbol="ITC")
+# print(resp)
+
 # **************************** Daily Sync Up ********************************
-nseStockList = getAllNseSymbols(local=False)
-syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
+# nseStockList = getAllNseSymbols(local=False)
+# syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
 
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 
-syncUpYahooFinOther()
+# syncUpYahooFinOther()
 
 # *************************************************************************
 
