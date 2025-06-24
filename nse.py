@@ -117,6 +117,14 @@ csv_list = {
     )
 }
 
+def getOutputCsvFile(urlType):
+    csv_output_files = {
+        "announcement":"nse_fillings/announcements_nse.csv" ,
+        "events":"nse_fillings/events_nse.csv"
+    }
+    return csv_output_files[urlType]
+
+
 
 # =======================================================================
 # ========================== Constants ==================================
@@ -135,7 +143,7 @@ nseSegments = {"equities":"equities",
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
-scrappingStartingDate = datetime(2024, 1, 1)
+scrappingStartingDate = datetime(1994, 1, 1)
 current_datetime = datetime.now()
 current_date = current_datetime.date()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
@@ -1251,32 +1259,32 @@ def calculatePercentageDifference(yFinTicker, date):
         print(e)
         return None
 
+def getDateKeyForNseDocument(urlType):
+  date_key_dict = {
+      "announcement":"an_dt",
+      "events":"date"
+  }
+  
+  return date_key_dict[urlType]
+
 '''
 this function takes a jsonObj as input and returns a Df with Hash
 and date in ascending order.
 '''
-def processJsonToDfForNseFilling(jsonObj):
+def processJsonToDfForNseDocument(jsonObj, urlType):
+
+  date_key = getDateKeyForNseDocument(urlType)
+  
   # Convert the list of dictionaries to a DataFrame
   df = pd.DataFrame(jsonObj)
-  df['an_dt'] = pd.to_datetime(df['an_dt'])
-  df = df.sort_values(by='an_dt')
+  df[date_key] = pd.to_datetime(df[date_key])
+  df = df.sort_values(by=date_key)
 
   # compute hash of all rows
   df['hash'] = df.apply(compute_hash, axis=1)
 
   return df
 
-
-def processJsonToDfForEvents(jsonObj):
-  # Convert the list of dictionaries to a DataFrame
-  df = pd.DataFrame(jsonObj)
-  df['date'] = pd.to_datetime(df['date'])
-  df = df.sort_values(by='date')
-
-  # compute hash of all rows
-  df['hash'] = df.apply(compute_hash, axis=1)
-
-  return df
 '''
 #yahooFinTesting("RELIANCE.NS")
 '''    
@@ -1632,47 +1640,33 @@ Returns:
     None
 
 Example:
-    fetchNseAnnouncements(start_date=datetime(2014, 1, 1), 
+    fetchNseDocuments(urlType = "announcement"
+                      start_date=datetime(2014, 1, 1), 
                       end_date=datetime(2020, 4, 1),
                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 '''
-def fetchNseAnnouncements(start_date, end_date, file_name):
+def fetchNseDocuments(urlType, start_date, end_date, file_name=None):
 
-  master_json_list = fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
-  print("total entries " + str(len(master_json_list)))
-
-  # Convert the list of dictionaries to a DataFrame
-  df = processJsonToDfForNseFilling(master_json_list)
-  df.reset_index(drop=True)
-  df.set_index('hash', inplace=True)
-
-  #remove if any duplicate
-  df = df[~df.index.duplicated()]
-  df.to_csv(file_name, encoding='utf-8')
-
-  print("Data saved to " + file_name)
-
-'''
-Example:
-    fetchNseAnnouncements(start_date=datetime(2025, 19, 5), 
-                      end_date=datetime(2025, 25, 5),
-                      file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
-'''
-def fetchNseEvents(start_date, end_date, file_name):
-
-  master_json_list = fetchNseJsonObj(urlType="events", index="equities", fromDate=start_date, toDate=end_date)
-  print("total entries " + str(len(master_json_list)))
+  if not file_name:
+    file_name = getOutputCsvFile(urlType)
+    
+  master_json_list = fetchNseJsonObj(urlType=urlType, index="equities", fromDate=start_date, toDate=end_date)
+  total_entries = len(master_json_list)
+  print("total entries " + str(total_entries))
 
   # Convert the list of dictionaries to a DataFrame
-  df = processJsonToDfForEvents(master_json_list)
-  df.reset_index(drop=True)
-  df.set_index('hash', inplace=True)
+  if total_entries:
+    df = processJsonToDfForNseDocument(master_json_list, urlType)
+    df.reset_index(drop=True)
+    df.set_index('hash', inplace=True)
 
-  #remove if any duplicate
-  df = df[~df.index.duplicated()]
-  df.to_csv(file_name, encoding='utf-8')
+    #remove if any duplicate
+    df = df[~df.index.duplicated()]
+    df.to_csv(file_name, encoding='utf-8')
 
-  print("Data saved to " + file_name)
+    print("Data saved to " + file_name)
+  else:
+    print("Empty data in JSON")
 
 '''
 This function reads announcement list and finds 3D, 5D and 10D stock movement 
@@ -1756,26 +1750,29 @@ and concat the data and saves it.
 note:
 if there is no default index then pandas allot incremental numbers and index.
 '''
-def syncUpNseAnnouncements():
-  csv_filename = "nse_fillings\\announcements.csv"
+def syncUpNseDocuments(urlType, offsetDays=0):
+    
+  csv_filename = getOutputCsvFile(urlType)
   current_date = datetime.now()
 
   # Read the CSV data into a DataFrame
   df = pd.read_csv(csv_filename)
   
+  date_key = getDateKeyForNseDocument(urlType)
+  
   # Parse the 'Date' column as datetime
-  df['an_dt'] = pd.to_datetime(df['an_dt']) 
+  df[date_key] = pd.to_datetime(df[date_key]) 
 
-  last_row_date = df.iloc[-1]['an_dt']    
+  last_row_date = df.iloc[-1][date_key]    
   start_date = last_row_date
-  end_date = current_date
+  end_date = current_date + timedelta(days=offsetDays)  # Apply offset to end date
 
   print("last_row_date " + str(last_row_date) + \
         " start_date " + str(start_date) + \
         " end_date " + str(end_date))
 
-  master_json_list = fetchNseJsonObj(urlType="announcement", index="equities", fromDate=start_date, toDate=end_date)
-  df_new = processJsonToDfForNseFilling(master_json_list)
+  master_json_list = fetchNseJsonObj(urlType=urlType, index="equities", fromDate=start_date, toDate=end_date)
+  df_new = processJsonToDfForNseDocument(master_json_list, urlType)
            
   df.reset_index(drop=True)
   df.set_index('hash', inplace=True)
@@ -1811,7 +1808,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy("20-06-2025")
+      bhavCopy = get_bhavcopy(date=date(2025, 6, 24)) 
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1866,6 +1863,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             concatenated_df = pd.concat([df, result])
             concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
             concatenated_df.reset_index(inplace=True)
+            concatenated_df.sort_values("Date", inplace=True)
 
             # print("concatenated_df")
             # print(concatenated_df)
@@ -2149,7 +2147,8 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 '''
 '''
 def generateAnnouncementAnalysis():
-    fetchNseAnnouncements(start_date=datetime(2024, 5, 4), 
+    fetchNseDocuments(urlType="announcement",
+                      start_date=datetime(2024, 5, 4), 
                       end_date=datetime(2024, 5, 4),
                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
 
@@ -2185,6 +2184,23 @@ def fetch_public_holidays(local=True):
             df = pd.DataFrame()  # Return empty DataFrame on failure
 
     return df
+  
+def get_last_trading_day():
+    ist = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(ist)
+
+    # If before 9:30 AM IST, treat it as "not yet trading"
+    if now.hour < 9 or (now.hour == 9 and now.minute < 30):
+        current = now.date() - timedelta(days=1)
+    else:
+        current = now.date()
+
+    # Walk back until a valid trading day is found
+    while True:
+        dt = datetime.combine(current, datetime.min.time()).replace(tzinfo=ist)
+        if is_trading_day(dt):
+            return dt.date()
+        current -= timedelta(days=1)
   
 '''
 date2 = datetime.strptime("14-Mar-2025", "%d-%b-%Y")
@@ -2348,11 +2364,14 @@ def get_nse_chart_data(symbol="RELIANCE", interval=1, period="D", fromDate=None,
         return None
 
 '''
-print(get_bhavcopy("12-05-2025"))
+print(get_bhavcopy(date(2025, 6, 14)))
 '''
 def get_bhavcopy(date=None, saveCSV=False):
     if date is None:
-        date = datetime.today().strftime("%d-%m-%Y")
+      date = get_last_trading_day()
+      date = date.strftime("%d-%m-%Y")
+    else:
+      date = date.strftime("%d-%m-%Y")
 
     date_str = date.replace("-", "")
     url = f"https://archives.nseindia.com/products/content/sec_bhavdata_full_{date_str}.csv"
@@ -2595,13 +2614,13 @@ def convert_nse_commodity_to_yahoo_style(df):
 # resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
 # print(resp)
 
-# fetchNseEvents(start_date=datetime(2025, 5, 19), 
-#                   end_date=datetime(2025, 5, 25),
+# fetchNseEvents(start_date=datetime(2025, 6, 15), 
+#                   end_date=datetime(2025, 6, 30),
 #                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
 
 
-# result = get_bhavcopy("20-06-2020",saveCSV=False)
-# # result2 = convert_to_yahoo_style(result, "RELIANCE")
+# result = get_bhavcopy(date(2025, 6, 13))
+# # # result2 = convert_to_yahoo_style(result, "RELIANCE")
 # print(result)
 
 # result = getyFinTickerCandles(getYFinTickerName("ZYDUSWELL"), \
@@ -2624,23 +2643,38 @@ def convert_nse_commodity_to_yahoo_style(df):
 # resp = getJsonFromCsvForSymbols(symbolType="NSE",local=False)
 # print(resp)
 
-# dummyList = [{"SYMBOL":"ISEC"}]
-# fetchYFinTickerCandles(dummyList,symbolType=None,delaySec=15,partial=False,useNseCharting=True)
-#print(result)
+# dummyList = [{"SYMBOL":"BAJFINANCE"}]
+# fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+# print(result)
 
 # nseStockList = getAllNseSymbols(local=True)
 # fetchYFinStockInfo(nseStockList,partial=False)
 
-#fetchNseAnnouncements()
+# getPercentageChange(None,datetime(2024, 2, 1))
 
-#getPercentageChange(None,datetime(2024, 2, 1))
+# syncUpCalculatePercentageForAnnouncement()
 
-#syncUpCalculatePercentageForAnnouncement()
+# fetchNseDocuments(urlType="announcement",
+#                   start_date=datetime(2025, 6, 20), 
+#                   end_date=datetime(2025, 6, 23),
+#                   file_name="nse_fillings/announcements_" + formatted_datetime + ".csv")
 
-# fetchNseAnnouncements(start_date=datetime(2025, 1, 1), 
-#                       end_date=current_datetime,
-#                       file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
-#syncUpNseAnnouncements()
+# fetchNseDocuments(urlType="events",
+#                   start_date=datetime(2025, 6, 20), 
+#                   end_date=datetime(2025, 6, 23),
+#                   file_name="nse_fillings/events_" + formatted_datetime + ".csv")
+
+# fetchNseDocuments(urlType="announcement",
+#                   start_date=datetime(2025, 6, 20), 
+#                   end_date=datetime(2025, 6, 23),
+#                   file_name=None)
+# syncUpNseDocuments(urlType="announcement")
+
+# fetchNseDocuments(urlType="events",
+#                   start_date=datetime(2025, 6, 20), 
+#                   end_date=datetime(2025, 6, 23),
+#                   file_name=None)
+# syncUpNseDocuments(urlType="events", offsetDays=3)
 #updatePercentageForAnnouncements()
 
 # downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
@@ -2694,11 +2728,11 @@ def convert_nse_commodity_to_yahoo_style(df):
 # print(resp)
 
 # **************************** Daily Sync Up ********************************
-# nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
+nseStockList = getAllNseSymbols(local=False)
+syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)
 
 # syncUpYahooFinOther()
 
