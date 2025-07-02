@@ -1608,6 +1608,7 @@ Example:
 
 '''
 def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, useNseCharting=False):
+    unsupported_tickers = []
     ist_timezone = pytz.timezone('Asia/Kolkata')
 
     start_date = scrappingStartingDate
@@ -1637,7 +1638,14 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, 
             print("saved " + csv_filename)
             time.sleep(delaySec)
         else:
+           unsupported_tickers.append(obj["SYMBOL"])
            print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+           
+    if unsupported_tickers:
+      df = pd.DataFrame(unsupported_tickers)
+      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinTickerCandles.csv"
+      df.to_csv(csv_filename, index=False, encoding='utf-8')
+      print("saved " + csv_filename)
 
 '''
 Fetch all NSE announcements between start date and end date and store it in a
@@ -1819,8 +1827,8 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     current_date = datetime.now(ist_timezone)
     unsupported_tickers = []
     bhavCopy = None
+    percent_change = 0
 
-    
     if useNseBhavCopy:
       #bhavCopy = get_bhavcopy(date(2025, 7, 2))
       bhavCopy = get_bhavcopy()
@@ -1831,6 +1839,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
 
         # Read the CSV data into a DataFrame
         try:
+            # NEW STOCK ALERT ?
             if not os.path.exists(csv_filename):
               dummyList = [{"SYMBOL":obj["SYMBOL"]}]
               fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
@@ -1843,6 +1852,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             end_date = current_date + timedelta(days=1)
         except Exception as e:
             print("An error occurred:", e)
+            unsupported_tickers.append(obj["SYMBOL"])
             continue
 
         # print("last_row_date " + str(last_row_date) + \
@@ -1855,8 +1865,6 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             continue
         
         if useNseBhavCopy:
-          #1. fetch all bhav copies for given dates - remove holidays and weekends
-          #2. iterate and concat the results
           result = convert_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
         else:
           result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"],symbolType), \
@@ -1872,27 +1880,28 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             df.index = df.index.tz_convert(ist_timezone)
             result.index = result.index.tz_convert(ist_timezone)
 
-            # print("df")
-            # print(df)
-
-            # print("result")
-            # print(result)
-
             concatenated_df = pd.concat([df, result])
             concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
             concatenated_df.reset_index(inplace=True)
             concatenated_df.sort_values("Date", inplace=True)
+            
+            # STOCK SPLIT or STOCK BONUS ?
+            if len(concatenated_df) >= 2:
+              second_last_close = concatenated_df.iloc[-2]['Close']
+              last_close = concatenated_df.iloc[-1]['Close']
+              percent_change = ((last_close - second_last_close) / second_last_close) * 100
 
-            # print("concatenated_df")
-            # print(concatenated_df)
-
-            try:
-                concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
-                print("Saved " + csv_filename)
-                if not useNseBhavCopy:
-                    time.sleep(delaySec)
-            except Exception as e:
-                print("An error occurred:", e)
+            if percent_change <= -20 or percent_change >= 20:
+              dummyList = [{"SYMBOL":obj["SYMBOL"]}]
+              fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+            else:
+              try:
+                  concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
+                  print("Saved " + csv_filename)
+                  if not useNseBhavCopy:
+                      time.sleep(delaySec)
+              except Exception as e:
+                  print("An error occurred:", e)
         else:
            print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
            unsupported_tickers.append(obj["SYMBOL"])
@@ -1903,12 +1912,16 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
       
-def syncUpYahooFinOther():
+def syncUpYahooFinOtherSymbols():
   symbolTypeList = ["GLOBAL_INDEX","CURRENCY","COMMODITY_ETF"]
   for symbolType in symbolTypeList:
     symbolList = getJsonFromCsvForSymbols(symbolType)
     print(symbolList)
     syncUpYFinTickerCandles(symbolList,symbolType,delaySec=5)
+    
+def syncUpAllNseFillings():
+  syncUpNseDocuments(urlType="announcement")
+  syncUpNseDocuments(urlType="events")
 
 '''
 use separate = True if you want to store current delta in a separate file, it 
@@ -2758,7 +2771,7 @@ def convert_nse_commodity_to_yahoo_style(df):
 
 # print(resp)
 
-# syncUpYahooFinOther()
+# syncUpYahooFinOtherSymbols()
 
 # resp = get_nse_chart_data(symbol="ITC")
 # print(resp)
@@ -2776,7 +2789,9 @@ syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)
 
-# syncUpYahooFinOther()
+# syncUpYahooFinOtherSymbols()
+
+# syncUpAllNseFillings()
 
 # *************************************************************************
 
