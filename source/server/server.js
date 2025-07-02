@@ -10,12 +10,14 @@ app.use(cors());
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const announcementPath = path.join(__dirname, '../../nse_fillings/announcements.csv');
+const stockInfoFilePath = path.join(__dirname, '../../stock_info/merged_stocks_with_industry.csv');
 
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
     return { '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A' };
   }
 
+  // use .BO for BSE
   const symbol = symbolWithNS.replace('.NS', '');
   const csvPath = path.join(candleDataFolder, `${symbol}.csv`);
   
@@ -79,7 +81,7 @@ const loadIndustries = async () => {
   const results = [];
 
   await new Promise((resolve) => {
-    fs.createReadStream('./data/updated_yahoo_with_tji.csv')
+    fs.createReadStream(stockInfoFilePath)
       .pipe(csv())
       .on('data', (row) => results.push(row))
       .on('end', resolve);
@@ -91,7 +93,7 @@ const loadIndustries = async () => {
     const realReturns = await getStockReturns(row['symbol']);
 
     industries
-    .filter(industry => industry !== 'N')  // <-- Ignore "N"
+    .filter(industry => industry !== 'N' && industry !== '-')
     .forEach(industry => {
       if (!industryData[industry]) {
         industryData[industry] = { stocks: [] };

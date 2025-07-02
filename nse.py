@@ -59,6 +59,10 @@ https://unofficed.com/courses/mastering-algotrading-beginners-guide-nsepython/le
 
 commodity_expiry = ["30-MAY-2025","30-JUN-2025","31-JUL-2025","29-AUG-2025","30-SEP-2025","31-OCT-2025"]
 
+yahoo finance docs
+https://ranaroussi.github.io/yfinance/
+
+
 """
 import os
 import requests
@@ -97,30 +101,39 @@ class CsvFile:
 csv_list = {
     "NSE": CsvFile(
         remote_url="https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv",
-        local_url="stock_info/csv/EQUITY_L.csv"
+        local_url="stock_info/input/EQUITY_L.csv"
+    ),
+    "BSE": CsvFile(
+        remote_url="",
+        local_url="stock_info/input/equity_bse.csv"
     ),
     "CURRENCY": CsvFile(
         remote_url="",
-        local_url="stock_info/csv/currency_pair.csv"
+        local_url="stock_info/input/currency_pair.csv"
     ),
     "COMMODITY_ETF": CsvFile(
         remote_url="",
-        local_url="stock_info/csv/commodity_etf.csv"
+        local_url="stock_info/input/commodity_etf.csv"
     ),
     "GLOBAL_INDEX": CsvFile(
         remote_url="",
-        local_url="stock_info/csv/global_index.csv"
+        local_url="stock_info/input/global_index.csv"
     ),
     "COMMODITY_NSE": CsvFile(
         remote_url="",
-        local_url="stock_info/csv/commodity_nse.csv"
+        local_url="stock_info/input/commodity_nse.csv"
+    ),
+    "NSE_HOLIDAYS":  CsvFile(
+        remote_url="",
+        local_url= "stock_info/csv/trading_holidays.csv"
     )
 }
 
 def getOutputCsvFile(urlType):
     csv_output_files = {
         "announcement":"nse_fillings/announcements_nse.csv" ,
-        "events":"nse_fillings/events_nse.csv"
+        "events":"nse_fillings/events_nse.csv",
+        "arrangement":"nse_fillings/arrangement_nse.csv"
     }
     return csv_output_files[urlType]
 
@@ -230,7 +243,8 @@ announcementKeywords = [
 "Capital raise",
 "Increase in volume",
 "Spurt in Volume",
-"Movement in price"
+"Movement in price",
+"name change"
 ]
 
 avoid_tickers = [
@@ -333,7 +347,8 @@ def get_value_by_key(input_array, search_key, search_value, return_key):
 # ========================== NSE Helper Function ===========================
 
 def getAllBseSymbol(local=False):
-    local_url = "stock_info\equity_bse.csv"  # Adjust the path as needed
+    local_url = csv_list["BSE"].local_url
+    
     if local:
         # Get the absolute path of the local CSV file
         abs_path = os.path.abspath(local_url)
@@ -356,8 +371,8 @@ BZ (Group Z): BZ represents the Trade-to-Trade segment for securities that
 return list of object
 '''
 def getAllNseSymbols(local=False):
-    remote_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
-    local_url = "stock_info\csv\EQUITY_L.csv"  # Adjust the path as needed
+    remote_url = csv_list["NSE"].remote_url
+    local_url = csv_list["NSE"].local_url
     
     if local:
         # Get the absolute path of the local CSV file
@@ -1285,9 +1300,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
 
   return df
 
-'''
-#yahooFinTesting("RELIANCE.NS")
-'''    
+
 def getyFinTickerInfo(yFinTicker, sub="INFO"):
     session = requests.Session()
 
@@ -1345,7 +1358,6 @@ candles are in descending order i.e oldest are first.
 '''
 def getPercentageChange(symbol,annDate,hash):
     resp = {"Open":None,"1D":None,"5D":None,"10D":None}
-    #local_url = "stock_charts\\3IINFOLTD.csv"
     local_url = f"stock_charts\\{symbol}.csv"
     
     # Get the absolute path of the local CSV file
@@ -1571,7 +1583,7 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
 
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\yFinUnsupportedTickers_fetchYFinStockInfo_" + exchange + ".csv"
+      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinStockInfo_" + exchange + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
@@ -1712,7 +1724,7 @@ def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
 
     for idx, obj in enumerate(nseCommodityList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
-        csv_filename = "charts\\nse_commodity\\" + obj["SYMBOL"] + ".csv"
+        csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
 
         if partial and os.path.exists(csv_filename):
             continue
@@ -1792,6 +1804,7 @@ def syncUpNseDocuments(urlType, offsetDays=0):
   # print(concatenated_df)
 
   concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
+  print("saved " + csv_filename)
 
 '''
 Reads the current csv file finds the last entries and fetch the data after that.
@@ -1806,9 +1819,11 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     current_date = datetime.now(ist_timezone)
     unsupported_tickers = []
     bhavCopy = None
+
     
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy(date=date(2025, 6, 24)) 
+      #bhavCopy = get_bhavcopy(date(2025, 7, 2))
+      bhavCopy = get_bhavcopy()
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -1816,11 +1831,14 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
 
         # Read the CSV data into a DataFrame
         try:
+            if not os.path.exists(csv_filename):
+              dummyList = [{"SYMBOL":obj["SYMBOL"]}]
+              fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+              
             df = pd.read_csv(csv_filename)
             # Parse the 'Date' column as datetime
             df['Date'] = pd.to_datetime(df['Date']) 
-
-            last_row_date = df.iloc[-1]['Date']    
+            last_row_date = df.iloc[-1]['Date']
             start_date = last_row_date + timedelta(days=1) # next day
             end_date = current_date + timedelta(days=1)
         except Exception as e:
@@ -1881,7 +1899,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\yFinUnsupportedTickers_syncUpYFinTickerCandles.csv"
+      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpYFinTickerCandles.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
       
@@ -1945,7 +1963,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
 
     for idx, obj in enumerate(nseCommodityList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
-        csv_filename = "charts\\nse_commodity\\" + obj["SYMBOL"] + ".csv"
+        csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
 
         # Read the CSV data into a DataFrame
         try:
@@ -2010,37 +2028,54 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\yFinUnsupportedTickers_syncUpNseCommodity.csv"
+      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpNseCommodity.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
 
-def yahooFinTesting(yFinTicker, date):
+def yahooFinTesting(yFinTicker, full=None):
     # Set the timezone to UTC
     ist_timezone = pytz.timezone('Asia/Kolkata')
     
     # Convert the input date to UTC timezone
     date_ist = date.astimezone(ist_timezone)
 
-    # calculate start_date and end_date
-    start_date = date_ist
-    end_date = start_date + datetime.timedelta(days=1)
+    if date:
+        # calculate start_date and end_date
+        start_date = date_ist
+        end_date = start_date + datetime.timedelta(days=1)
 
-    tickerInformation = yf.Ticker(yFinTicker)
-    tickerHistory = tickerInformation.history(start=start_date, end=end_date) 
-    print(tickerHistory)
+        tickerInformation = yf.Ticker(yFinTicker)
+        tickerHistory = tickerInformation.history(start=start_date, end=end_date) 
+        print(tickerHistory)
 
     print("information")
     print(tickerInformation.info)
 
-    print("history_metadata")
-    print(tickerInformation.history_metadata)
+    if full:
+        print("history_metadata")
+        print(tickerInformation.history_metadata)
 
-    print("actions")
-    print(tickerInformation.actions)
+        print("actions")
+        print(tickerInformation.actions)
 
-    print("news")
-    print(tickerInformation.news)
+        print("news")
+        print(tickerInformation.news)
+    
+def yahooFinMulti():
+  tickers = yf.Tickers('MSFT AAPL GOOG')
+  print(tickers.tickers['MSFT'].info)
+  print(tickers.tickers['AAPL'].info)
+  print(tickers.tickers['GOOG'].info)
+  # yf.download(['MSFT', 'AAPL', 'GOOG'], period='1mo')
+
+'''
+#yahooSingleTicker("RELIANCE.NS")
+'''    
+def yahooSingleTicker(yFinTicker):
+    tickerInformation = yf.Ticker(yFinTicker)
+    print("information")
+    print(tickerInformation.info)
 
 def objList_to_dict(objects_list, key):
     lookup_dict = {}
@@ -2163,7 +2198,7 @@ def generateAnnouncementAnalysis():
 # =========================== NSE Extra functions =========================
 
 def fetch_public_holidays(local=True):
-    file_path = "stock_info/csv/trading_holidays.csv"
+    file_path = csv_list["NSE_HOLIDAYS"].local_url
 
     if local:
         if os.path.exists(file_path):
@@ -2383,7 +2418,7 @@ def get_bhavcopy(date=None, saveCSV=False):
         print(f"✅ Bhavcopy loaded for {date}")
 
         if saveCSV:
-            filename = f"bhavcopy_{date_str}.csv"
+            filename = f"output/bhavcopy_{date_str}.csv"
             df.to_csv(filename, index=False)
             print(f"📁 Saved to {filename}")
 
@@ -2674,7 +2709,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 #                   start_date=datetime(2025, 6, 20), 
 #                   end_date=datetime(2025, 6, 23),
 #                   file_name=None)
-# syncUpNseDocuments(urlType="events", offsetDays=3)
+# syncUpNseDocuments(urlType="events", offsetDays=10)
+# syncUpNseDocuments(urlType="announcement")
 #updatePercentageForAnnouncements()
 
 # downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
@@ -2727,8 +2763,14 @@ def convert_nse_commodity_to_yahoo_style(df):
 # resp = get_nse_chart_data(symbol="ITC")
 # print(resp)
 
+# yahooFinMulti()
+
+# yahooSingleTicker("RELIANCE.NS")
+
+# get_bhavcopy(date=None, saveCSV=True)
+
 # **************************** Daily Sync Up ********************************
-nseStockList = getAllNseSymbols(local=False)
+nseStockList = getAllNseSymbols(local=True)
 syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)

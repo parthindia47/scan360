@@ -269,7 +269,7 @@ https://data.cogencis.com/api/v1/web/news/stories?subSections=municipal-bonds&is
 
 '''
 def getCogencisToken():
-  with open("stock_info/temp/congnis_token.txt", "r") as file:
+  with open("stock_info\\token\\congnis_token.txt", "r") as file:
       content = file.read()
   
   #print(content)
