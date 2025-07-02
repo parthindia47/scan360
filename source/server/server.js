@@ -138,6 +138,7 @@ app.get('/industries', async (req, res) => {
   if (Object.keys(industryData).length === 0) {
     await loadIndustries();
   }
+  // console.log(industryData);
   res.json(industryData);
 });
 

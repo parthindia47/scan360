@@ -1826,6 +1826,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     ist_timezone = pytz.timezone('Asia/Kolkata')
     current_date = datetime.now(ist_timezone)
     unsupported_tickers = []
+    split_tickers = []
     bhavCopy = None
     percent_change = 0
 
@@ -1894,6 +1895,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             if percent_change <= -20 or percent_change >= 20:
               dummyList = [{"SYMBOL":obj["SYMBOL"]}]
               fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+              split_tickers.append(obj["SYMBOL"])
             else:
               try:
                   concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
@@ -1909,6 +1911,12 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
       csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpYFinTickerCandles.csv"
+      df.to_csv(csv_filename, index=False, encoding='utf-8')
+      print("saved " + csv_filename)
+      
+    if split_tickers:
+      df = pd.DataFrame(split_tickers)
+      csv_filename = "stock_info\\temp\\yFinSplitTickers_syncUpYFinTickerCandles.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
       
