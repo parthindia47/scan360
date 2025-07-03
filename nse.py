@@ -362,6 +362,34 @@ def getAllBseSymbol(local=False):
         
         return json_data
 
+
+def detect_symbol_changes(old_df, new_df):
+    # Strip column names and ISIN values (defensive cleaning)
+    old_df.columns = old_df.columns.str.strip()
+    new_df.columns = new_df.columns.str.strip()
+    old_df['ISIN NUMBER'] = old_df['ISIN NUMBER'].str.strip()
+    new_df['ISIN NUMBER'] = new_df['ISIN NUMBER'].str.strip()
+    old_df['SYMBOL'] = old_df['SYMBOL'].str.strip()
+    new_df['SYMBOL'] = new_df['SYMBOL'].str.strip()
+
+    # Merge on cleaned ISIN
+    merged = pd.merge(old_df, new_df, on="ISIN NUMBER", suffixes=("_old", "_new"))
+    changed = merged[merged["SYMBOL_old"] != merged["SYMBOL_new"]].copy()
+
+    if not changed.empty:
+        # ✅ Add a column with the current date
+        changed["ChangeDate"] = datetime.today().strftime("%Y-%m-%d")
+
+        output_path = "stock_info/input/name_changes.csv"
+
+        # ✅ Append mode; include header only if file doesn't exist
+        file_exists = os.path.exists(output_path)
+        changed.to_csv(output_path, mode='a', header=not file_exists, index=False)
+
+        print(f"✅ Appended {len(changed)} symbol change(s) to: {output_path}")
+    else:
+        print("ℹ️ No symbol changes detected.")
+  
 '''
 EQ (Equity): EQ represents the Equity segment
 BE (Group B): BE stands for "Trade-to-Trade" segment or the "Limited Physical Market" segment. 
@@ -373,6 +401,7 @@ return list of object
 def getAllNseSymbols(local=False):
     remote_url = csv_list["NSE"].remote_url
     local_url = csv_list["NSE"].local_url
+    json_data = []
     
     if local:
         # Get the absolute path of the local CSV file
@@ -380,25 +409,34 @@ def getAllNseSymbols(local=False):
         print("Fetching locally " + abs_path)
         
         # Read the CSV data into a DataFrame
-        df = pd.read_csv(abs_path)
-        
-        # Convert the DataFrame to a dictionary
-        json_data = df.to_dict(orient='records')
+        if os.path.exists(abs_path):
+          df = pd.read_csv(abs_path)
+
+          # Convert the DataFrame to a dictionary
+          json_data = df.to_dict(orient='records')
         
         return json_data
     else:
         print("Fetching remotely " + remote_url)
         response = requests.get(remote_url,headers=headers)
         
-        # Save the CSV data to the local file path
+        # Read the local CSV data into a DataFrame
+        new_df = pd.read_csv(StringIO(response.text))
+        
+        # Detect name change
+        abs_path = os.path.abspath(local_url)
+        if os.path.exists(abs_path):
+          old_df = pd.read_csv(abs_path)
+          detect_symbol_changes(old_df, new_df)
+
+        # Save the new CSV data to the local file path
         with open(local_url, 'w', encoding='utf-8') as f:
             f.write(response.text)
         
-        # Read the local CSV data into a DataFrame
-        df = pd.read_csv(StringIO(response.text))
-        
         # Convert the DataFrame to a dictionary
-        json_data = df.to_dict(orient='records')
+        json_data = new_df.to_dict(orient='records')
+        
+        print("Saved " + local_url)
         
         return json_data
 
@@ -1487,7 +1525,7 @@ def getBhavCopyNameForTicker(NseTicker):
       "ISEC":"",
       "JPASSOCIAT":"",
       "JYOTI-RE1":"",
-      "KALYANI":"KALYANIFRG",
+      "KALYANI":"",
       "MARSHALL":"",
       "MORARJEE":"",
       "MRO-TEK":"",
@@ -1502,13 +1540,17 @@ def getBhavCopyNameForTicker(NseTicker):
       "ZOMATO":"ETERNAL",
     }
     
-    return ticker_map.get(NseTicker.upper(), NseTicker.upper())
+    new_name = ticker_map.get(NseTicker.upper(), NseTicker.upper())
+    if new_name != NseTicker:
+      print("** Using " + new_name + " instead of " + NseTicker)
+    
+    return new_name
 
 '''
 Note:
     in yahoo finance all stock ticker are appended by ".NS"
 '''
-def getYFinTickerName(NseTicker, exchange="NSE"):
+def getYFinTickerName(NseTicker, exchange):
     if exchange == "NSE" or exchange == "COMMODITY_ETF":
         return NseTicker + ".NS"
     elif exchange == "BSE":
@@ -1910,13 +1952,13 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpYFinTickerCandles.csv"
+      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpYFinTickerCandles_" + symbolType + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
       
     if split_tickers:
       df = pd.DataFrame(split_tickers)
-      csv_filename = "stock_info\\temp\\yFinSplitTickers_syncUpYFinTickerCandles.csv"
+      csv_filename = "stock_info\\temp\\yFinSplitTickers_syncUpYFinTickerCandles" + symbolType + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
       
@@ -2791,8 +2833,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 # get_bhavcopy(date=None, saveCSV=True)
 
 # **************************** Daily Sync Up ********************************
-nseStockList = getAllNseSymbols(local=True)
-syncUpYFinTickerCandles(nseStockList,symbolType=None, delaySec=7, useNseBhavCopy=True)
+nseStockList = getAllNseSymbols(local=False)
+# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)
