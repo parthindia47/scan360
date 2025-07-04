@@ -1563,6 +1563,9 @@ def getYFinTickerName(NseTicker, exchange):
         return NseTicker + "-EQ"
     else:
         return NseTicker
+      
+def ifDfNanOrEmptyString(val):
+  return val is None or (isinstance(val, str) and val.strip() == "") or (isinstance(val, float) and pd.isna(val))
 
 '''
 This function fetch and save stock info like market cap, stock price, 
@@ -1588,31 +1591,33 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
     unsupported_tickers = []
     lookup_list = []
     local_url = "stock_info\\yFinStockInfo_" + exchange + ".csv"
-    symbolCsvId = None
-
-    if exchange == "NSE":
-        symbolCsvId = "SYMBOL"
-    elif exchange == "BSE":
-        symbolCsvId = "Security Id"
+    # NSE = "SYMBOL" , BSE = "Security Id"
+    symbolCsvId = "SYMBOL" if exchange == "NSE" else "Security Id" 
+    # Load existing CSV
+    existing_df = pd.read_csv(local_url) if os.path.exists(local_url) else pd.DataFrame()
+    master_list = existing_df.to_dict(orient='records')
     
+    # if partial create list of existing symbol list
     if partial:
-      df = pd.read_csv(local_url)
-
-      # Convert the DataFrame to a dictionary
-      json_data = df.to_dict(orient='records')
-      master_list = json_data
       lookup_list = [item["symbol"] for item in master_list]
-      #print(lookup_list)
     
     for idx, obj in enumerate(nseStockList):
         yFinNseTicker = getYFinTickerName(obj[symbolCsvId], exchange)
-        if partial and yFinNseTicker in lookup_list:
+        if partial and (yFinNseTicker in lookup_list):
             continue
             
         print("fetching " + str(idx) + " " + obj[symbolCsvId] )
         result = getyFinTickerInfo(yFinNseTicker)
-        if result:
-            #print(result)
+        print(result)
+        if result and 'symbol' in result:
+            if not existing_df.empty:
+                existing_row = existing_df[existing_df['symbol'] == result['symbol']]
+                if not existing_row.empty:
+                    for col in existing_df.columns:
+                        val = result.get(col, None)  # Use .get() to safely access missing keys
+                        if ifDfNanOrEmptyString(val):
+                            result[col] = existing_row.iloc[0][col]
+
             master_list.append(result)
             time.sleep(delay)
         else:
@@ -1620,6 +1625,7 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
            unsupported_tickers.append(obj[symbolCsvId])
 
     df = pd.DataFrame(master_list)
+    df.drop_duplicates(subset="symbol", keep="last", inplace=True)
     df.to_csv(local_url, index=False, encoding='utf-8')
     print("saved " + local_url)
 
@@ -1628,6 +1634,79 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
       csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinStockInfo_" + exchange + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
+
+
+def recalculate_financials(row, current_price, volume):
+    updated_row = row.copy()
+
+    try:
+        if pd.notna(row.get('trailingEps')) and row['trailingEps'] != 0:
+            updated_row['trailingPE'] = current_price / row['trailingEps']
+        if pd.notna(row.get('forwardEps')) and row['forwardEps'] != 0:
+            updated_row['forwardPE'] = current_price / row['forwardEps']
+        if pd.notna(row.get('sharesOutstanding')):
+            updated_row['marketCap'] = current_price * row['sharesOutstanding']
+        if pd.notna(row.get('bookValue')) and row['bookValue'] != 0:
+            updated_row['priceToBook'] = current_price / row['bookValue']
+    except Exception as e:
+        print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
+
+    updated_row['currentPrice'] = current_price
+    updated_row['volume'] = volume
+    return updated_row
+  
+'''
+bhavcopy will give us df
+SYMBOL	 SERIES	 DATE1	 PREV_CLOSE	 OPEN_PRICE	 HIGH_PRICE	 LOW_PRICE	 LAST_PRICE	 CLOSE_PRICE	 AVG_PRICE
+
+fullExchangeName = NSE
+quoteType = EQUITY
+
+'''    
+def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
+    bhavcopy_not_found_tickers = []
+    local_url = "stock_info\\yFinStockInfo_" + exchange + ".csv"
+
+    if useNseBhavCopy:
+      #bhavCopy = get_bhavcopy(date(2025, 7, 2))
+      bhavCopy = get_bhavcopy()
+      bhavCopy.columns = bhavCopy.columns.str.strip().str.upper()
+      
+    if os.path.exists(local_url):
+      df = pd.read_csv(local_url)
+    else:
+      print("No local file exists")
+      return
+
+    for idx, row in df.iterrows():
+      # ✅ Skip rows that are not NSE EQUITY
+      if row.get("fullExchangeName") != "NSE" or row.get("quoteType") != "EQUITY":
+          continue
+      
+      symbol = row["symbol"].replace(".NS", "")
+      row_bhavCopy = bhavCopy[
+          (bhavCopy['SYMBOL'] == symbol.upper()) &
+          (bhavCopy['SERIES'].str.strip().isin(['EQ', 'BE', 'BZ']))
+      ]
+
+      if not row_bhavCopy.empty:
+          close_price = row_bhavCopy.iloc[0]["CLOSE_PRICE"]
+          volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
+          
+          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume)
+      else:
+        bhavcopy_not_found_tickers.append(symbol)
+          
+    df.to_csv(local_url, index=False)
+    print(f"✅ Saved updated file to: {local_url}")
+    
+    if bhavcopy_not_found_tickers:
+      df = pd.DataFrame(bhavcopy_not_found_tickers)
+      csv_filename = "stock_info\\temp\\bhavcopy_not_found_tickers_recalculateYFinStockInfo_" + exchange + ".csv"
+      df.to_csv(csv_filename, index=False, encoding='utf-8')
+      print("saved " + csv_filename)
+
+    
 
 
 '''
@@ -2096,34 +2175,45 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
       print("saved " + csv_filename)
 
 
-def yahooFinTesting(yFinTicker, full=None):
+'''
+#yahooFinTesting("RELIANCE.NS")
+''' 
+def yahooFinTesting(yFinTicker, full=None, date=None):
     # Set the timezone to UTC
     ist_timezone = pytz.timezone('Asia/Kolkata')
     
-    # Convert the input date to UTC timezone
-    date_ist = date.astimezone(ist_timezone)
-
     if date:
+        # Convert the input date to UTC timezone
+        date_ist = date.astimezone(ist_timezone)
+    
         # calculate start_date and end_date
         start_date = date_ist
         end_date = start_date + datetime.timedelta(days=1)
 
-        tickerInformation = yf.Ticker(yFinTicker)
+    tickerInformation = yf.Ticker(yFinTicker)
+    
+    if date:
         tickerHistory = tickerInformation.history(start=start_date, end=end_date) 
         print(tickerHistory)
 
     print("information")
-    print(tickerInformation.info)
+    #print(tickerInformation.info)
 
     if full:
         print("history_metadata")
-        print(tickerInformation.history_metadata)
+        #print(tickerInformation.history_metadata)
 
         print("actions")
-        print(tickerInformation.actions)
+        #print(tickerInformation.actions)
 
         print("news")
-        print(tickerInformation.news)
+        #print(tickerInformation.news)
+        
+        print("analyst_price_targets")
+        #print(tickerInformation.analyst_price_targets)
+        
+        print("quarterly_income_stmt")
+        print(tickerInformation.quarterly_income_stmt)
     
 def yahooFinMulti():
   tickers = yf.Tickers('MSFT AAPL GOOG')
@@ -2682,6 +2772,7 @@ def convert_nse_commodity_to_yahoo_style(df):
 # resp = fetchNseJsonObj("upcomingIssues")
 # print(resp)
 
+# yahooFinTesting("BALAJITELE.NS",full=True)
 # resp = fetchNseJsonObj(urlType="integratedResults", index="equities")
 # print(resp)
   
@@ -2746,7 +2837,8 @@ def convert_nse_commodity_to_yahoo_style(df):
 # print(result)
 
 # nseStockList = getAllNseSymbols(local=True)
-# fetchYFinStockInfo(nseStockList,partial=False)
+# dummyList = [{"SYMBOL":"KROSS"}]
+# fetchYFinStockInfo(dummyList,partial=False)
 
 # getPercentageChange(None,datetime(2024, 2, 1))
 
@@ -2832,8 +2924,10 @@ def convert_nse_commodity_to_yahoo_style(df):
 
 # get_bhavcopy(date=None, saveCSV=True)
 
+recalculateYFinStockInfo()
+
 # **************************** Daily Sync Up ********************************
-nseStockList = getAllNseSymbols(local=False)
+# nseStockList = getAllNseSymbols(local=False)
 # syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)

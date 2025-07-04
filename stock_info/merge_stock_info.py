@@ -3,7 +3,7 @@ import yfinance as yf
 
 # Load CSV files
 def merge_csv_files():
-    df1 = pd.read_csv("yFinStockInfo_BSE.csv")         # First CSV with All yahoo finance fetch
+    df1 = pd.read_csv("yFinStockInfo_NSE.csv")         # First CSV with All yahoo finance fetch
     df2 = pd.read_csv("updated_yahoo_with_tji.csv")    # Second CSV with catagory
 
     # Function to safely clean symbol
@@ -24,7 +24,7 @@ def merge_csv_files():
     )
 
     # Fill missing tjiIndustry with "N"
-    merged_df['tjiIndustry'] = merged_df['tjiIndustry'].fillna("N")
+    merged_df['tjiIndustry'] = merged_df['tjiIndustry'].fillna("NEW")
 
     # Drop helper column
     merged_df.drop(columns=['symbol_clean'], inplace=True)
@@ -35,7 +35,6 @@ def merge_csv_files():
     print("✅ Merging complete. Saved as 'merged_stocks_with_industry.csv'.")
 
 
-# -----------------------------
 def get_stock_info_with_industry(yahoo_symbol):
 
     # Load the existing merged industry data once
@@ -106,4 +105,4 @@ def yahoo_fetch_file_update():
 #print(stock_info)
 #print(stock_info.get("symbol"), "| tjiIndustry:", stock_info.get("tjiIndustry"))
 
-yahoo_fetch_file_update()
+merge_csv_files()

@@ -93,7 +93,7 @@ const loadIndustries = async () => {
     const realReturns = await getStockReturns(row['symbol']);
 
     industries
-    .filter(industry => industry !== 'N' && industry !== '-')
+    .filter(industry => industry !== 'N' && industry !== 'NEW')
     .forEach(industry => {
       if (!industryData[industry]) {
         industryData[industry] = { stocks: [] };
