@@ -687,7 +687,8 @@ def getTopicJsonQuery(urlType):
         "ipoCurrentIssues":"https://www.nseindia.com/api/ipo-current-issue",
         "publicPastIssues":"https://www.nseindia.com/api/public-past-issues",
         "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo",
-        "tradingHoliday":"https://www.nseindia.com/api/holiday-master?type=trading"
+        "tradingHoliday":"https://www.nseindia.com/api/holiday-master?type=trading",
+        "forthcomingListing": "https://www.nseindia.com/api/new-listing-today?index=ForthListing"
     }
 
     baseUrl = baseUrls[urlType]
@@ -778,7 +779,8 @@ def getBaseUrl(urlType,symbol=None):
         "prefIssue":"https://www.nseindia.com/companies-listing/corporate-filings-PREF",
         "commoditySpotAll":"https://www.nseindia.com/commodity-getquote",
         "commodityIndividual":"https://www.nseindia.com/commodity-getquote",
-        "tradingHoliday":"https://www.nseindia.com/resources/exchange-communication-holidays"
+        "tradingHoliday":"https://www.nseindia.com/resources/exchange-communication-holidays",
+        "forthcomingListing":"https://www.nseindia.com/market-data/new-stock-exchange-listings-forthcoming"
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -1690,10 +1692,10 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
       ]
 
       if not row_bhavCopy.empty:
-          close_price = row_bhavCopy.iloc[0]["CLOSE_PRICE"]
-          volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
-          
-          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume)
+        close_price = row_bhavCopy.iloc[0]["CLOSE_PRICE"]
+        volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
+        
+        df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume)
       else:
         bhavcopy_not_found_tickers.append(symbol)
           
@@ -1705,9 +1707,6 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
       csv_filename = "stock_info\\temp\\bhavcopy_not_found_tickers_recalculateYFinStockInfo_" + exchange + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
-
-    
-
 
 '''
 Fetch candle data of list of given symbol. it will store candles in the file
@@ -2758,7 +2757,59 @@ def convert_nse_commodity_to_yahoo_style(df):
     yf_df = yf_df[~yf_df.index.duplicated(keep='last')]
 
     return yf_df
+  
+def scrape_financial_results_to_json(url):
+    try:
+        response = requests.get(url, headers={
+            "User-Agent": "Mozilla/5.0"
+        })
+        response.raise_for_status()
 
+        soup = BeautifulSoup(response.content, "html.parser")
+        tables = soup.find_all("table")
+
+        for table in tables:
+            if "Financial Results" in table.get_text():
+                rows = table.find_all("tr")
+                table_data = []
+
+                for row in rows:
+                    cols = row.find_all(["td", "th"])
+                    texts = [col.get_text(strip=True) for col in cols]
+
+                    if len(texts) < 2:
+                        continue
+
+                    # ✅ Extract numeric value from last column
+                    value_str = texts[-1].replace(",", "").replace("₹", "").strip()
+
+                    try:
+                        value = float(value_str)
+                    except ValueError:
+                        continue  # not a valid numeric row
+
+                    # ✅ Reverse search for best label
+                    label = None
+                    for t in reversed(texts[:-1]):  # skip last column (value)
+                        t_clean = t.strip()
+                        if t_clean and not t_clean.isdigit() and not t_clean.startswith('(') and not t_clean.lower().startswith('part '):
+                            label = t_clean
+                            break
+
+                    if label:
+                        table_data.append({
+                            "label": label,
+                            "value": value
+                        })
+
+                return table_data
+
+        print("❌ No 'Financial Results' table found.")
+        return []
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return []
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
 
@@ -2772,9 +2823,18 @@ def convert_nse_commodity_to_yahoo_style(df):
 # resp = fetchNseJsonObj("upcomingIssues")
 # print(resp)
 
+# resp = fetchNseJsonObj("forthcomingListing")
+# print(resp)
+
 # yahooFinTesting("BALAJITELE.NS",full=True)
 # resp = fetchNseJsonObj(urlType="integratedResults", index="equities")
 # print(resp)
+
+url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101732_04072025170829_iXBRL_WEB.html"
+resp = scrape_financial_results_to_json(url)
+print(resp)
+
+# yahooFinTesting("UMESLTD.NS",full=True)
   
 # resp = fetchNseJsonObj(urlType="resultsComparison", index="equities", symbol="RELIANCE")
 # print(resp)
@@ -2924,7 +2984,7 @@ def convert_nse_commodity_to_yahoo_style(df):
 
 # get_bhavcopy(date=None, saveCSV=True)
 
-recalculateYFinStockInfo()
+# recalculateYFinStockInfo()
 
 # **************************** Daily Sync Up ********************************
 # nseStockList = getAllNseSymbols(local=False)
