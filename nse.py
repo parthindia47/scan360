@@ -610,6 +610,7 @@ def getJsonUrlQuery(urlType,
                 instrumentType = None,
                 issuer = None,
                 subject = None,
+                period = None,
                 isOnlyFnO = False):
     baseUrls = {
         "announcement":"https://www.nseindia.com/api/corporate-announcements?index=" ,
@@ -668,7 +669,10 @@ def getJsonUrlQuery(urlType,
     # Handling FnO search
     if isOnlyFnO:
         baseUrl += "&fo_sec=true"
-       
+
+    if period:
+       baseUrl += f"&period={period}"
+             
     return baseUrl
   
 def getSymbolJsonUrlQuery(urlType,
@@ -799,7 +803,6 @@ def getSubjectUrl(urlType,index):
         "arrangement":"",
         "boardMeetings": "https://www.nseindia.com/api/corporate-board-meetings-subject?index=",
         "corporateActions": "https://www.nseindia.com/api/corporates-corporateActions-subject?index=",
-        "financialResults":"",
         "offerDocs":"",
         "events":"https://www.nseindia.com/api/eventCalender-equities"
     }
@@ -1076,6 +1079,7 @@ def fetchNseJsonObj(urlType,
                     step=7, 
                     delaySec=5, 
                     listExtractKey=None,
+                    period=None,
                     cookies=None):
     jsonObjMaster = []
     start_date = fromDate
@@ -1098,7 +1102,7 @@ def fetchNseJsonObj(urlType,
         return jsonObj
     
     if not fromDate and not toDate:
-        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol)
+        jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol, period=period)
         jsonObj = fetchGetJson(jsonUrl, cookies)
         return jsonObj        
       
@@ -1120,7 +1124,8 @@ def fetchNseJsonObj(urlType,
                                   symbol=symbol, 
                                   instrumentType=instrumentType, 
                                   fromDate=start_date, 
-                                  toDate=end_date)
+                                  toDate=end_date,
+                                  period=period)
         jsonObj = fetchGetJson(jsonUrl, cookies)
 
         # Extend the list with the fetched data
@@ -2212,7 +2217,9 @@ def yahooFinTesting(yFinTicker, full=None, date=None):
         #print(tickerInformation.analyst_price_targets)
         
         print("quarterly_income_stmt")
-        print(tickerInformation.quarterly_income_stmt)
+        statement_df = tickerInformation.quarterly_income_stmt
+        
+    return statement_df[['2025-03-31']] 
     
 def yahooFinMulti():
   tickers = yf.Tickers('MSFT AAPL GOOG')
@@ -2757,14 +2764,172 @@ def convert_nse_commodity_to_yahoo_style(df):
     yf_df = yf_df[~yf_df.index.duplicated(keep='last')]
 
     return yf_df
+
+def clean_label(label):
+    if not isinstance(label, str):
+        return label
+    return re.sub(r'\s+', ' ', label.replace('\n', ' ')).strip().lower()
+
+def convert_financial_results_to_yFin_style(input_data, period='period_short'):
+  pd.options.display.float_format = '{:,.2f}'.format
+  pd.set_option('display.max_colwidth', None)
+
+  # Convert to DataFrame
+  df = pd.DataFrame(input_data)
+  df['label'] = df['label'].apply(clean_label)
+  print(df)
+
+  # Validate period column
+  if period not in ['period_short', 'period_ytd']:
+      raise ValueError("Invalid period. Use 'period_short' or 'period_ytd'.")
+
+  # Helper function to get value by label
+  def get(label):
+      match = df.loc[df['label'].str.strip() == label.strip()]
+      if not match.empty and period in match.columns:
+          return match[period].values[0]
+      return None
+
+  # Derived fields
+  revenue = get('revenue from operations') or 0 #+ get('Other income')
+  total_interest_earned = get('total interest earned') or 0
+  interest_expenses = get('interest expenses') or 0
+  purchase_of_stocks = get('purchases of stock-in-trade') or 0
+  other_income = get("other income") or 0
+  statutory_levies = get('statutory levies') or 0
+    
+  if total_interest_earned > 0 and interest_expenses > 0:
+    revenue = (total_interest_earned - interest_expenses) + other_income
   
+  material_cost = get('cost of materials consumed') or 0
+  stock_in_trade = get('purchases of stock-in-trade') or 0
+  invetory_change = get('changes in inventories of finished goods, work-in-progress and stock-in-trade') or 0
+  infra_expenses  = get('direct construction, manufacturing, real estate, infrastructure, hotel/hospitality, event & power expenses') or 0
+  employee_expenses =  get('employee benefit expense') or 0
+  land_expenses = get('land and related expenses') or 0
+  
+  other_expenses = get('total other expenses') or 0
+  if not other_expenses:
+    other_expenses = get("total other operating expenses") or 0
+  if not other_expenses:
+    other_expenses = get('other expenses') or 0
+    
+  total_expenses_1 = get("total expenses") or 0
+  if not total_expenses_1:
+    total_expenses_1 = get("total operating expenses")
+    
+  depreciation = get('depreciation, depletion and amortisation expense') or 0
+  interest_expense = get('finance costs') or 0
+  if not interest_expense:
+    interest_expense = get('interest expenses') or 0
+  pretax_income = get('total profit before tax') or 0
+  if not pretax_income > 0:
+    operating_profit = get("operating profit before provision and contingencies") or 0
+    provisions = get("provisions other than tax and contingencies") or 0
+    pretax_income = operating_profit - provisions
+    
+  tax_provision = get('total tax expenses') or 0
+  if not tax_provision > 0:
+    tax_provision = get('provision for tax') or 0
+
+  exceptional_items = get('exceptional items') or 0
+  
+  # Banking
+  print("material_cost " + str(material_cost) + "\n" +
+        "invetory_change " + str(invetory_change) + "\n" + 
+        "stock_in_trade " + str(stock_in_trade) + "\n" +
+        "land_expenses " + str(land_expenses) + "\n" +
+        "infra_expenses " + str(infra_expenses) + "\n" +
+        "total_interest_earned " + str(total_interest_earned))
+  if total_interest_earned > 0:
+    print("Calculating Banking")
+    cost_of_revenue = employee_expenses
+    operating_expense = total_expenses_1
+  elif invetory_change and material_cost:
+    print("Calculating Infra")
+    cost_of_revenue = material_cost + invetory_change + stock_in_trade + land_expenses + infra_expenses
+    operating_expense = employee_expenses + depreciation + other_expenses
+  else:
+    print("Calculating IT")
+    cost_of_revenue = employee_expenses + invetory_change + material_cost
+    operating_expense = depreciation + other_expenses
+  
+  if purchase_of_stocks > 0:
+    cost_of_revenue = cost_of_revenue + purchase_of_stocks
+    
+  if statutory_levies > 0:
+    operating_expense = operating_expense + statutory_levies
+
+  gross_profit = revenue - cost_of_revenue
+  net_income = pretax_income - tax_provision
+  
+  ebitda = net_income + interest_expense + tax_provision + depreciation
+  ebit = ebitda - depreciation
+  
+  operating_income = gross_profit - operating_expense
+  total_expense = cost_of_revenue + operating_expense
+  tax_rate = tax_provision / pretax_income if pretax_income else None
+  
+  if total_interest_earned > 0:
+    net_interest_income = total_interest_earned - interest_expenses
+  else:
+    net_interest_income = -interest_expense
+
+  # Output mapping
+  output = {
+      "2025-03-31": {
+          "Total Revenue": revenue,
+          "Operating Revenue": revenue,
+          "Cost Of Revenue": cost_of_revenue,
+          "Gross Profit": gross_profit,
+          "Operating Expense": operating_expense,
+          "Other Operating Expenses": other_expenses,
+          "Depreciation And Amortization In Income Statement": depreciation,
+          "Depreciation Income Statement": depreciation,
+          "Operating Income": operating_income,
+          "Interest Expense": interest_expense,
+          "Net Interest Income": net_interest_income,
+          "Other Non Operating Income Expenses": other_income,
+          "Pretax Income": pretax_income,
+          "Tax Provision": tax_provision,
+          "Net Income": net_income,
+          "Net Income Including Noncontrolling Interests": net_income,
+          "Net Income Continuous Operations": net_income,
+          "Net Income From Continuing And Discontinued Operations": net_income,
+          "Net Income Common Stockholders": net_income,
+          "Diluted NI Availto Com Stockholders": net_income,
+          "Normalized Income": net_income,
+          "EBIT": ebit,
+          "EBITDA": ebitda,
+          "Normalized EBITDA": ebitda,
+          "Reconciled Depreciation": depreciation,
+          "Reconciled Cost Of Revenue": cost_of_revenue,
+          "Net Non Operating Interest Income Expense": -interest_expense,
+          "Interest Expense Non Operating": interest_expense,
+          "Tax Rate For Calcs": tax_rate,
+          "Otherunder Preferred Stock Dividend": 0.0,
+          "Total Expenses": total_expense,
+          "Net Income From Continuing Operation Net Minori...": net_income,
+          "Tax Effect Of Unusual Items": 0.0,
+          "Total Unusual Items": exceptional_items,
+          "Total Unusual Items Excluding Goodwill": exceptional_items,
+          "Special Income Charges": exceptional_items,
+          "Diluted EPS": None,
+          "Basic EPS": None,
+          "Diluted Average Shares": None,
+          "Basic Average Shares": None
+      }
+  }
+
+  # Convert to final DataFrame
+  final_df = pd.DataFrame(output)
+  return final_df
+
+ 
 def scrape_financial_results_to_json(url):
     try:
-        response = requests.get(url, headers={
-            "User-Agent": "Mozilla/5.0"
-        })
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         response.raise_for_status()
-
         soup = BeautifulSoup(response.content, "html.parser")
         tables = soup.find_all("table")
 
@@ -2777,29 +2942,39 @@ def scrape_financial_results_to_json(url):
                     cols = row.find_all(["td", "th"])
                     texts = [col.get_text(strip=True) for col in cols]
 
-                    if len(texts) < 2:
+                    # Skip rows that are clearly not data rows
+                    if len(texts) < 3:
                         continue
 
-                    # ✅ Extract numeric value from last column
-                    value_str = texts[-1].replace(",", "").replace("₹", "").strip()
-
-                    try:
-                        value = float(value_str)
-                    except ValueError:
-                        continue  # not a valid numeric row
-
-                    # ✅ Reverse search for best label
                     label = None
-                    for t in reversed(texts[:-1]):  # skip last column (value)
-                        t_clean = t.strip()
-                        if t_clean and not t_clean.isdigit() and not t_clean.startswith('(') and not t_clean.lower().startswith('part '):
-                            label = t_clean
-                            break
+                    short_val = None
+                    ytd_val = None
 
-                    if label:
+                    # Try to extract two numbers from 3rd and 4th column
+                    if len(texts) >= 4:
+                        short_val_str = texts[2].replace(",", "").replace("₹", "").strip()
+                        ytd_val_str = texts[3].replace(",", "").replace("₹", "").strip()
+                        try:
+                            short_val = float(short_val_str)
+                        except:
+                            pass
+                        try:
+                            ytd_val = float(ytd_val_str)
+                        except:
+                            pass
+
+                        # Determine label
+                        for t in reversed(texts[:2]):  # look in first 2 columns
+                            t_clean = t.strip()
+                            if t_clean and not t_clean.isdigit():
+                                label = t_clean
+                                break
+
+                    if label and (short_val is not None or ytd_val is not None):
                         table_data.append({
                             "label": label,
-                            "value": value
+                            "period_short": short_val,
+                            "period_ytd": ytd_val
                         })
 
                 return table_data
@@ -2810,6 +2985,148 @@ def scrape_financial_results_to_json(url):
     except Exception as e:
         print(f"❌ Error: {e}")
         return []
+      
+def compare_dfs(nse_df, yahoo_df):
+  # Make sure both DataFrames have the same column name for comparison (e.g., "2025-03-31")
+  nse_col = nse_df.columns[0]
+  yahoo_col = yahoo_df.columns[0]
+
+  # Align both on the same index (row labels)
+  common_index = nse_df.index.intersection(yahoo_df.index)
+
+  # Filter only common rows to avoid KeyErrors
+  nse_common = nse_df.loc[common_index]
+  yahoo_common = yahoo_df.loc[common_index]
+
+  # Compare the values
+  mismatches = []
+  for idx in common_index:
+      val_nse = nse_common.at[idx, nse_col]
+      val_yahoo = yahoo_common.at[idx, yahoo_col]
+      
+      # Compare with a tolerance (to avoid float rounding issues)
+      if pd.isna(val_nse) and pd.isna(val_yahoo):
+          continue
+      elif pd.isna(val_nse) or pd.isna(val_yahoo):
+          mismatches.append((idx, val_nse, val_yahoo))
+      elif abs(val_nse - val_yahoo) > 1e-2:  # adjust threshold if needed
+          mismatches.append((idx, val_nse, val_yahoo))
+
+  # Print mismatched entries
+  if mismatches:
+      print("\n❌ Mismatched entries:")
+      for label, nse_val, yahoo_val in mismatches:
+          print(f"{label:50} | NSE: {nse_val:>15,.2f} | Yahoo: {yahoo_val:>15,.2f}")
+  else:
+      print("\n✅ All values matched between NSE and Yahoo.")
+      
+def nse_xbrl_to_json(url):
+    # Fetch and parse the XML
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "xml")
+
+    # Parse all tags with values
+    xbrl_data = []
+    for tag in soup.find_all(True):
+        if tag.text.strip():
+            xbrl_data.append({
+                "tag": tag.name,
+                "context": tag.get("contextRef", None),
+                "unit": tag.get("unitRef", None),
+                "decimals": tag.get("decimals", None),
+                "value": tag.text.strip()
+            })
+
+    # Generic getter with safe float conversion
+    def get(tag_name):
+        val = next(
+            (item.get("value") for item in xbrl_data if item.get("tag") == tag_name and item.get("context") == "OneD"),
+            None
+        )
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return 0.0
+
+    # Now fetch required values
+    revenue = get("RevenueFromOperations")
+    interestEarned = get("InterestEarned")
+    interestExpense = get("InterestExpended")
+    if interestEarned != 0:
+      revenue = interestEarned  #Banking
+    
+    material_cost = get("CostOfMaterialsConsumed")
+    stock_in_trade = get("PurchasesOfStockInTrade")
+    inventory_change = get("ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade")
+    employee_expenses = get("EmployeeBenefitExpense")
+    if employee_expenses == 0:
+      employee_expenses = get("EmployeesCost")
+      
+    finance_cost = get("FinanceCosts")
+    other_expense = get("OtherExpenses")
+    operating_expense = get("OperatingExpenses")
+    other_operating_expense = get("OtherOperatingExpenses")
+    
+    exceptional_items = get("ExceptionalItemsBeforeTax")
+    other_income = get("OtherIncome")
+    other_company_income = get("ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod")
+    depreciation = get("DepreciationDepletionAndAmortisationExpense")
+    total_other_income = (other_income + exceptional_items) - other_company_income
+    
+    profit_before_tax = get("ProfitBeforeTax")
+    if profit_before_tax == 0:
+      profit_before_tax = get("ProfitLossFromOrdinaryActivitiesBeforeTax") #Banking
+      
+    net_profit = get("ProfitLossForPeriod")
+    if net_profit == 0:
+      net_profit = get("ProfitLossFromOrdinaryActivitiesAfterTax") #Banking
+      
+    eps = get("DilutedEarningsLossPerShareFromContinuingAndDiscontinuedOperations")
+    
+    total_expense = material_cost + employee_expenses + inventory_change + stock_in_trade + other_expense + \
+                    operating_expense
+                    
+    operating_profit = revenue - (total_expense + interestExpense)
+    
+    if profit_before_tax != 0:
+      tax_per = (profit_before_tax - net_profit)*100/profit_before_tax
+    else:
+      tax_per = 0
+    opm = operating_profit * 100/revenue
+
+    print("Sales                :", revenue)
+    print("Interest             :", interestExpense)  #Banking
+    print("Expenses             :", total_expense)
+    print("Operating Profit     :", operating_profit)
+    print("OPM                  :", opm)
+    print("Other Income         :", total_other_income)
+    print("Exceptional item     :", exceptional_items)
+    print("Interest             :", finance_cost)
+    print("Depreciation         :", depreciation)
+    print("Profit Before Tax    :", profit_before_tax)
+    print("Tax percentage       :", tax_per)
+    print("Net Profit           :", net_profit)
+    print("EPS                  :", eps)
+    
+    # print(json.dumps(xbrl_data, indent=2))
+    
+    return {
+      "Sales": revenue,
+      "Interest": interestExpense,
+      "Expenses": total_expense,
+      "OperatingProfit": operating_profit,
+      "OPM": opm,
+      "OtherIncome": total_other_income,
+      "ExceptionalItem": exceptional_items,
+      "FinanceCost": finance_cost,
+      "Depreciation": depreciation,
+      "ProfitBeforeTax": profit_before_tax,
+      "TaxPercentage": tax_per,
+      "NetProfit": net_profit,
+      "EPS": eps
+    }
+
+
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
 
@@ -2830,11 +3147,86 @@ def scrape_financial_results_to_json(url):
 # resp = fetchNseJsonObj(urlType="integratedResults", index="equities")
 # print(resp)
 
-url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101732_04072025170829_iXBRL_WEB.html"
-resp = scrape_financial_results_to_json(url)
-print(resp)
+# symbol = "GENCON"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101676_04072025113823_iXBRL_WEB.html"
 
-# yahooFinTesting("UMESLTD.NS",full=True)
+# symbol = "UNIPARTS"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101679_04072025120625_iXBRL_WEB.html"
+
+# symbol = "RELIABLE"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101794_05072025154109_iXBRL_WEB.html"
+
+# symbol = "UMESLTD"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101732_04072025170829_iXBRL_WEB.html"
+
+# symbol = "AUTOIND"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101478_02072025105053_iXBRL_WEB.html"
+
+# symbol = "LANCORHOL"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101433_01072025180132_iXBRL_WEB.html"
+
+# symbol = "JPASSOCIAT"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101397_01072025144110_iXBRL_WEB.html"
+
+# symbol = "ALPSINDUS"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101002_30062025113549_iXBRL_WEB.html"
+
+# symbol = "HCLTECH"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_86087_22042025190125_iXBRL_WEB.html"
+
+# symbol = "RELIANCE"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_87057_25042025215716_iXBRL_WEB.html"
+
+# symbol = "AXISBANK"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_BANKING_86628_24042025195151_iXBRL_WEB.html"
+
+# symbol = "ONGC"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_92646_21052025231055_iXBRL_WEB.html"
+
+# resp = scrape_financial_results_to_json(url)
+# nse_df = convert_financial_results_to_yFin_style(resp)
+# # print(nse_df)
+
+# yahoo_df = yahooFinTesting(getYFinTickerName(symbol,"NSE"),full=True)
+# # print(yahoo_df)
+
+# compare_dfs(nse_df,yahoo_df)
+
+# data = fetchNseJsonObj(urlType="financialResults", index="equities", symbol="SKMEGGPROD", period="Quarterly")
+# # print(data)
+# matching_entry = next(
+#     (item for item in data if item.get("toDate") == "31-Dec-2024" and item.get("consolidated") == "Consolidated"),
+#     None
+# )
+# print(matching_entry)
+
+#ONGC
+# url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118395_1368047_31012025084518.xml"
+
+# RELIANCE
+# url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_117297_1348248_16012025081520.xml"
+
+#SUNPHARMA
+# url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_31012025073304.xml"
+
+#Airtel
+# url =  'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118975_1373825_06022025101955.xml'
+
+#Axis Bank
+# url = 'https://nsearchives.nseindia.com/corporate/xbrl/BANKING_117296_1348238_16012025080654.xml'
+
+#Kaynes
+#url = 'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_117898_1363553_28012025062830.xml'
+
+# Cupid
+# url = 'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_120863_1386051_15022025013252.xml'
+
+#SKM
+url = 'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_119206_1375340_08022025094824.xml'
+nse_xbrl_to_json(url)
+
+
+
   
 # resp = fetchNseJsonObj(urlType="resultsComparison", index="equities", symbol="RELIANCE")
 # print(resp)
