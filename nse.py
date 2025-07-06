@@ -131,9 +131,9 @@ csv_list = {
 
 def getOutputCsvFile(urlType):
     csv_output_files = {
-        "announcement":"nse_fillings/announcements_nse.csv" ,
-        "events":"nse_fillings/events_nse.csv",
-        "arrangement":"nse_fillings/arrangement_nse.csv"
+        "announcement":"stock_fillings/announcements_nse.csv" ,
+        "events":"stock_fillings/events_nse.csv",
+        "arrangement":"stock_fillings/arrangement_nse.csv"
     }
     return csv_output_files[urlType]
 
@@ -594,6 +594,8 @@ https://www.nseindia.com/api/corporates/offerdocs/rights?index=equities&from_dat
 Always Replace special characters example
 space - %20
 backslash - %2F
+
+https://www.nseindia.com/api/integrated-filing-results?index=equities&symbol=RELIANCE&issuer=Reliance%20Industries%20Limited&period_ended=all&type=all
 
 Example of Usage:
 print(getAnnouncementUrlQuery("equities"))  # JSON response for equities
@@ -1788,7 +1790,7 @@ Example:
     fetchNseDocuments(urlType = "announcement"
                       start_date=datetime(2014, 1, 1), 
                       end_date=datetime(2020, 4, 1),
-                      file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+                      file_name="stock_fillings\\announcements_" + formatted_datetime + ".csv")
 '''
 def fetchNseDocuments(urlType, start_date, end_date, file_name=None):
 
@@ -1821,7 +1823,7 @@ Note:
 df.to_dict(orient='records') will return <class 'list'>
 '''
 def updatePercentageForAnnouncements():
-    local_url = "nse_fillings\\announcements.csv"
+    local_url = "stock_fillings\\announcements.csv"
     output_url = "output\\announcements_with_percentage.csv"
     unsupported_symbols = []
     
@@ -2061,7 +2063,7 @@ use separate = True if you want to store current delta in a separate file, it
 will be stored with suffix of last hash.
 '''
 def syncUpCalculatePercentageForAnnouncement(separate=False):
-    input_announcement_csv = "nse_fillings\\announcements.csv"
+    input_announcement_csv = "stock_fillings\\announcements.csv"
     output_csv = "output\\announcements_with_percentage.csv"
 
     processed = getLastProcessedHashForPercentage(output_csv)
@@ -2344,12 +2346,12 @@ def generateAnnouncementAnalysis():
     fetchNseDocuments(urlType="announcement",
                       start_date=datetime(2024, 5, 4), 
                       end_date=datetime(2024, 5, 4),
-                      file_name="nse_fillings\\announcements_" + formatted_datetime + ".csv")
+                      file_name="stock_fillings\\announcements_" + formatted_datetime + ".csv")
 
-    downloadFilesFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
+    downloadFilesFromCsvList("stock_fillings\\announcements_" + formatted_datetime + ".csv",
                             downloadDir="downloads")
 
-    searchKeywordsFromCsvList("nse_fillings\\announcements_" + formatted_datetime + ".csv",
+    searchKeywordsFromCsvList("stock_fillings\\announcements_" + formatted_datetime + ".csv",
                               announcementKeywords,
                               downloadDir="downloads")
 
@@ -2765,12 +2767,18 @@ def convert_nse_commodity_to_yahoo_style(df):
 
     return yf_df
 
+# ==========================================================================
+# =========================== NSE results functions =========================
+
 def clean_label(label):
     if not isinstance(label, str):
         return label
     return re.sub(r'\s+', ' ', label.replace('\n', ' ')).strip().lower()
 
-def convert_financial_results_to_yFin_style(input_data, period='period_short'):
+def nse_html_to_json_results(url, period='period_short'):
+  
+  input_data = scrape_financial_results_to_json(url)
+   
   pd.options.display.float_format = '{:,.2f}'.format
   pd.set_option('display.max_colwidth', None)
 
@@ -2888,23 +2896,9 @@ def convert_financial_results_to_yFin_style(input_data, period='period_short'):
   else:
     opm = 0
     
-  print("Sales                :", revenue)
-  print("InterestBanking      :", interestExpense)  #Banking
-  print("Expenses             :", total_expense)
-  print("Operating Profit     :", operating_profit)
-  print("OPM                  :", opm)
-  print("Other Income         :", total_other_income)
-  print("Exceptional item     :", exceptional_items)
-  print("Interest             :", finance_cost)
-  print("Depreciation         :", depreciation)
-  print("Profit Before Tax    :", profit_before_tax)
-  print("Tax percentage       :", tax_per)
-  print("Net Profit           :", net_profit)
-  print("EPS                  :", eps)
-  
   # print(json.dumps(xbrl_data, indent=2))
   
-  return {
+  result_obj = {
     "Sales": revenue,
     "InterestBanking": interestExpense,
     "Expenses": total_expense,
@@ -2919,8 +2913,9 @@ def convert_financial_results_to_yFin_style(input_data, period='period_short'):
     "NetProfit": net_profit,
     "EPS": eps
   }
+  
+  return result_obj
 
- 
 def scrape_financial_results_to_json(url):
     try:
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -3003,9 +2998,7 @@ def scrape_financial_results_to_json(url):
     except Exception as e:
         print(f"❌ Error: {e}")
         return []
-
-
-        
+     
 def compare_dfs(nse_df, yahoo_df):
   # Make sure both DataFrames have the same column name for comparison (e.g., "2025-03-31")
   nse_col = nse_df.columns[0]
@@ -3153,23 +3146,7 @@ def nse_xbrl_to_json(url):
     else:
       opm = 0
 
-    print("Sales                :", revenue)
-    print("InterestBanking      :", interestExpense)  #Banking
-    print("Expenses             :", total_expense)
-    print("Operating Profit     :", operating_profit)
-    print("OPM                  :", opm)
-    print("Other Income         :", total_other_income)
-    print("Exceptional item     :", exceptional_items)
-    print("Interest             :", finance_cost)
-    print("Depreciation         :", depreciation)
-    print("Profit Before Tax    :", profit_before_tax)
-    print("Tax percentage       :", tax_per)
-    print("Net Profit           :", net_profit)
-    print("EPS                  :", eps)
-    
-    # print(json.dumps(xbrl_data, indent=2))
-    
-    return {
+    result_obj = {
       "Sales": revenue,
       "InterestBanking": interestExpense,
       "Expenses": total_expense,
@@ -3184,7 +3161,191 @@ def nse_xbrl_to_json(url):
       "NetProfit": net_profit,
       "EPS": eps
     }
+    
+    # print(json.dumps(xbrl_data, indent=2))
+    
+    return result_obj
 
+'''
+"Consolidated" , "Non-Consolidated"
+'''
+def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=False, delaySec=8):
+    result_date_list = ["31-Dec-2023", "31-Mar-2024", "30-Jun-2024", "30-Sep-2024", "31-Dec-2024"]
+
+    response = fetchUrl(getBaseUrl("financialResults"))
+    cookies = response.cookies
+
+    for idx, obj in enumerate(nseStockList):
+        symbol = obj["SYMBOL"]
+        print(f"🔄 Fetching {idx}: {symbol}")
+
+        sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
+        csv_path = f"stock_results/{sub_folder}/{symbol}.csv"
+
+        if partial and os.path.exists(csv_path):
+            print(f"⏩ Skipping (already exists): {csv_path}")
+            continue
+
+        latest_by_date = {}
+
+        try:
+            data = fetchNseJsonObj(
+                urlType="financialResults",
+                index="equities",
+                symbol=symbol,
+                period=period,
+                cookies=cookies
+            )
+
+            for result_date in result_date_list:
+                # Step 1: Find matching entries
+                matching_entries = [
+                    item for item in data
+                    if item.get("toDate") == result_date and item.get("consolidated", "") == resultType
+                ]
+
+                # Fallback for standalone cases (no "consolidated" key)
+                if not matching_entries and resultType == "Non-Consolidated":
+                    matching_entries = [item for item in data if item.get("toDate") == result_date]
+
+                if not matching_entries:
+                    continue
+
+                # Step 2: Choose the most recent by broadCastDate
+                def parse_broadcast(item):
+                    try:
+                        return datetime.strptime(item.get("broadCastDate", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
+                    except Exception:
+                        return datetime.min
+
+                matching_entry = max(matching_entries, key=parse_broadcast)
+
+                xbrl_url = matching_entry.get("xbrl")
+                if not xbrl_url:
+                    continue
+
+                to_date = matching_entry.get("toDate")
+                broad_cast_date = matching_entry.get("broadCastDate")
+
+                print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
+
+                # Step 3: Parse XBRL only for latest one
+                json_obj = nse_xbrl_to_json(xbrl_url)
+                json_obj["toDate"] = to_date
+                json_obj["audited"] = matching_entry.get("audited")
+                json_obj["xbrl"] = xbrl_url
+                json_obj["broadCastDate"] = broad_cast_date
+
+                latest_by_date[to_date] = json_obj
+
+                time.sleep(delaySec)
+
+        except Exception as e:
+            print(f"❌ Error fetching {symbol}: {e}")
+            continue
+
+        # Step 4: Save results
+        if latest_by_date:
+            output_rows = list(latest_by_date.values())
+            df = pd.DataFrame(output_rows)
+            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+            df.to_csv(csv_path, index=False)
+            print(f"✅ Saved to {csv_path}")
+        else:
+            print(f"⚠️ No data found for {symbol}")
+
+'''
+integarated filings always show quaterly results
+# dummyList = [{"SYMBOL":"BAJAJCON"}]
+'''        
+def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated", delaySec=8):
+    result_date_list = ["31-Mar-2025"]
+
+    # response = fetchUrl(getBaseUrl("integratedResults"))
+    # cookies = response.cookies
+
+    for idx, obj in enumerate(nseStockList):
+        symbol = obj["SYMBOL"]
+        print(f"🔄 Fetching {idx}: {symbol}")
+
+        sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
+        csv_path = f"stock_results/{sub_folder}/{symbol}.csv"
+
+        # Load existing data if available
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+        else:
+            df = pd.DataFrame()
+            
+        print(df)
+        try:
+            data = fetchNseJsonObj(
+                urlType="integratedResults",
+                index="equities",
+                symbol=symbol
+            )
+            print(data)
+
+            for result_date in result_date_list:
+                # Step 1: Filter entries
+                matching_entries = [
+                    item for item in data
+                    if item.get("toDate") == result_date and item.get("consolidated", "") == resultType
+                ]
+
+                if not matching_entries and resultType == "Standalone":
+                    matching_entries = [item for item in data if item.get("toDate") == result_date]
+
+                if not matching_entries:
+                    continue
+
+                # Step 2: Choose most recent entry by broadCastDate
+                def parse_broadcast(item):
+                    try:
+                        return datetime.strptime(item.get("broadcast_Date", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
+                    except:
+                        return datetime.min
+
+                matching_entry = max(matching_entries, key=parse_broadcast)
+
+                xbrl_url = matching_entry.get("xbrl")
+                html_url = matching_entry.get("ixbrl")
+                if not xbrl_url or not html_url:
+                    continue
+
+                to_date = matching_entry.get("toDate")
+                broad_cast_date = matching_entry.get("broadcast_Date")
+
+                # Step 3: Parse HTML XBRL
+                print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
+                json_obj = nse_html_to_json_results(html_url)
+                json_obj["toDate"] = to_date
+                json_obj["audited"] = matching_entry.get("audited")
+                json_obj["xbrl"] = xbrl_url
+                json_obj["broadCastDate"] = broad_cast_date
+
+                # Step 4: Check if we need to insert or update
+                if df.empty:
+                    df = pd.DataFrame([json_obj])
+                else:
+                    # Append and keep only the latest by toDate
+                    df = pd.concat([df, pd.DataFrame([json_obj])], ignore_index=True)
+                    df = df.sort_values("broadCastDate")  # Ensure latest entries come last
+                    df = df.drop_duplicates(subset="toDate", keep="last").reset_index(drop=True)
+
+                time.sleep(delaySec)
+
+        except Exception as e:
+            print(f"❌ Error fetching data for {symbol}: {e}")
+            continue
+
+        # Step 5: Save updated CSV
+        if not df.empty:
+            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+            df.to_csv(csv_path, index=False)
+            print(f"✅ Saved to {csv_path}")
+        else:
+            print(f"⚠️ No data to save for {symbol}")
 
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
@@ -3252,8 +3413,8 @@ def nse_xbrl_to_json(url):
 symbol = "BRIGADE"
 url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_90922_14052025232935_iXBRL_WEB.html"
 
-resp = scrape_financial_results_to_json(url)
-nse_df = convert_financial_results_to_yFin_style(resp)
+# resp = scrape_financial_results_to_json(url)
+# nse_df = convert_financial_results_to_yFin_style(resp)
 # print(nse_df)
 
 # yahoo_df = yahooFinTesting(getYFinTickerName(symbol,"NSE"),full=True)
@@ -3262,7 +3423,7 @@ nse_df = convert_financial_results_to_yFin_style(resp)
 # compare_dfs(nse_df,yahoo_df)
 
 # ---------------------------------------------------------------------------------------------------------------
-# data = fetchNseJsonObj(urlType="financialResults", index="equities", symbol="UJJIVANSFB", period="Quarterly")
+# data = fetchNseJsonObj(urlType="financialResults", index="equities", symbol="RELIANCE", period="Quarterly")
 # print(data)
 # matching_entry = next(
 #     (item for item in data if item.get("toDate") == "31-Dec-2024" and item.get("consolidated") == "Consolidated"),
@@ -3283,7 +3444,7 @@ nse_df = convert_financial_results_to_yFin_style(resp)
 # url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_117297_1348248_16012025081520.xml"
 
 #SUNPHARMA
-url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_31012025073304.xml"
+# url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_31012025073304.xml"
 
 #Airtel
 # url =  'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118975_1373825_06022025101955.xml'
@@ -3343,7 +3504,7 @@ url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_3101
 
 # fetchNseEvents(start_date=datetime(2025, 6, 15), 
 #                   end_date=datetime(2025, 6, 30),
-#                   file_name="nse_fillings\\events_" + formatted_datetime + ".csv")
+#                   file_name="stock_fillings\\events_" + formatted_datetime + ".csv")
 
 
 # result = get_bhavcopy(date(2025, 6, 13))
@@ -3385,12 +3546,12 @@ url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_3101
 # fetchNseDocuments(urlType="announcement",
 #                   start_date=datetime(2025, 6, 20), 
 #                   end_date=datetime(2025, 6, 23),
-#                   file_name="nse_fillings/announcements_" + formatted_datetime + ".csv")
+#                   file_name="stock_fillings/announcements_" + formatted_datetime + ".csv")
 
 # fetchNseDocuments(urlType="events",
 #                   start_date=datetime(2025, 6, 20), 
 #                   end_date=datetime(2025, 6, 23),
-#                   file_name="nse_fillings/events_" + formatted_datetime + ".csv")
+#                   file_name="stock_fillings/events_" + formatted_datetime + ".csv")
 
 # fetchNseDocuments(urlType="announcement",
 #                   start_date=datetime(2025, 6, 20), 
@@ -3463,6 +3624,14 @@ url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_3101
 # get_bhavcopy(date=None, saveCSV=True)
 
 # recalculateYFinStockInfo()
+
+# nseStockList = getAllNseSymbols(local=False)
+# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated")
+
+dummyList = [{"SYMBOL":"BAJAJCON"}]
+syncUpNseResults(dummyList)
+
+
 
 # **************************** Daily Sync Up ********************************
 # nseStockList = getAllNseSymbols(local=False)
