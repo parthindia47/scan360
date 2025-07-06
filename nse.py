@@ -2799,6 +2799,8 @@ def convert_financial_results_to_yFin_style(input_data, period='period_short'):
           return 0.0
 
   title = df.loc[df['label'] == 'title', 'period_short'].values[0]
+  start_date = df.loc[df['label'] == 'date of start of reporting period', 'period_short'].values[0]
+  end_date = df.loc[df['label'] == 'date of end of reporting period', 'period_short'].values[0]
   print(title)
   
   # calculate top level revenue
@@ -2956,6 +2958,14 @@ def scrape_financial_results_to_json(url):
                     ytd_val = None
 
                     if len(texts) >= 4:
+                        label_1 = texts[1]
+                        if label_1 == "Date of start of reporting period" or label_1 == "Date of end of reporting period":
+                          table_data.append({
+                              "label": label_1,
+                              "period_short": texts[2],
+                              "period_ytd": texts[3]
+                          })
+                          
                         # Clean and parse numbers
                         short_val_str = texts[2].replace(",", "").replace("₹", "").strip()
                         ytd_val_str = texts[3].replace(",", "").replace("₹", "").strip()
