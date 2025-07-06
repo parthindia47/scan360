@@ -2798,15 +2798,19 @@ def convert_financial_results_to_yFin_style(input_data, period='period_short'):
       except (ValueError, TypeError):
           return 0.0
 
-  # Derived fields
+  title = df.loc[df['label'] == 'title', 'period_short'].values[0]
+  print(title)
+  
+  # calculate top level revenue
   revenue = get('revenue from operations')
   if not revenue:
     revenue = get("total revenue from operations")
   interestEarned = get('total interest earned')
   interestExpense = get('interest expenses')
-  if interestEarned != 0:
-    revenue = interestEarned
+  if not revenue and interestEarned != 0:
+    revenue = interestEarned #Banking
   
+  # individual expnese items
   material_cost = get('cost of materials consumed')
   stock_in_trade = get('purchases of stock-in-trade')
   inventory_change = get('changes in inventories of finished goods, work-in-progress and stock-in-trade')
@@ -2815,19 +2819,36 @@ def convert_financial_results_to_yFin_style(input_data, period='period_short'):
     employee_expenses = get('employee cost')
   
   finance_cost = get('finance costs')
+  
   other_expense = get('total other expenses')
   if not other_expense:
     other_expense = get("total other operating expenses")
   if not other_expense:
     other_expense = get('other expenses')
-  operating_expense = get("operating expenses")
-  other_operating_expense = get("other operating expenses")
+  
+  # calculate total expense
+  operating_expense = get("total expenses")
+  if not operating_expense:
+    operating_expense = get("total operating expenses")
+  if not operating_expense:
+    operating_expense = get("operating expenses")
+
+  provisions = get("provisions other than tax and contingencies")
+  
+  #for NBFC change this, also for NBFC total expense already includes finance cost
+  if title == "Financial Results — NBFC":
+    interestExpense = finance_cost
+    finance_cost = 0.0
+    operating_expense = operating_expense - interestExpense
      
   exceptional_items = get('exceptional items')
   other_income = get("other income")
-  depreciation = get('depreciation, depletion and amortisation expense')
   total_other_income = (other_income + exceptional_items)
  
+  #depreciation
+  depreciation = get('depreciation, depletion and amortisation expense')
+    
+  #profit before tax
   profit_before_tax = get("total profit before tax")
   if profit_before_tax == 0:
     profit_before_tax = int(get("total profit (loss) from ordinary activities before tax"))
@@ -2839,20 +2860,20 @@ def convert_financial_results_to_yFin_style(input_data, period='period_short'):
     
     profit_before_tax = float(result)
     
-      
+  #net profit
   net_profit = get("total profit (loss) for period")
   if net_profit == 0:
     net_profit = get("net profit (loss) for the period") 
 
+  #eps
   eps = get("diluted earnings (loss) per share from continuing operations")
   if eps == 0:
     eps = get("diluted earnings per share from continuing operations")
   if eps == 0:
     eps = get("basic earnings per share after extraordinary items")
 
-  total_expense = material_cost + employee_expenses + inventory_change + stock_in_trade + other_expense + \
-                  operating_expense
-                  
+  #derived items
+  total_expense = (operating_expense + provisions)   
   operating_profit = revenue - (total_expense + interestExpense)
   
   if profit_before_tax != 0:
@@ -2912,6 +2933,16 @@ def scrape_financial_results_to_json(url):
 
                 # mark
                 for row in rows:
+                    h3 = row.find("h3")
+                    if h3:
+                        # Add as a label row or tag
+                        table_data.append({
+                            "label": "title",
+                            "period_short": h3.get_text(strip=True),
+                            "period_ytd": h3.get_text(strip=True)
+                        })
+                        continue
+                      
                     cols = row.find_all(["td", "th"])
                     texts = [col.get_text(strip=True) for col in cols]
                     #print(texts)
@@ -3027,13 +3058,20 @@ def nse_xbrl_to_json(url):
         except (TypeError, ValueError):
             return 0.0
 
-    # Now fetch required values
+    title = next((item.get("value") for item in xbrl_data if item.get("tag") == "DescriptionOfSingleSegment"),None)
+    start_date = next((item.get("value") for item in xbrl_data if item.get("tag") == "startDate"),None)
+    end_date = next((item.get("value") for item in xbrl_data if item.get("tag") == "endDate"),None)
+    
+    # calculate top level revenue
     revenue = get("RevenueFromOperations")
+    if not revenue:
+      revenue = get("TotalRevenueFromOperations")
     interestEarned = get("InterestEarned")
     interestExpense = get("InterestExpended")
-    if interestEarned != 0:
+    if not revenue and interestEarned != 0:
       revenue = interestEarned  #Banking
     
+    # individual expnese items
     material_cost = get("CostOfMaterialsConsumed")
     stock_in_trade = get("PurchasesOfStockInTrade")
     inventory_change = get("ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade")
@@ -3042,36 +3080,68 @@ def nse_xbrl_to_json(url):
       employee_expenses = get("EmployeesCost")
       
     finance_cost = get("FinanceCosts")
-    other_expense = get("OtherExpenses")
-    operating_expense = get("OperatingExpenses")
-    other_operating_expense = get("OtherOperatingExpenses")
+    
+    other_expense = get("TotalOtherExpenses")
+    if not other_expense:
+      other_expense = get("TotalOtherOperatingExpenses")
+    if not other_expense:
+      other_expense = get("OtherExpenses")
+    
+    # calculate total expense
+    operating_expense = get("TotalExpenses")
+    if not operating_expense:
+      operating_expense = get("TotalOperatingExpenses")
+    if not operating_expense:
+      operating_expense = get("OperatingExpenses")
+    if not operating_expense:
+      operating_expense = get("Expenses")
+
+    provisions = get("ProvisionsOtherThanTaxAndContingencies")
+    
+    #for NBFC change this, also for NBFC total expense already includes finance cost
+    if title == "NBFC" or title == "Financial Activities":
+      interestExpense = finance_cost
+      finance_cost = 0.0
+      operating_expense = operating_expense - interestExpense
     
     exceptional_items = get("ExceptionalItemsBeforeTax")
     other_income = get("OtherIncome")
     other_company_income = get("ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod")
-    depreciation = get("DepreciationDepletionAndAmortisationExpense")
     total_other_income = (other_income + exceptional_items) - other_company_income
     
+    #depreciation
+    depreciation = get("DepreciationDepletionAndAmortisationExpense")
+    
+    #profit before tax
     profit_before_tax = get("ProfitBeforeTax")
     if profit_before_tax == 0:
       profit_before_tax = get("ProfitLossFromOrdinaryActivitiesBeforeTax") #Banking
-      
+    
+    #net profit
     net_profit = get("ProfitLossForPeriod")
     if net_profit == 0:
       net_profit = get("ProfitLossFromOrdinaryActivitiesAfterTax") #Banking
-      
-    eps = get("DilutedEarningsLossPerShareFromContinuingAndDiscontinuedOperations")
     
-    total_expense = material_cost + employee_expenses + inventory_change + stock_in_trade + other_expense + \
-                    operating_expense
-                    
+    #eps 
+    eps = get("DilutedEarningsLossPerShareFromContinuingOperations")
+    if eps == 0:
+      eps = get("DilutedEarningsPerShareFromContinuingOperations")
+    if eps == 0:
+      eps = get("BasicEarningsPerShareBeforeExtraordinaryItems")
+    
+    #derived items
+    total_expense = (operating_expense + provisions)             
     operating_profit = revenue - (total_expense + interestExpense)
     
     if profit_before_tax != 0:
       tax_per = (profit_before_tax - net_profit)*100/profit_before_tax
     else:
       tax_per = 0
-    opm = operating_profit * 100/revenue
+      
+    if revenue !=0:
+      opm = operating_profit * 100/revenue
+    else:
+      opm = 0
 
     print("Sales                :", revenue)
     print("InterestBanking      :", interestExpense)  #Banking
@@ -3166,8 +3236,11 @@ def nse_xbrl_to_json(url):
 # symbol = "BAJFINANCE"
 # url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_NBFC_INDAS_88426_30042025123348_iXBRL_WEB.html"
 
-symbol = "SHRIRAMFIN"
-url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_NBFC_INDAS_86907_25042025172758_iXBRL_WEB.html"
+# symbol = "SHRIRAMFIN"
+# url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_NBFC_INDAS_86907_25042025172758_iXBRL_WEB.html"
+
+symbol = "BRIGADE"
+url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_90922_14052025232935_iXBRL_WEB.html"
 
 resp = scrape_financial_results_to_json(url)
 nse_df = convert_financial_results_to_yFin_style(resp)
@@ -3178,13 +3251,20 @@ nse_df = convert_financial_results_to_yFin_style(resp)
 
 # compare_dfs(nse_df,yahoo_df)
 
-# data = fetchNseJsonObj(urlType="financialResults", index="equities", symbol="SKMEGGPROD", period="Quarterly")
-# # print(data)
+# ---------------------------------------------------------------------------------------------------------------
+# data = fetchNseJsonObj(urlType="financialResults", index="equities", symbol="UJJIVANSFB", period="Quarterly")
+# print(data)
 # matching_entry = next(
 #     (item for item in data if item.get("toDate") == "31-Dec-2024" and item.get("consolidated") == "Consolidated"),
 #     None
 # )
 # print(matching_entry)
+
+# matching_entry = next(
+#     (item for item in data if item.get("toDate") == "31-Dec-2024"),
+#     None
+# )
+
 
 #ONGC
 # url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118395_1368047_31012025084518.xml"
@@ -3193,7 +3273,7 @@ nse_df = convert_financial_results_to_yFin_style(resp)
 # url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_117297_1348248_16012025081520.xml"
 
 #SUNPHARMA
-# url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_31012025073304.xml"
+url = "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118371_1367891_31012025073304.xml"
 
 #Airtel
 # url =  'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_118975_1373825_06022025101955.xml'
@@ -3209,6 +3289,16 @@ nse_df = convert_financial_results_to_yFin_style(resp)
 
 #SKM
 # url = 'https://nsearchives.nseindia.com/corporate/xbrl/INDAS_119206_1375340_08022025094824.xml'
+
+#BAJFINANCE
+# url = 'https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_118072_1365160_29012025074915.xml'
+
+#SHRIRAMFIN
+# url = 'https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_117665_1360798_24012025070921.xml'
+
+#UJJIVANSFB
+# url = 'https://nsearchives.nseindia.com/corporate/xbrl/BANKING_117578_1359754_23012025075648.xml'
+
 # nse_xbrl_to_json(url)
 
 
