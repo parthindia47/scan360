@@ -2785,7 +2785,7 @@ def nse_html_to_json_results(url, period='period_short'):
   # Convert to DataFrame
   df = pd.DataFrame(input_data)
   df['label'] = df['label'].apply(clean_label)
-  print(df)
+  # print(df)
 
   # Validate period column
   if period not in ['period_short', 'period_ytd']:
@@ -2809,7 +2809,7 @@ def nse_html_to_json_results(url, period='period_short'):
   title = df.loc[df['label'] == 'title', 'period_short'].values[0]
   start_date = df.loc[df['label'] == 'date of start of reporting period', 'period_short'].values[0]
   end_date = df.loc[df['label'] == 'date of end of reporting period', 'period_short'].values[0]
-  print(title)
+  # print(title)
   
   # calculate top level revenue
   revenue = get('revenue from operations')
@@ -3277,24 +3277,24 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
         else:
             df = pd.DataFrame()
             
-        print(df)
+        # print(df)
         try:
             data = fetchNseJsonObj(
                 urlType="integratedResults",
                 index="equities",
                 symbol=symbol
             )
-            print(data)
+            # print(data)
 
             for result_date in result_date_list:
                 # Step 1: Filter entries
                 matching_entries = [
                     item for item in data
-                    if item.get("toDate") == result_date and item.get("consolidated", "") == resultType
+                    if item.get("qe_Date").lower() == result_date.lower() and item.get("consolidated", "") == resultType
                 ]
 
                 if not matching_entries and resultType == "Standalone":
-                    matching_entries = [item for item in data if item.get("toDate") == result_date]
+                    matching_entries = [item for item in data if item.get("qe_Date").lower() == result_date.lower()]
 
                 if not matching_entries:
                     continue
@@ -3313,7 +3313,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
                 if not xbrl_url or not html_url:
                     continue
 
-                to_date = matching_entry.get("toDate")
+                to_date = matching_entry.get("qe_Date")
                 broad_cast_date = matching_entry.get("broadcast_Date")
 
                 # Step 3: Parse HTML XBRL
@@ -3628,7 +3628,7 @@ url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_
 # nseStockList = getAllNseSymbols(local=False)
 # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated")
 
-dummyList = [{"SYMBOL":"BAJAJCON"}]
+dummyList = [{"SYMBOL":"BAJAJELEC"}]
 syncUpNseResults(dummyList)
 
 
