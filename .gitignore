@@ -9,6 +9,7 @@ stock_info/tji/**
 stock_charts_copy/**
 output/**
 stock_results/**
+stock_fillings/**
 
 source/client/node_modules/**
 source/server/node_modules/**
