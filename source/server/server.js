@@ -9,8 +9,8 @@ app.use(cors());
 
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
-const announcementPath = path.join(__dirname, '../../nse_fillings/announcements.csv');
-const stockInfoFilePath = path.join(__dirname, '../../stock_info/merged_stocks_with_industry.csv');
+const announcementPath = path.join(__dirname, '../../stock_fillings/announcements.csv');
+const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {

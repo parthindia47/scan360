@@ -1958,8 +1958,8 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     percent_change = 0
 
     if useNseBhavCopy:
-      #bhavCopy = get_bhavcopy(date(2025, 7, 2))
-      bhavCopy = get_bhavcopy()
+      bhavCopy = get_bhavcopy(date(2025, 7, 7))
+      #bhavCopy = get_bhavcopy()
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -3628,14 +3628,14 @@ url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_
 # nseStockList = getAllNseSymbols(local=False)
 # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated")
 
-dummyList = [{"SYMBOL":"BAJAJELEC"}]
-syncUpNseResults(dummyList)
+# dummyList = [{"SYMBOL":"BAJAJELEC"}]
+# syncUpNseResults(dummyList)
 
 
 
 # **************************** Daily Sync Up ********************************
-# nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+nseStockList = getAllNseSymbols(local=False)
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)

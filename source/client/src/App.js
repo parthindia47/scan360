@@ -4,8 +4,9 @@ import Navbar from './Navbar';
 import Dashboard from './Dashboard';
 import Announcements from './Announcements'; // you will create this
 import SymbolPage from './SymbolPage';
-import SmartMoney from './SmartMoney';
-import NewsEvents from './NewsEvents';
+import UpcomingEvents from './UpcomingEvents';
+import FundRaise from './FundRaise';
+
 import Footer from './Footer';
 
 function App() {
@@ -16,8 +17,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/announcements" element={<Announcements />} />
-          <Route path="/smart_money" element={<SmartMoney />} />
-          <Route path="/news_events" element={<NewsEvents />} />
+          <Route path="/upcoming_events" element={<UpcomingEvents />} />
+          <Route path="/fund_raise" element={<FundRaise />} />
           <Route path="/:symbol" element={<SymbolPage />} /> {/* Dynamic symbol route */}
         </Routes>
       </div>

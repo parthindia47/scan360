@@ -15,8 +15,8 @@ function Navbar() {
       <ul style={{ display: 'flex', gap: '20px', listStyle: 'none', margin: 0, padding: 0 }}>
         <NavLink to="/" style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>Dashboard</NavLink>
         <NavLink to="/announcements" style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>Announcements</NavLink>
-        <NavLink to="/news_events" style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>News & Events</NavLink>
-        <NavLink to="/smart_money" style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>Smart Money</NavLink>
+        <NavLink to="/UpcomingEvents" style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>Upcoming Events</NavLink>
+        <NavLink to="/FundRaise" style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>Fund Raise</NavLink>
       </ul>
     </nav>
   );
