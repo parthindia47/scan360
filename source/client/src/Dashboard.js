@@ -1,18 +1,20 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 
 function Dashboard() {
   const [industries, setIndustries] = useState({});
   const [expanded, setExpanded] = useState({});
-  const [loading, setLoading] = useState(true); // <-- Add loading state
-  const [sortConfig, setSortConfig] = useState({ field: '1D', direction: 'desc' });
+  const [loading, setLoading] = useState(true);
+  const [sortConfigs, setSortConfigs] = useState({});
+  const [activeType, setActiveType] = useState(null); // 🔹 active tab
 
   useEffect(() => {
     axios.get('http://localhost:5000/industries')
       .then(res => {
         setIndustries(res.data);
-        setLoading(false); // <-- Set loading false after data is fetched
+        const types = Object.values(res.data).map(i => i.type || 'Other');
+        setActiveType(types[0]); // 🔹 auto-select first type
+        setLoading(false);
       })
       .catch(error => {
         console.error('Error fetching data', error);
@@ -20,20 +22,34 @@ function Dashboard() {
       });
   }, []);
 
+  const groupedByType = useMemo(() => {
+    const groups = {};
+    Object.entries(industries).forEach(([industry, data]) => {
+      const type = data.type || 'Other';
+      if (!groups[type]) groups[type] = {};
+      groups[type][industry] = data;
+    });
+    return groups;
+  }, [industries]);
+
   const toggleExpand = (industry) => {
     setExpanded(prev => ({ ...prev, [industry]: !prev[industry] }));
   };
 
-  const toggleSort = (field) => {
-    setSortConfig(prev => ({
-      field,
-      direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
-    }));
+  const toggleSort = (type, field) => {
+    setSortConfigs(prev => {
+      const current = prev[type] || { field: '1D', direction: 'desc' };
+      const newDirection = current.field === field && current.direction === 'desc' ? 'asc' : 'desc';
+      return {
+        ...prev,
+        [type]: { field, direction: newDirection }
+      };
+    });
   };
 
   const formatIndustryName = (str) => {
     if (!str) return '';
-    return str.replace(/([a-z])([A-Z])/g, '$1 $2'); // inserts space before capital letter
+    return str.replace(/([a-z])([A-Z])/g, '$1 $2');
   };
 
   const getColorStyle = (value) => {
@@ -45,76 +61,106 @@ function Dashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl mb-4 font-bold">Industry Dashboard</h1>
       {loading ? (
         <div className="text-center p-10">
           <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
           <div className="mt-4 text-blue-700 font-semibold">Loading...</div>
         </div>
+      ) : Object.keys(groupedByType).length === 0 ? (
+        <div className="text-center text-red-500 font-semibold">No industry data available.</div>
       ) : (
-      <>
-      <table className="table-auto w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th>#</th>
-            <th className="p-2 text-left">Industry</th>
-            <th className="sort-header" onClick={() => toggleSort('ltpVs52WHigh')}>
-            LTP vs<br />52W High {sortConfig.field === 'ltpVs52WHigh' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-            </th>
-            <th className="sort-header" onClick={() => toggleSort('1D')}>
-            1D {sortConfig.field === '1D' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-            </th>
-            <th className="sort-header" onClick={() => toggleSort('1W')}>
-            1W {sortConfig.field === '1W' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-            </th>
-            <th className="sort-header" onClick={() => toggleSort('1M')}>
-            1M {sortConfig.field === '1M' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-            </th>
-            <th className="sort-header" onClick={() => toggleSort('3M')}>
-            3M {sortConfig.field === '3M' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-            {Object.entries(industries)
-            .sort(([, a], [, b]) => {
-              const valA = parseFloat(a.weightedReturns[sortConfig.field]) || 0;
-              const valB = parseFloat(b.weightedReturns[sortConfig.field]) || 0;
-              return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
-            })
-            .map(([industry, data], index) => (
-              <React.Fragment key={industry}>
-                <tr className="border-t">
-                  <td>{index + 1}</td> {/* use `index` instead of `idx` */}
-                  <td className="p-2 cursor-pointer text-blue-600" onClick={() => toggleExpand(industry)}>
-                    {expanded[industry] ? '−' : '+'} {formatIndustryName(industry)} {"(" + data.stocks.length + ")"}
-                  </td>
-                  <td style={getColorStyle(data.weightedReturns['ltpVs52WHigh'])}>{data.weightedReturns['ltpVs52WHigh']}</td>
-                  <td style={getColorStyle(data.weightedReturns['1D'])}>{data.weightedReturns['1D']}</td>
-                  <td style={getColorStyle(data.weightedReturns['1W'])}>{data.weightedReturns['1W']}</td>
-                  <td style={getColorStyle(data.weightedReturns['1M'])}>{data.weightedReturns['1M']}</td>
-                  <td style={getColorStyle(data.weightedReturns['3M'])}>{data.weightedReturns['3M']}</td>
-                </tr>
-
-                {/* Expanded stock rows */}
-                {expanded[industry] && data.stocks.map((stock, idx)  => (
-                  <tr className="bg-blue-50 border-t">
-                    <td></td> {/* use `index` instead of `idx` */}
-                    <td className="symbol-cell">
-                      <a href={`/${stock.symbol}`} className="text-blue-600 underline">{stock.symbol}</a>
-                    </td>
-                    <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
-                    <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>
-                    <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
-                    <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>
-                    <td style={getColorStyle(stock.dummyData['3M'])}>{stock.dummyData['3M']}</td>
-                  </tr>
-                ))}
-              </React.Fragment>
+        <>
+          {/* 🔹 Navbar Tabs */}
+          <div className="flex flex-wrap border-b mb-6 space-x-4">
+            {Object.keys(groupedByType).map((type) => (
+              <a
+                key={type}
+                href="#"
+                style={{ marginRight: '1rem' }}  // 👈 1rem = 16px
+                onClick={(e) => {
+                  e.preventDefault(); // prevent page jump
+                  setActiveType(type);
+                }}
+                className={`pb-2 px-3 text-sm font-medium transition duration-150 ease-in-out border-b-2 ${
+                  activeType === type
+                    ? 'border-blue-600 text-blue-600 font-semibold'
+                    : 'border-transparent text-gray-500 hover:text-blue-500 hover:border-blue-300'
+                }`}
+              >
+                {type}
+              </a>
             ))}
-        </tbody>
-      </table>
-      </>
+          </div>
+
+          {/* 🔹 Table for Active Tab */}
+          {activeType && (
+            <>
+              <h2 className="text-xl font-bold mb-2">{activeType}</h2>
+              <table className="table-auto w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th>#</th>
+                    <th className="p-2 text-left">Industry</th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, 'ltpVs52WHigh')}>
+                      LTP vs<br />52W High {sortConfigs[activeType]?.field === 'ltpVs52WHigh' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '1D')}>
+                      1D {sortConfigs[activeType]?.field === '1D' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '1W')}>
+                      1W {sortConfigs[activeType]?.field === '1W' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '1M')}>
+                      1M {sortConfigs[activeType]?.field === '1M' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '3M')}>
+                      3M {sortConfigs[activeType]?.field === '3M' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(groupedByType[activeType] || {})
+                    .sort(([, a], [, b]) => {
+                      const field = sortConfigs[activeType]?.field || '1D';
+                      const direction = sortConfigs[activeType]?.direction || 'desc';
+                      const valA = parseFloat(a.weightedReturns[field]) || 0;
+                      const valB = parseFloat(b.weightedReturns[field]) || 0;
+                      return direction === 'asc' ? valA - valB : valB - valA;
+                    })
+                    .map(([industry, data], index) => (
+                      <React.Fragment key={industry}>
+                        <tr className="border-t">
+                          <td>{index + 1}</td>
+                          <td className="p-2 cursor-pointer text-blue-600" onClick={() => toggleExpand(industry)}>
+                            {expanded[industry] ? '−' : '+'} {formatIndustryName(industry)} {"(" + data.stocks.length + ")"}
+                          </td>
+                          <td style={getColorStyle(data.weightedReturns['ltpVs52WHigh'])}>{data.weightedReturns['ltpVs52WHigh']}</td>
+                          <td style={getColorStyle(data.weightedReturns['1D'])}>{data.weightedReturns['1D']}</td>
+                          <td style={getColorStyle(data.weightedReturns['1W'])}>{data.weightedReturns['1W']}</td>
+                          <td style={getColorStyle(data.weightedReturns['1M'])}>{data.weightedReturns['1M']}</td>
+                          <td style={getColorStyle(data.weightedReturns['3M'])}>{data.weightedReturns['3M']}</td>
+                        </tr>
+
+                        {expanded[industry] && data.stocks.map((stock) => (
+                          <tr className="bg-blue-50 border-t" key={stock.symbol}>
+                            <td></td>
+                            <td className="symbol-cell">
+                              <a href={`/${stock.symbol}`} className="text-blue-600 underline">{stock.symbol}</a>
+                            </td>
+                            <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
+                            <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>
+                            <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
+                            <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>
+                            <td style={getColorStyle(stock.dummyData['3M'])}>{stock.dummyData['3M']}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </>
       )}
     </div>
   );

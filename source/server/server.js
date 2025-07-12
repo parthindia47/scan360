@@ -9,7 +9,8 @@ app.use(cors());
 
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
-const announcementPath = path.join(__dirname, '../../stock_fillings/announcements.csv');
+const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
+const eventsPath = path.join(__dirname, '../../stock_fillings/events_nse.csv');
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const getStockReturns = async (symbolWithNS) => {
@@ -96,7 +97,10 @@ const loadIndustries = async () => {
     .filter(industry => industry !== 'N' && industry !== 'NEW')
     .forEach(industry => {
       if (!industryData[industry]) {
-        industryData[industry] = { stocks: [] };
+        industryData[industry] = {
+          stocks: [],
+          type: row['quoteType'] || 'Other'  // <== Add this line
+        };
       }
       industryData[industry].stocks.push({
         symbol: row['longName'] ? row['longName']  : row['symbol'] ,
@@ -159,6 +163,25 @@ app.get('/api/announcements', (req, res) => {
     })
     .on('end', () => res.json(results))
     .on('error', err => res.status(500).json({ error: 'Failed to load announcements' }));
+});
+
+app.get('/api/events', (req, res) => {
+  const results = [];
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  fs.createReadStream(eventsPath)
+    .pipe(csv())
+    .on('data', (row) => {
+      const dtStr = row.date || '';
+      const parsed = new Date(dtStr);
+
+      if (!isNaN(parsed) && parsed >= twoDaysAgo) {
+        results.push(row);
+      }
+    })
+    .on('end', () => res.json(results))
+    .on('error', err => res.status(500).json({ error: 'Failed to load events' }));
 });
 
 app.listen(5000, () => {
