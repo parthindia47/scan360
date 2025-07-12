@@ -116,6 +116,12 @@ function Dashboard() {
                     <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '3M')}>
                       3M {sortConfigs[activeType]?.field === '3M' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
                     </th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '6M')}>
+                      6M {sortConfigs[activeType]?.field === '6M' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="sort-header cursor-pointer" onClick={() => toggleSort(activeType, '1Y')}>
+                      1Y {sortConfigs[activeType]?.field === '1Y' && (sortConfigs[activeType].direction === 'asc' ? '↑' : '↓')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -139,6 +145,8 @@ function Dashboard() {
                           <td style={getColorStyle(data.weightedReturns['1W'])}>{data.weightedReturns['1W']}</td>
                           <td style={getColorStyle(data.weightedReturns['1M'])}>{data.weightedReturns['1M']}</td>
                           <td style={getColorStyle(data.weightedReturns['3M'])}>{data.weightedReturns['3M']}</td>
+                          <td style={getColorStyle(data.weightedReturns['6M'])}>{data.weightedReturns['6M'] || '-'}</td>
+                          <td style={getColorStyle(data.weightedReturns['1Y'])}>{data.weightedReturns['1Y'] || '-'}</td>
                         </tr>
 
                         {expanded[industry] && data.stocks.map((stock) => (
@@ -152,6 +160,8 @@ function Dashboard() {
                             <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
                             <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>
                             <td style={getColorStyle(stock.dummyData['3M'])}>{stock.dummyData['3M']}</td>
+                            <td style={getColorStyle(stock.dummyData['6M'])}>{stock.dummyData['6M'] || '-'}</td>
+                            <td style={getColorStyle(stock.dummyData['1Y'])}>{stock.dummyData['1Y'] || '-'}</td>
                           </tr>
                         ))}
                       </React.Fragment>

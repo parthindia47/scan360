@@ -9,13 +9,34 @@ app.use(cors());
 
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
+const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
+
 const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
 const eventsPath = path.join(__dirname, '../../stock_fillings/events_nse.csv');
-const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
+const upcomingIssuesPath = path.join(__dirname, '../../stock_fillings/upcomingIssues_nse.csv');
+const forthcomingListingPath = path.join(__dirname, '../../stock_fillings/forthcomingListing_nse.csv');
+
+const rightsFilingsPath = path.join(__dirname, '../../stock_fillings/rightsFilings_nse.csv');
+const qipFilingsPath = path.join(__dirname, '../../stock_fillings/qipFilings_nse.csv');
+const prefIssuePath = path.join(__dirname, '../../stock_fillings/prefIssue_nse.csv');
+const schemeOfArrangementPath = path.join(__dirname, '../../stock_fillings/schemeOfArrangement_nse.csv');
+
+const csvPaths = {
+  announcements: announcementPath,
+  events: eventsPath,
+  upcomingIssues: upcomingIssuesPath,
+  forthcomingListing: forthcomingListingPath,
+  rightsFilings: rightsFilingsPath,
+  qipFilings: qipFilingsPath,
+  prefIssue: prefIssuePath,
+  schemeOfArrangement: schemeOfArrangementPath,
+};
+
 
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
-    return { '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A' };
+      return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 
+        'ltpVs52WHigh': 'N/A' });
   }
 
   // use .BO for BSE
@@ -25,7 +46,8 @@ const getStockReturns = async (symbolWithNS) => {
   const candles = [];
 
   if (!fs.existsSync(csvPath)) {
-    return { '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A' };
+      return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 
+        'ltpVs52WHigh': 'N/A' });
   }
 
   return new Promise((resolve) => {
@@ -38,7 +60,8 @@ const getStockReturns = async (symbolWithNS) => {
       })
       .on('end', () => {
         if (candles.length < 2) {
-          return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A' });
+            return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 
+              'ltpVs52WHigh': 'N/A' });
         }
 
         const latest = candles[candles.length - 1];
@@ -68,11 +91,13 @@ const getStockReturns = async (symbolWithNS) => {
           '1W': calc(5),
           '1M': calc(22),
           '3M': calc(66),
+          '6M': calc(132),    // approx. 6 months (22 trading days × 6)
+          '1Y': calc(252),    // approx. 1 year
           'ltpVs52WHigh': ltpVs52WHigh
         });
       })
       .on('error', () => {
-        resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A' });
+        resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A' });
       });
   });
 };
@@ -133,6 +158,8 @@ const loadIndustries = async () => {
       '1W': weightedAverage('1W'),
       '1M': weightedAverage('1M'),
       '3M': weightedAverage('3M'),
+      '6M': weightedAverage('6M'),
+      '1Y': weightedAverage('1Y'),
       'ltpVs52WHigh': weightedAverage('ltpVs52WHigh')
     };
   }
@@ -183,6 +210,31 @@ app.get('/api/events', (req, res) => {
     .on('end', () => res.json(results))
     .on('error', err => res.status(500).json({ error: 'Failed to load events' }));
 });
+
+// ========================================================================
+
+app.get('/api_2/:type', (req, res) => {
+  const { type } = req.params;
+
+  const filePath = csvPaths[type];
+  if (!filePath) {
+    return res.status(400).json({ error: `Unknown type '${type}'` });
+  }
+
+  const results = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv())
+    .on('data', (row) => {
+      results.push(row);
+    })
+    .on('end', () => res.json(results))
+    .on('error', err => {
+      console.error(`Error reading file for type '${type}':`, err);
+      res.status(500).json({ error: `Failed to load data for type '${type}'` });
+    });
+});
+
 
 app.listen(5000, () => {
   console.log('Server running on port 5000');

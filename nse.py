@@ -3784,7 +3784,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # syncUpAllNseFillings()
 
-fetchAllNseFillings()
+# recalculateYFinStockInfo()
 
 # *************************************************************************
 
