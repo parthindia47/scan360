@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Sparklines, SparklinesLine } from "react-sparklines";
 import axios from 'axios';
 
 function Dashboard() {
@@ -151,9 +152,26 @@ function Dashboard() {
 
                         {expanded[industry] && data.stocks.map((stock) => (
                           <tr className="bg-blue-50 border-t" key={stock.symbol}>
-                            <td></td>
+                            <td>
+                              {/* Sparkline Chart */}
+                              <Sparklines data={stock.sparklineData} height={20} width={100}>
+                                <SparklinesLine color="blue" style={{ strokeWidth: 1, fill: "none" }} />
+                              </Sparklines>
+                            </td>
                             <td className="symbol-cell">
-                              <a href={`/${stock.symbol}`} className="text-blue-600 underline">{stock.symbol}</a>
+                              <a
+                                href={`symbol/${stock.symbol}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline"
+                              >
+                                {stock.symbol}
+                              </a>
+                              {" (CMP ₹" + (stock.price ?? 0).toFixed(2) + ")"}
+                              <br />
+                              {"PE " + (stock.pe ?? 0).toFixed(2) +
+                              " | ROE " + ((stock.roe ?? 0) * 100).toFixed(2) + "%" +
+                              " | Mcap ₹" + ((stock.marketCap ?? 0) / 1e7).toFixed(2) + " Cr"}
                             </td>
                             <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
                             <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>

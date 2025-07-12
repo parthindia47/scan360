@@ -19,7 +19,7 @@ function App() {
           <Route path="/announcements" element={<Announcements />} />
           <Route path="/upcoming_events" element={<UpcomingEvents />} />
           <Route path="/fund_raise" element={<FundRaise />} />
-          <Route path="/:symbol" element={<SymbolPage />} /> {/* Dynamic symbol route */}
+          <Route path="symbol/:symbol" element={<SymbolPage />} /> {/* Dynamic symbol route */}
         </Routes>
       </div>
       <Footer />

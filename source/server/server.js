@@ -129,7 +129,11 @@ const loadIndustries = async () => {
       }
       industryData[industry].stocks.push({
         symbol: row['longName'] ? row['longName']  : row['symbol'] ,
-        marketCap: parseFloat(row['marketCap'] || '0'), // read market cap safely
+        marketCap: parseFloat(row['marketCap'] || '0'),
+        price: parseFloat(row['currentPrice'] || '0'),
+        pe: parseFloat(row['trailingPE'] || '0'),
+        roe: parseFloat(row['returnOnEquity'] || '0'),
+        sparklineData: [1,2,3,10,5,6,7,20,3,4],
         dummyData: {
           weight: 1,
           ...realReturns
