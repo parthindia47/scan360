@@ -1138,7 +1138,8 @@ def fetchNseJsonObj(urlType,
                                   period=period)
         jsonObj = fetchGetJson(jsonUrl, cookies)
         if urlType=="forthcomingListing" or urlType=="prefIssue" or urlType=="integratedResults":
-          jsonObj = jsonObj["data"]
+          if jsonObj:
+            jsonObj = jsonObj["data"]
 
         # Extend the list with the fetched data
         if jsonObj:
@@ -1336,16 +1337,16 @@ def getDateKeyForNseDocument(urlType):
       "announcement":"an_dt",
       
       "events":"date",
-      "forthcomingListing":"effectiveDate",
-      "upcomingIssues":"issueEndDate",
+      "forthcomingListing":"effectiveDate",  #no date needed
+      "upcomingIssues":"issueEndDate",       #no date needed
       
-      "rightsFilings":"draftDate",
-      "qipFilings":"date",
-      "prefIssue":"boardResDate",
-      "schemeOfArrangement":"date",
+      "rightsFilings":"draftDate",   #done
+      "qipFilings":"date",           #done
+      "prefIssue":"boardResDate",    #done
+      "schemeOfArrangement":"date",  #done
       
-      #results
-      "integratedResults":"broadcast_Date"
+      #results - "broadcast_Date" and "revised_Date" are combined
+      "integratedResults":"creation_Date"   #done
   }
   
   return date_key_dict[urlType]
@@ -1360,7 +1361,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   
   # Convert the list of dictionaries to a DataFrame
   df = pd.DataFrame(jsonObj)
-  df[date_key] = pd.to_datetime(df[date_key], format='%d-%b-%y', errors='coerce')
+  df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
 
   # compute hash of all rows
@@ -1810,15 +1811,13 @@ Returns:
 Example:
 fetchNseDocuments(urlType="announcement",
                   index="equities",
-                  start_date=datetime(2025, 6, 20), 
-                  end_date=datetime(2025, 6, 23),
-                  file_name="stock_fillings/announcements_" + formatted_datetime + ".csv")
+                  start_date=datetime(2025, 6, 1), 
+                  end_date=datetime(2025, 7, 12))
 
 fetchNseDocuments(urlType="events",
                   index="equities",
-                  start_date=datetime(2025, 6, 20), 
-                  end_date=datetime(2025, 6, 23),
-                  file_name="stock_fillings/events_" + formatted_datetime + ".csv")
+                  start_date=datetime(2025, 6, 1), 
+                  end_date=datetime(2025, 7, 12))
 
 fetchNseDocuments("upcomingIssues")
 
@@ -1849,30 +1848,38 @@ fetchNseDocuments(urlType="integratedResults",
                   start_date=datetime(2025, 6, 1), 
                   end_date=datetime(2025, 7, 12))
 '''
-def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_name=None):
+def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_name=None, cookies=None):
 
   if not file_name:
     file_name = getOutputCsvFile(urlType)
-    
-  master_json_list = fetchNseJsonObj(urlType=urlType, index=index, fromDate=start_date, toDate=end_date)
+  
+  try:
+    master_json_list = fetchNseJsonObj(urlType=urlType, 
+                                       index=index, 
+                                       fromDate=start_date, 
+                                       toDate=end_date, 
+                                       cookies=cookies)
+    #print(master_json_list)
+    total_entries = len(master_json_list)
+    print("total entries " + str(total_entries))
 
-  print(master_json_list)
-  total_entries = len(master_json_list)
-  print("total entries " + str(total_entries))
+    # Convert the list of dictionaries to a DataFrame
+    if total_entries:
+      df = processJsonToDfForNseDocument(master_json_list, urlType)
+      df.reset_index(drop=True)
+      df.set_index('hash', inplace=True)
 
-  # Convert the list of dictionaries to a DataFrame
-  if total_entries:
-    df = processJsonToDfForNseDocument(master_json_list, urlType)
-    df.reset_index(drop=True)
-    df.set_index('hash', inplace=True)
+      #remove if any duplicate
+      df = df[~df.index.duplicated()]
+      df.to_csv(file_name, encoding='utf-8')
 
-    #remove if any duplicate
-    df = df[~df.index.duplicated()]
-    df.to_csv(file_name, encoding='utf-8')
-
-    print("Data saved to " + file_name)
-  else:
-    print("Empty data in JSON")
+      print(">>> Data saved to " + file_name)
+    else:
+      print("Empty data in JSON")
+      
+  except Exception as e:
+      print(urlType, " - An error occurred:", e)
+      traceback.print_exc()  # <-- this prints the full stack trace with line number
 
 '''
 This function reads announcement list and finds 3D, 5D and 10D stock movement 
@@ -1968,17 +1975,8 @@ and concat the data and saves it.
 
 note:
 if there is no default index then pandas allot incremental numbers and index.
-
-# resp = fetchNseJsonObj(urlType="rightsFilings", index="equities")
-# print(resp)
-
-# resp = fetchNseJsonObj(urlType="qipFilings", index="qip")
-# print(resp)
-
-# resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
-# print(resp)
 '''
-def syncUpNseDocuments(urlType, offsetDays=0):
+def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
     
   csv_filename = getOutputCsvFile(urlType)
   current_date = datetime.now()
@@ -1989,36 +1987,50 @@ def syncUpNseDocuments(urlType, offsetDays=0):
   date_key = getDateKeyForNseDocument(urlType)
   
   # Parse the 'Date' column as datetime
-  df[date_key] = pd.to_datetime(df[date_key]) 
+  df[date_key] = pd.to_datetime(df[date_key])
 
   last_row_date = df.iloc[-1][date_key]    
   start_date = last_row_date
   end_date = current_date + timedelta(days=offsetDays)  # Apply offset to end date
+  
+  # no date needed for this two
+  if urlType == "upcomingIssues" or urlType == "forthcomingListing":
+    start_date = None
+    end_date = None
 
-  print("offsetDays",offsetDays,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
+  #print("offsetDays",offsetDays,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
+  try:
+    master_json_list = fetchNseJsonObj(urlType=urlType, 
+                                      index=getIndexForNseDocuments(urlType), 
+                                      fromDate=start_date, 
+                                      toDate=end_date,
+                                      cookies=cookies)
+    df_new = processJsonToDfForNseDocument(master_json_list, urlType)
+            
+    df.reset_index(drop=True)
+    df.set_index('hash', inplace=True)
+    # print("df")
+    # print(df)
 
-  master_json_list = fetchNseJsonObj(urlType=urlType, index="equities", fromDate=start_date, toDate=end_date)
-  df_new = processJsonToDfForNseDocument(master_json_list, urlType)
-           
-  df.reset_index(drop=True)
-  df.set_index('hash', inplace=True)
-  # print("df")
-  # print(df)
+    df_new.reset_index(drop=True)
+    df_new.set_index('hash', inplace=True)
+    # print("df_new")
+    # print(df_new)
 
-  df_new.reset_index(drop=True)
-  df_new.set_index('hash', inplace=True)
-  # print("df_new")
-  # print(df_new)
+    concatenated_df = pd.concat([df, df_new])
+    concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
+    concatenated_df.reset_index(inplace=True)
+    # print("concatenated_df")
+    # print(concatenated_df)
 
-  concatenated_df = pd.concat([df, df_new])
-  concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
-  concatenated_df.reset_index(inplace=True)
-  # print("concatenated_df")
-  # print(concatenated_df)
+    concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
+    print(">>> saved " + csv_filename)
 
-  concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
-  print("saved " + csv_filename)
-
+  except Exception as e:
+      print(urlType, " - An error occurred:", e)
+      traceback.print_exc()  # <-- this prints the full stack trace with line number
+      
+      
 '''
 Reads the current csv file finds the last entries and fetch the data after that.
 and concat the data and saves it.
@@ -2127,10 +2139,95 @@ def syncUpYahooFinOtherSymbols():
     symbolList = getJsonFromCsvForSymbols(symbolType)
     print(symbolList)
     syncUpYFinTickerCandles(symbolList,symbolType,delaySec=5)
-    
+
+def getIndexForNseDocuments(urlType):
+    index_type = {
+        "announcement":"equities",
+        #events
+        "events":"equities",
+        "upcomingIssues":None,
+        "forthcomingListing":None,
+        #fund raise
+        "rightsFilings":"equities",
+        "qipFilings":"qip",
+        "prefIssue":"inListing",
+        "schemeOfArrangement":"equities",
+        #results
+        "integratedResults":"equities",
+    }
+    return index_type[urlType]
+   
 def syncUpAllNseFillings():
-  syncUpNseDocuments(urlType="announcement")
-  syncUpNseDocuments(urlType="events",offsetDays=10)
+  response = fetchUrl(getBaseUrl(urlType="announcement"))
+  cookies = response.cookies
+  
+  syncUpNseDocuments(urlType="announcement", cookies=cookies)
+  syncUpNseDocuments(urlType="events",offsetDays=10, cookies=cookies)
+  syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
+  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  pass
+
+'''
+"prefIssue" , "forthcomingListing"
+UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+'''
+def fetchAllNseFillings():
+  
+  response = fetchUrl(getBaseUrl(urlType="announcement"))
+  cookies = response.cookies
+  
+  fetchNseDocuments(urlType="announcement",
+                  index="equities",
+                  start_date=datetime(2025, 6, 1), 
+                  end_date=datetime(2025, 7, 12),
+                  cookies=cookies)
+  
+  fetchNseDocuments(urlType="events",
+                    index="equities",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
+  
+  fetchNseDocuments("upcomingIssues", cookies=cookies)
+
+  fetchNseDocuments("forthcomingListing", cookies=cookies)
+  
+  fetchNseDocuments(urlType="rightsFilings",
+                    index="equities",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
+  
+  fetchNseDocuments(urlType="qipFilings",
+                    index="qip",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
+  
+  fetchNseDocuments(urlType="prefIssue",
+                    index="inListing",
+                    start_date=datetime(2025, 6, 1),
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
+  
+  fetchNseDocuments(urlType="schemeOfArrangement",
+                    index="equities",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
+  
+  fetchNseDocuments(urlType="integratedResults",
+                    index="equities",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
+  pass
+  
 
 '''
 use separate = True if you want to store current delta in a separate file, it 
@@ -3373,7 +3470,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
                 # Step 2: Choose most recent entry by broadCastDate
                 def parse_broadcast(item):
                     try:
-                        return datetime.strptime(item.get("broadcast_Date", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
+                        return datetime.strptime(item.get("creation_Date", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
                     except:
                         return datetime.min
 
@@ -3385,7 +3482,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
                     continue
 
                 to_date = matching_entry.get("qe_Date")
-                broad_cast_date = matching_entry.get("broadcast_Date")
+                broad_cast_date = matching_entry.get("creation_Date")
 
                 # Step 3: Parse HTML XBRL
                 print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
@@ -3542,9 +3639,6 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # url = 'https://nsearchives.nseindia.com/corporate/xbrl/BANKING_117578_1359754_23012025075648.xml'
 
 # nse_xbrl_to_json(url)
-
-
-
   
 # resp = fetchNseJsonObj(urlType="resultsComparison", index="equities", symbol="RELIANCE")
 # print(resp)
@@ -3613,29 +3707,6 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # getPercentageChange(None,datetime(2024, 2, 1))
 
 # syncUpCalculatePercentageForAnnouncement()
-
-# fetchNseDocuments(urlType="announcement",
-#                   start_date=datetime(2025, 6, 20), 
-#                   end_date=datetime(2025, 6, 23),
-#                   file_name="stock_fillings/announcements_" + formatted_datetime + ".csv")
-
-# fetchNseDocuments(urlType="events",
-#                   start_date=datetime(2025, 6, 20), 
-#                   end_date=datetime(2025, 6, 23),
-#                   file_name="stock_fillings/events_" + formatted_datetime + ".csv")
-
-# fetchNseDocuments(urlType="announcement",
-#                   start_date=datetime(2025, 6, 20), 
-#                   end_date=datetime(2025, 6, 23),
-#                   file_name=None)
-# syncUpNseDocuments(urlType="announcement")
-
-# fetchNseDocuments(urlType="events",
-#                   start_date=datetime(2025, 6, 20), 
-#                   end_date=datetime(2025, 6, 23),
-#                   file_name=None)
-# syncUpNseDocuments(urlType="events", offsetDays=10)
-# syncUpNseDocuments(urlType="announcement")
 #updatePercentageForAnnouncements()
 
 # downloadFileFromUrl("https://nsearchives.nseindia.com/corporate/Announcement_01012018094304_154.zip",
@@ -3702,35 +3773,6 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # dummyList = [{"SYMBOL":"BAJAJELEC"}]
 # syncUpNseResults(dummyList)
 
-# fetchNseDocuments("upcomingIssues")
-# fetchNseDocuments("forthcomingListing")
-
-# fetchNseDocuments(urlType="rightsFilings",
-#                   index="equities",
-#                   start_date=datetime(2025, 6, 1), 
-#                   end_date=datetime(2025, 7, 12))
-
-# fetchNseDocuments(urlType="qipFilings",
-#                   index="qip",
-#                   start_date=datetime(2025, 6, 1), 
-#                   end_date=datetime(2025, 7, 12))
-
-# fetchNseDocuments(urlType="prefIssue",
-#                   index="inListing",
-#                   start_date=datetime(2025, 6, 1),
-#                   end_date=datetime(2025, 7, 12))
-
-# fetchNseDocuments(urlType="schemeOfArrangement",
-#                   index="equities",
-#                   start_date=datetime(2025, 6, 1), 
-#                   end_date=datetime(2025, 7, 12))
-
-# fetchNseDocuments(urlType="integratedResults",
-#                   index="equities",
-#                   start_date=datetime(2025, 6, 1), 
-#                   end_date=datetime(2025, 7, 12))
-
-
 # **************************** Daily Sync Up ********************************
 # nseStockList = getAllNseSymbols(local=False)
 # syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
@@ -3741,6 +3783,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # syncUpYahooFinOtherSymbols()
 
 # syncUpAllNseFillings()
+
+fetchAllNseFillings()
 
 # *************************************************************************
 
