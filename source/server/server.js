@@ -35,19 +35,21 @@ const csvPaths = {
 
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
-      return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 
-        'ltpVs52WHigh': 'N/A' });
+    return resolve({
+      '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+      '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+    });
   }
 
-  // use .BO for BSE
   const symbol = symbolWithNS.replace('.NS', '');
   const csvPath = path.join(candleDataFolder, `${symbol}.csv`);
-  
   const candles = [];
 
   if (!fs.existsSync(csvPath)) {
-      return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 
-        'ltpVs52WHigh': 'N/A' });
+    return resolve({
+      '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+      '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+    });
   }
 
   return new Promise((resolve) => {
@@ -60,23 +62,21 @@ const getStockReturns = async (symbolWithNS) => {
       })
       .on('end', () => {
         if (candles.length < 2) {
-            return resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 
-              'ltpVs52WHigh': 'N/A' });
+          return resolve({
+            '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+            '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+          });
         }
 
         const latest = candles[candles.length - 1];
-        // Take last 252 business days (or whatever is available)
         const last252Candles = candles.slice(Math.max(candles.length - 252, 0));
-
-        // Find maximum close price in last 252 days
         const highest52WClose = Math.max(...last252Candles);
 
-        // Calculate LTP vs 52W High
         let ltpVs52WHigh = 'N/A';
         if (highest52WClose !== 0) {
           ltpVs52WHigh = (((latest - highest52WClose) / highest52WClose) * 100).toFixed(2) + '%';
         }
-        
+
         const calc = (indexAgo) => {
           if (candles.length > indexAgo) {
             const old = candles[candles.length - 1 - indexAgo];
@@ -86,21 +86,29 @@ const getStockReturns = async (symbolWithNS) => {
           return 'N/A';
         };
 
+        // Get last 20 days candles (oldest first)
+        const last20Candles = candles.slice(-20);
+
         resolve({
           '1D': calc(1),
           '1W': calc(5),
           '1M': calc(22),
           '3M': calc(66),
-          '6M': calc(132),    // approx. 6 months (22 trading days × 6)
-          '1Y': calc(252),    // approx. 1 year
-          'ltpVs52WHigh': ltpVs52WHigh
+          '6M': calc(132),
+          '1Y': calc(252),
+          'ltpVs52WHigh': ltpVs52WHigh,
+          '1M_candle': last20Candles
         });
       })
       .on('error', () => {
-        resolve({ '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A', '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A' });
+        resolve({
+          '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+          '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+        });
       });
   });
 };
+
 
 
 const loadIndustries = async () => {
@@ -115,7 +123,6 @@ const loadIndustries = async () => {
 
   for (const row of results) {
     const industries = row['tjiIndustry']?.split('\\').flatMap(i => i.split('/').map(s => s.trim())) || [];
-
     const realReturns = await getStockReturns(row['symbol']);
 
     industries
@@ -128,12 +135,13 @@ const loadIndustries = async () => {
         };
       }
       industryData[industry].stocks.push({
-        symbol: row['longName'] ? row['longName']  : row['symbol'] ,
+        symbol: row['symbol'].replace('.NS', ''),
+        name: row['longName'] ? row['longName']  : row['symbol'].replace('.NS', ''),
         marketCap: parseFloat(row['marketCap'] || '0'),
         price: parseFloat(row['currentPrice'] || '0'),
         pe: parseFloat(row['trailingPE'] || '0'),
         roe: parseFloat(row['returnOnEquity'] || '0'),
-        sparklineData: [1,2,3,10,5,6,7,20,3,4],
+        sparklineData: realReturns['1M_candle'],
         dummyData: {
           weight: 1,
           ...realReturns
@@ -237,6 +245,66 @@ app.get('/api_2/:type', (req, res) => {
       console.error(`Error reading file for type '${type}':`, err);
       res.status(500).json({ error: `Failed to load data for type '${type}'` });
     });
+});
+
+// ========================================================================
+/* returns
+{
+  "close": [<oldest>, ..., <latest>],
+  "volume": [<oldest>, ..., <latest>]
+}
+*/
+
+const formatDate = (rawDateStr) => {
+  const dateObj = new Date(rawDateStr);
+  if (isNaN(dateObj)) return rawDateStr; // fallback in case of bad date
+  return dateObj.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+app.get('/api_2/candles/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  const filePath = path.join(candleDataFolder, `${symbol}.csv`);
+
+  const result = {
+    close: [],
+    volume: [],
+    date: []
+  };
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `Data for symbol '${symbol}' not found.` });
+  }
+
+  fs.createReadStream(filePath)
+  .pipe(csv())
+  .on('data', (row) => {
+    const closeVal = parseFloat(parseFloat(row['Close']).toFixed(2));
+    const volumeVal = parseFloat(row['Volume']);
+    const dateVal = row['Date'];
+
+    if (!isNaN(closeVal)) {
+      result.close.push(closeVal);
+    }
+
+    if (!isNaN(volumeVal)) {
+      result.volume.push(volumeVal);
+    }
+
+    if (dateVal) {
+      const formattedDate = formatDate(dateVal); // ✅ format the date
+      result.date.push(formattedDate);
+    }
+  })
+  .on('end', () => res.json(result))
+  .on('error', (err) => {
+    console.error(`Error reading CSV for '${symbol}':`, err);
+    res.status(500).json({ error: `Failed to load data for symbol '${symbol}'` });
+  });
+
 });
 
 

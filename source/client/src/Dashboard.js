@@ -77,7 +77,6 @@ function Dashboard() {
               <a
                 key={type}
                 href="#"
-                style={{ marginRight: '1rem' }}  // 👈 1rem = 16px
                 onClick={(e) => {
                   e.preventDefault(); // prevent page jump
                   setActiveType(type);
@@ -96,7 +95,6 @@ function Dashboard() {
           {/* 🔹 Table for Active Tab */}
           {activeType && (
             <>
-              <h2 className="text-xl font-bold mb-2">{activeType}</h2>
               <table className="table-auto w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-100">
@@ -151,11 +149,11 @@ function Dashboard() {
                         </tr>
 
                         {expanded[industry] && data.stocks.map((stock) => (
-                          <tr className="bg-blue-50 border-t" key={stock.symbol}>
+                          <tr className="bg-blue-50 border-t" key={stock.name}>
                             <td>
                               {/* Sparkline Chart */}
                               <Sparklines data={stock.sparklineData} height={20} width={100}>
-                                <SparklinesLine color="blue" style={{ strokeWidth: 1, fill: "none" }} />
+                                <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
                             </td>
                             <td className="symbol-cell">
@@ -165,7 +163,7 @@ function Dashboard() {
                                 rel="noopener noreferrer"
                                 className="text-blue-600 underline"
                               >
-                                {stock.symbol}
+                                {stock.name}
                               </a>
                               {" (CMP ₹" + (stock.price ?? 0).toFixed(2) + ")"}
                               <br />

@@ -305,6 +305,12 @@ def setup_logger(printing=False):
 logger1 = setup_logger()
 # ========================================================================
 # ========================== Helper Function =============================
+def normalize_to_date(data_or_datetime):
+  if isinstance(data_or_datetime, datetime):
+      return data_or_datetime.date()
+  else:
+      return data_or_datetime  # already a date
+
 def rupees_to_crores(rupees):
     crores = rupees / 10000000
     return crores
@@ -1117,6 +1123,7 @@ def fetchNseJsonObj(urlType,
       return jsonObjMaster  
       
     # Ensure step is set properly if start and end dates are the same or close together
+    # print("start_date ", start_date, " final_end_date ", final_end_date)
     if start_date == final_end_date:
         step = 0  # If dates are the same, no step needed
     elif (final_end_date - start_date).days < step:
@@ -2048,8 +2055,8 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
     percent_change = 0
 
     if useNseBhavCopy:
-      bhavCopy = get_bhavcopy(date(2025, 7, 11))
-      #bhavCopy = get_bhavcopy()
+      #bhavCopy = get_bhavcopy(date(2025, 7, 11))
+      bhavCopy = get_bhavcopy()
 
     for idx, obj in enumerate(nseStockList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -2291,13 +2298,19 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
             df['Date'] = pd.to_datetime(df['Date']) 
 
             last_row_date = df.iloc[-1]['Date']
+            last_row_date = normalize_to_date(last_row_date)
             start_date = last_row_date + timedelta(days=1) # next day
             end_date = current_date + timedelta(days=1)
 
-            if last_row_date.date() >= current_date:
+            if last_row_date >= current_date:
             #if last_row_date.date() >= date(2025, 4, 25):
                 print("All Synced up, skipping ...")
                 continue
+                          
+            # if isinstance(start_date, datetime):
+            #     start_date = start_date.date()
+            # else:
+            #     start_date = start_date  # already a date
             
             if useNseBhavCopy:
               #1. fetch all bhav copies for given dates - remove holidays and weekends
@@ -3782,9 +3795,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # syncUpYahooFinOtherSymbols()
 
+recalculateYFinStockInfo()
+
 # syncUpAllNseFillings()
-
-# recalculateYFinStockInfo()
-
 # *************************************************************************
 

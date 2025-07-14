@@ -54,6 +54,8 @@ The server runs on **Node.js** and uses **Express**.
 
 The client is a **React** app created with **Create React App (CRA)**.
 
+NOTE MUST use npm install -D tailwindcss@3 postcss autoprefixer
+
 ### 📍 Steps:
 
 1. Open a new terminal and go to the `client/` folder:

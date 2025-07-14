@@ -8,7 +8,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.5.3",
     "react-scripts": "5.0.1",
-    "react-sparklines": "^1.7.0"
+    "react-sparklines": "^1.7.0",
+    "recharts": "^3.1.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -27,5 +28,12 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-cli": "^0.1.2"
   }
 }
