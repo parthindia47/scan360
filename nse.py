@@ -1674,20 +1674,21 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
       print("saved " + csv_filename)
 
 
-def recalculate_financials(row, current_price, volume):
+def recalculate_financials(row, current_price, volume, type):
     updated_row = row.copy()
 
-    try:
-        if pd.notna(row.get('trailingEps')) and row['trailingEps'] != 0:
-            updated_row['trailingPE'] = current_price / row['trailingEps']
-        if pd.notna(row.get('forwardEps')) and row['forwardEps'] != 0:
-            updated_row['forwardPE'] = current_price / row['forwardEps']
-        if pd.notna(row.get('sharesOutstanding')):
-            updated_row['marketCap'] = current_price * row['sharesOutstanding']
-        if pd.notna(row.get('bookValue')) and row['bookValue'] != 0:
-            updated_row['priceToBook'] = current_price / row['bookValue']
-    except Exception as e:
-        print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
+    if type == "NSE":
+      try:
+          if pd.notna(row.get('trailingEps')) and row['trailingEps'] != 0:
+              updated_row['trailingPE'] = current_price / row['trailingEps']
+          if pd.notna(row.get('forwardEps')) and row['forwardEps'] != 0:
+              updated_row['forwardPE'] = current_price / row['forwardEps']
+          if pd.notna(row.get('sharesOutstanding')):
+              updated_row['marketCap'] = current_price * row['sharesOutstanding']
+          if pd.notna(row.get('bookValue')) and row['bookValue'] != 0:
+              updated_row['priceToBook'] = current_price / row['bookValue']
+      except Exception as e:
+          print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
 
     updated_row['currentPrice'] = current_price
     updated_row['volume'] = volume
@@ -1716,24 +1717,33 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
       print("No local file exists")
       return
 
-    for idx, row in df.iterrows():
-      # ✅ Skip rows that are not NSE EQUITY
-      if row.get("fullExchangeName") != "NSE" or row.get("quoteType") != "EQUITY":
-          continue
-      
-      symbol = row["symbol"].replace(".NS", "")
-      row_bhavCopy = bhavCopy[
-          (bhavCopy['SYMBOL'] == symbol.upper()) &
-          (bhavCopy['SERIES'].str.strip().isin(['EQ', 'BE', 'BZ']))
-      ]
 
-      if not row_bhavCopy.empty:
-        close_price = row_bhavCopy.iloc[0]["CLOSE_PRICE"]
-        volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
-        
-        df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume)
-      else:
-        bhavcopy_not_found_tickers.append(symbol)
+    for idx, row in df.iterrows():
+      try:
+        if row.get("fullExchangeName") == "NSE" and row.get("quoteType") == "EQUITY":
+          # NSE Tickers
+          symbol = row["symbol"].replace(".NS", "")
+          row_bhavCopy = bhavCopy[
+              (bhavCopy['SYMBOL'] == symbol.upper()) &
+              (bhavCopy['SERIES'].str.strip().isin(['EQ', 'BE', 'BZ']))
+          ]
+
+          if not row_bhavCopy.empty:
+            close_price = row_bhavCopy.iloc[0]["CLOSE_PRICE"]
+            volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
+            
+            df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, type="NSE")
+        else:
+          # Other Tickers
+          symbol_csv_filename = "stock_charts\\" + row["symbol"] + ".csv"
+          df_symbol = pd.read_csv(symbol_csv_filename)
+
+          close_price = df_symbol.iloc[-1]['Close']
+          volume = df_symbol.iloc[-1]['Volume']
+          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, type="OTHER")
+      except Exception as e:
+        traceback.print_exc()  # <-- this prints the full stack trace with line number
+        bhavcopy_not_found_tickers.append(row["symbol"])
           
     df.to_csv(local_url, index=False)
     print(f"✅ Saved updated file to: {local_url}")
@@ -3794,9 +3804,9 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)
 
-syncUpYahooFinOtherSymbols()
+# syncUpYahooFinOtherSymbols()
 
-# recalculateYFinStockInfo()
+recalculateYFinStockInfo()
 
 # syncUpAllNseFillings()
 # *************************************************************************

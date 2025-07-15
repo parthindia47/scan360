@@ -197,7 +197,13 @@ function Dashboard() {
                                 >
                                   {stock.name}
                                 </a>
-                                {" (CMP ₹" + (stock.price ?? 0).toFixed(2) + ")"}
+                                {" "}
+                                {activeType === 'USD' ? 
+                                  `(CMP $${(stock.price ?? 0).toFixed(3)})` :
+                                  activeType === 'WORLD_INDEX' ?
+                                  `(CMP ${(stock.price ?? 0).toFixed(2)})` :
+                                  `(CMP ₹${(stock.price ?? 0).toFixed(2)})`
+                                }
                                 <br />
                                 {activeType === 'EQUITY' && (
                                   <>

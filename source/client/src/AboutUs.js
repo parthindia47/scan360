@@ -12,14 +12,14 @@ function AboutUs() {
 
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">Our Mission</h2>
       <p className="mb-6">
-        We aim to empower users with real-time financial metrics, smart filtering tools, and industry-level tracking so they
+        We aim to empower users with various financial metrics, smart filtering tools, and industry-level tracking so they
         can scan opportunities across multiple sectors — all in one place.
       </p>
 
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">What Scan360 Offers</h2>
       <ul className="list-disc list-inside space-y-3 mb-6">
         <li>
-          <strong>Industry Heatmaps:</strong> Visualize how different sectors are performing in real-time.
+          <strong>Industry Heatmaps:</strong> Visualize how different sectors are performing.
         </li>
         <li>
           <strong>Stock Filtering:</strong> Filter stocks based on PE ratio, ROE, Market Cap, and custom metrics.

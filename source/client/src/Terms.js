@@ -4,7 +4,7 @@ function Terms() {
   return (
     <div className="max-w-4xl mx-auto p-6 text-gray-800">
       <h1 className="text-3xl font-bold mb-4">Terms of Service</h1>
-      <p className="text-sm text-gray-500 mb-6">Last updated Aug 01, 2018</p>
+      <p className="text-sm text-gray-500 mb-6">Last updated June 01, 2025</p>
 
       <p className="mb-4">
         Welcome to <strong>Scan360.in</strong>. Thanks for using our products and services ("Services"). The Services are provided by <strong>Us </strong> through its network of websites and domains at scan360.in ("Site").
@@ -36,7 +36,7 @@ function Terms() {
 
       <h2 className="text-xl font-semibold mt-6 mb-2">Liability for our Services</h2>
       <p className="mb-4">
-        <strong>We </strong> is not liable for lost profits, revenues, or data, or for indirect, special, or consequential damages. Total liability is limited to the amount you paid us to use the Services.
+        <strong>We </strong> are not liable for lost profits, revenues, or data, or for indirect, special, or consequential damages. Total liability is limited to the amount you paid us to use the Services.
       </p>
 
       <h2 className="text-xl font-semibold mt-6 mb-2">Links</h2>
