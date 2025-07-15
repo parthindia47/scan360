@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 
 function Footer() {
   return (
@@ -14,7 +15,12 @@ function Footer() {
       fontSize: '0.9rem',
       zIndex: 50
     }}>
-      © 2025 Scan360 · All rights reserved.
+      <div style={{ marginBottom: '5px' }}>
+        Scan360 © 2025
+        <a href="/contact" style={{ margin: '0 10px', color: '#007bff', textDecoration: 'none' }}>Contact Us</a>
+        <a href="/about" style={{ margin: '0 10px', color: '#007bff', textDecoration: 'none' }}>About</a>
+        <a href="/terms" style={{ margin: '0 10px', color: '#007bff', textDecoration: 'none' }}>Terms</a>
+      </div>
     </footer>
   );
 }

@@ -27,7 +27,7 @@ function Announcements() {
       <h1 className="text-xl font-bold mb-4">Announcements (Last 2 Days)</h1>
 
       {loading ? (
-        <div className="text-center text-blue-600">Loading...</div>
+        <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>
       ) : (
         <table className="table-auto border-collapse w-full">
           <thead>

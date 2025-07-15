@@ -2067,7 +2067,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             # NEW STOCK ALERT ?
             if not os.path.exists(csv_filename):
               dummyList = [{"SYMBOL":obj["SYMBOL"]}]
-              fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+              fetchYFinTickerCandles(dummyList,symbolType=symbolType,delaySec=6,partial=False,useNseCharting=False)
               
             df = pd.read_csv(csv_filename)
             # Parse the 'Date' column as datetime
@@ -2077,6 +2077,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             end_date = current_date + timedelta(days=1)
         except Exception as e:
             print("An error occurred:", e)
+            traceback.print_exc()  # <-- this prints the full stack trace with line number
             unsupported_tickers.append(obj["SYMBOL"])
             continue
 
@@ -3793,9 +3794,9 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)
 
-# syncUpYahooFinOtherSymbols()
+syncUpYahooFinOtherSymbols()
 
-recalculateYFinStockInfo()
+# recalculateYFinStockInfo()
 
 # syncUpAllNseFillings()
 # *************************************************************************

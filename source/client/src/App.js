@@ -6,6 +6,9 @@ import Announcements from './Announcements'; // you will create this
 import SymbolPage from './SymbolPage';
 import UpcomingEvents from './UpcomingEvents';
 import FundRaise from './FundRaise';
+import AboutUs from './AboutUs';
+import Terms from './Terms';
+import Contact from './Contact';
 
 import Footer from './Footer';
 
@@ -20,6 +23,9 @@ function App() {
           <Route path="/upcoming_events" element={<UpcomingEvents />} />
           <Route path="/fund_raise" element={<FundRaise />} />
           <Route path="symbol/:symbol" element={<SymbolPage />} /> {/* Dynamic symbol route */}
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </div>
       <Footer />

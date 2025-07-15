@@ -14,7 +14,16 @@ function Dashboard() {
       .then(res => {
         setIndustries(res.data);
         const types = Object.values(res.data).map(i => i.type || 'Other');
-        setActiveType(types[0]); // 🔹 auto-select first type
+        const defaultType = types[0];
+        setActiveType(defaultType);
+
+        // Set default sort for all types
+        const initialSorts = {};
+        types.forEach(type => {
+          initialSorts[type] = { field: '1D', direction: 'desc' };
+        });
+        setSortConfigs(initialSorts);
+
         setLoading(false);
       })
       .catch(error => {
@@ -34,7 +43,14 @@ function Dashboard() {
   }, [industries]);
 
   const toggleExpand = (industry) => {
-    setExpanded(prev => ({ ...prev, [industry]: !prev[industry] }));
+    setExpanded((prev) => {
+      const currentType = activeType || 'Other';
+      const updatedForType = {
+        ...(prev[currentType] || {}),
+        [industry]: !prev?.[currentType]?.[industry]
+      };
+      return { ...prev, [currentType]: updatedForType };
+    });
   };
 
   const toggleSort = (type, field) => {
@@ -50,7 +66,9 @@ function Dashboard() {
 
   const formatIndustryName = (str) => {
     if (!str) return '';
-    return str.replace(/([a-z])([A-Z])/g, '$1 $2');
+    return str
+      .replace(/_/g, ' ')                     // replace underscores with spaces
+      .replace(/([a-z])([A-Z])/g, '$1 $2');   // insert space before capital in camelCase
   };
 
   const getColorStyle = (value) => {
@@ -78,8 +96,14 @@ function Dashboard() {
                 key={type}
                 href="#"
                 onClick={(e) => {
-                  e.preventDefault(); // prevent page jump
+                  e.preventDefault();
                   setActiveType(type);
+
+                  // Collapse all industries when switching tabs
+                  setExpanded((prev) => ({
+                    ...prev,
+                    [type]: {}  // start with collapsed state
+                  }));
                 }}
                 className={`pb-2 px-3 text-sm font-medium transition duration-150 ease-in-out border-b-2 ${
                   activeType === type
@@ -87,7 +111,7 @@ function Dashboard() {
                     : 'border-transparent text-gray-500 hover:text-blue-500 hover:border-blue-300'
                 }`}
               >
-                {type}
+                {type.replace(/_/g, ' ')}
               </a>
             ))}
           </div>
@@ -133,11 +157,11 @@ function Dashboard() {
                       return direction === 'asc' ? valA - valB : valB - valA;
                     })
                     .map(([industry, data], index) => (
-                      <React.Fragment key={industry}>
+                      <React.Fragment key={`${activeType}-${industry}`}>
                         <tr className="border-t">
                           <td>{index + 1}</td>
                           <td className="p-2 cursor-pointer text-blue-600" onClick={() => toggleExpand(industry)}>
-                            {expanded[industry] ? '−' : '+'} {formatIndustryName(industry)} {"(" + data.stocks.length + ")"}
+                            {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} {"(" + data.stocks.length + ")"}
                           </td>
                           <td style={getColorStyle(data.weightedReturns['ltpVs52WHigh'])}>{data.weightedReturns['ltpVs52WHigh']}</td>
                           <td style={getColorStyle(data.weightedReturns['1D'])}>{data.weightedReturns['1D']}</td>
@@ -148,38 +172,50 @@ function Dashboard() {
                           <td style={getColorStyle(data.weightedReturns['1Y'])}>{data.weightedReturns['1Y'] || '-'}</td>
                         </tr>
 
-                        {expanded[industry] && data.stocks.map((stock) => (
-                          <tr className="bg-blue-50 border-t" key={stock.name}>
-                            <td>
-                              {/* Sparkline Chart */}
-                              <Sparklines data={stock.sparklineData} height={20} width={100}>
-                                <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
-                              </Sparklines>
-                            </td>
-                            <td className="symbol-cell">
-                              <a
-                                href={`symbol/${stock.symbol}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline"
-                              >
-                                {stock.name}
-                              </a>
-                              {" (CMP ₹" + (stock.price ?? 0).toFixed(2) + ")"}
-                              <br />
-                              {"PE " + (stock.pe ?? 0).toFixed(2) +
-                              " | ROE " + ((stock.roe ?? 0) * 100).toFixed(2) + "%" +
-                              " | Mcap ₹" + ((stock.marketCap ?? 0) / 1e7).toFixed(2) + " Cr"}
-                            </td>
-                            <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
-                            <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>
-                            <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
-                            <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>
-                            <td style={getColorStyle(stock.dummyData['3M'])}>{stock.dummyData['3M']}</td>
-                            <td style={getColorStyle(stock.dummyData['6M'])}>{stock.dummyData['6M'] || '-'}</td>
-                            <td style={getColorStyle(stock.dummyData['1Y'])}>{stock.dummyData['1Y'] || '-'}</td>
-                          </tr>
-                        ))}
+                      {expanded?.[activeType]?.[industry] &&
+                        [...data.stocks]
+                          .sort((a, b) => {
+                            const field = sortConfigs[activeType]?.field || '1D';
+                            const direction = sortConfigs[activeType]?.direction || 'desc';
+                            const valA = parseFloat(a.dummyData?.[field]) || 0;
+                            const valB = parseFloat(b.dummyData?.[field]) || 0;
+                            return direction === 'asc' ? valA - valB : valB - valA;
+                          })
+                          .map((stock) => (
+                            <tr className="bg-blue-50 border-t" key={`${activeType}-${industry}-${stock.symbol}`}>
+                              <td>
+                                <Sparklines data={stock.sparklineData} height={20} width={100}>
+                                  <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
+                                </Sparklines>
+                              </td>
+                              <td className="symbol-cell">
+                                <a
+                                  href={`symbol/${stock.symbol}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline"
+                                >
+                                  {stock.name}
+                                </a>
+                                {" (CMP ₹" + (stock.price ?? 0).toFixed(2) + ")"}
+                                <br />
+                                {activeType === 'EQUITY' && (
+                                  <>
+                                    {"PE " + (stock.pe ?? 0).toFixed(2) +
+                                    " | ROE " + ((stock.roe ?? 0) * 100).toFixed(2) + "%" +
+                                    " | Mcap ₹" + ((stock.marketCap ?? 0) / 1e7).toFixed(2) + " Cr"}
+                                  </>
+                                )}
+                              </td>
+                              <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
+                              <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>
+                              <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
+                              <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>
+                              <td style={getColorStyle(stock.dummyData['3M'])}>{stock.dummyData['3M']}</td>
+                              <td style={getColorStyle(stock.dummyData['6M'])}>{stock.dummyData['6M'] || '-'}</td>
+                              <td style={getColorStyle(stock.dummyData['1Y'])}>{stock.dummyData['1Y'] || '-'}</td>
+                            </tr>
+                      ))}
                       </React.Fragment>
                     ))}
                 </tbody>
