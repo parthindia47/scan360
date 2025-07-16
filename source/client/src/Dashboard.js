@@ -78,6 +78,11 @@ function Dashboard() {
     return number >= 0 ? { color: 'green' } : { color: 'red' };
   };
 
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
+  };
+
   return (
     <div className="p-6">
       {loading ? (
@@ -204,14 +209,23 @@ function Dashboard() {
                                   `(CMP ${(stock.price ?? 0).toFixed(2)})` :
                                   `(CMP ₹${(stock.price ?? 0).toFixed(2)})`
                                 }
-                                <br />
-                                {activeType === 'EQUITY' && (
+                                {activeType === 'EQUITY' && (                                
                                   <>
+                                  <br />
                                     {"PE " + (stock.pe ?? 0).toFixed(2) +
                                     " | ROE " + ((stock.roe ?? 0) * 100).toFixed(2) + "%" +
                                     " | Mcap ₹" + ((stock.marketCap ?? 0) / 1e7).toFixed(2) + " Cr"}
+                                  <br />
+                                  {Array.isArray(stock.events) && stock.events.length > 0 && (
+                                    <div className="text-gray-500 text-sm mt-1">
+                                      {stock.events.map((e, idx) => (
+                                        <div key={idx}>📌 {e.purpose} - {formatDate(e.date)}</div>
+                                      ))}
+                                    </div>
+                                  )}
                                   </>
                                 )}
+
                               </td>
                               <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
                               <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>

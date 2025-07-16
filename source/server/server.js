@@ -32,6 +32,53 @@ const csvPaths = {
   schemeOfArrangement: schemeOfArrangementPath,
 };
 
+const dateKeys = {
+  announcements: "",
+
+  events: "date",
+  upcomingIssues: "issueEndDate",
+  forthcomingListing: "effectiveDate",
+
+  rightsFilings: "draftDate",
+  qipFilings: "date",
+  prefIssue: "dateOfSubmission",
+  schemeOfArrangement: "date",
+};
+
+let eventsMap = {}; // key: symbol, value: array of events
+
+// Step 1: Load events.csv and build eventsMap
+function loadEventsFromCSV(callback) {
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  fs.createReadStream(eventsPath)
+    .pipe(csv())
+    .on('data', (row) => {
+      const symbol = (row.symbol || '').trim();
+      if (!symbol) return;
+
+      const eventDate = new Date(row.date);
+      if (isNaN(eventDate.getTime())) return; // skip invalid dates
+
+      if (eventDate < twoDaysAgo) return; // skip old events
+
+      if (!eventsMap[symbol]) {
+        eventsMap[symbol] = [];
+      }
+
+      eventsMap[symbol].push({
+        company: row.company || '',
+        purpose: row.purpose || '',
+        date: row.date || '',
+      });
+    })
+    .on('end', () => {
+      console.log('✅ Events loaded (filtered by date)');
+      callback();
+    });
+}
+
 
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
@@ -121,6 +168,8 @@ const loadIndustries = async () => {
       .on('end', resolve);
   });
 
+  loadEventsFromCSV(() => {});
+
   for (const row of results) {
     const industries = row['tjiIndustry']?.split('\\').flatMap(i => i.split('/').map(s => s.trim())) || [];
     const realReturns = await getStockReturns(row['symbol']);
@@ -134,13 +183,15 @@ const loadIndustries = async () => {
           type: row['quoteType'] || 'Other'  // <== Add this line
         };
       }
+      const symbol_clean = row['symbol'].replace('.NS', '')
       industryData[industry].stocks.push({
-        symbol: row['symbol'].replace('.NS', ''),
-        name: row['longName'] ? row['longName']  : row['symbol'].replace('.NS', ''),
+        symbol: symbol_clean,
+        name: row['longName'] ? row['longName']  : symbol_clean,
         marketCap: parseFloat(row['marketCap'] || '0'),
         price: parseFloat(row['currentPrice'] || '0'),
         pe: parseFloat(row['trailingPE'] || '0'),
         roe: parseFloat(row['returnOnEquity'] || '0'),
+        events: eventsMap[symbol_clean] || [], // ← Add matched events here
         sparklineData: realReturns['1M_candle'],
         dummyData: {
           weight: 1,
@@ -204,31 +255,17 @@ app.get('/api/announcements', (req, res) => {
     .on('error', err => res.status(500).json({ error: 'Failed to load announcements' }));
 });
 
-app.get('/api/events', (req, res) => {
-  const results = [];
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-  fs.createReadStream(eventsPath)
-    .pipe(csv())
-    .on('data', (row) => {
-      const dtStr = row.date || '';
-      const parsed = new Date(dtStr);
-
-      if (!isNaN(parsed) && parsed >= twoDaysAgo) {
-        results.push(row);
-      }
-    })
-    .on('end', () => res.json(results))
-    .on('error', err => res.status(500).json({ error: 'Failed to load events' }));
-});
-
 // ========================================================================
 
 app.get('/api_2/:type', (req, res) => {
   const { type } = req.params;
 
   const filePath = csvPaths[type];
+  const dateKey = dateKeys[type];
+
+  const filterDate = new Date();
+  filterDate.setDate(filterDate.getDate() - 30);
+
   if (!filePath) {
     return res.status(400).json({ error: `Unknown type '${type}'` });
   }
@@ -238,7 +275,12 @@ app.get('/api_2/:type', (req, res) => {
   fs.createReadStream(filePath)
     .pipe(csv())
     .on('data', (row) => {
-      results.push(row);
+      const dtStr = row[dateKey] || '';
+      const parsed = new Date(dtStr);
+
+      if (!isNaN(parsed) && parsed >= filterDate) {
+        results.push(row);
+      }
     })
     .on('end', () => res.json(results))
     .on('error', err => {

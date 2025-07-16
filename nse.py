@@ -2180,14 +2180,17 @@ def syncUpAllNseFillings():
   cookies = response.cookies
   
   syncUpNseDocuments(urlType="announcement", cookies=cookies)
-  syncUpNseDocuments(urlType="events",offsetDays=10, cookies=cookies)
-  syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
-  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
-  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  
+  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  # syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
+  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  
+  # syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  
+  # syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   pass
 
 '''
@@ -3806,8 +3809,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # syncUpYahooFinOtherSymbols()
 
-recalculateYFinStockInfo()
+# recalculateYFinStockInfo()
 
-# syncUpAllNseFillings()
+syncUpAllNseFillings()
 # *************************************************************************
 

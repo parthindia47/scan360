@@ -9,7 +9,7 @@ function UpcomingEvents() {
   const [activeTab, setActiveTab] = useState('events'); // 🔹 tracks which tab is active
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/events')
+    axios.get('http://localhost:5000/api_2/events')
       .then(res => {
         setEventsData(res.data);
         setLoading(false);
@@ -71,13 +71,13 @@ return (
         ))}
       </div>
 
-      {/* 🔹 Tab Content */}
+      {/* 🔹 Events */}
       {activeTab === 'events' && (
         <>
           {loading ? (
             <div className="text-center text-blue-600">Loading...</div>
           ) : (
-            <table className="table-auto border-collapse w-full">
+            <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead>
                 <tr className="bg-gray-200">
                   <th className="p-2 text-left">Symbol</th>
@@ -109,10 +109,11 @@ return (
         </>
       )}
 
+      {/* 🔹 Upcoming Issues */}
       {activeTab === 'upcomingIssues' && (
         <>
           <h1 className="text-xl font-bold mb-4">Upcoming Issues</h1>
-          <table className="table-auto border-collapse w-full">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
                 <th className="p-2 text-left">Company</th>
@@ -122,6 +123,7 @@ return (
                 <th className="p-2 text-left">Status</th>
                 <th className="p-2 text-left">Issue Size</th>
                 <th className="p-2 text-left">Issue Price</th>
+                <th className="p-2 text-left">Total Size</th>
               </tr>
             </thead>
             <tbody>
@@ -134,6 +136,21 @@ return (
                   <td className="p-2">{item.status || '—'}</td>
                   <td className="p-2">{item.issueSize || '—'}</td>
                   <td className="p-2">{item.issuePrice || '—'}</td>
+
+                  {/* 🔸 Computed Total Size in Cr */}
+                  <td className="p-2 font-medium">
+                    {(() => {
+                      const size = parseFloat((item.issueSize || '').toString().replace(/,/g, ''));
+                      const priceMatch = (item.issuePrice || '').match(/(\d+(\.\d+)?)(?!.*\d)/); // get last number
+                      const price = priceMatch ? parseFloat(priceMatch[1]) : null;
+
+                      if (!isNaN(size) && !isNaN(price)) {
+                        const total = (size * price) / 1e7;
+                        return `₹${total.toFixed(2)} Cr`;
+                      }
+                      return '—';
+                    })()}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -141,15 +158,16 @@ return (
         </>
       )}
 
+      {/* 🔹 Forthcoming Listing*/}
       {activeTab === 'forthcomingListing' && (
         <>
           <h1 className="text-xl font-bold mb-4">Forthcoming Listings</h1>
-          <table className="table-auto border-collapse w-full">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Issue Type</th>
-                <th className="p-2 text-left">effective Date</th>
+                <th className="p-2 text-left">Effective Date</th>
                 <th className="p-2 text-left">Attachment</th>
               </tr>
             </thead>
