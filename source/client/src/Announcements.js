@@ -29,7 +29,7 @@ function Announcements() {
       {loading ? (
         <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>
       ) : (
-        <table className="table-auto border-collapse w-full">
+        <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
           <thead>
             <tr className="bg-gray-200">
               <th className="p-2 text-left">Date</th>

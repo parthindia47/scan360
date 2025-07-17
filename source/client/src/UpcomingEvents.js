@@ -112,7 +112,6 @@ return (
       {/* 🔹 Upcoming Issues */}
       {activeTab === 'upcomingIssues' && (
         <>
-          <h1 className="text-xl font-bold mb-4">Upcoming Issues</h1>
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
@@ -161,7 +160,6 @@ return (
       {/* 🔹 Forthcoming Listing*/}
       {activeTab === 'forthcomingListing' && (
         <>
-          <h1 className="text-xl font-bold mb-4">Forthcoming Listings</h1>
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>

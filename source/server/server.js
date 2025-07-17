@@ -45,6 +45,20 @@ const dateKeys = {
   schemeOfArrangement: "date",
 };
 
+const daysPastList = {
+  announcements: 2,
+
+  events: 2,
+  upcomingIssues: 2,
+  forthcomingListing: 2,
+
+  rightsFilings: 10,
+  qipFilings: 10,
+  prefIssue: 10,
+  schemeOfArrangement: 10,
+};
+
+
 let eventsMap = {}; // key: symbol, value: array of events
 
 // Step 1: Load events.csv and build eventsMap
@@ -262,9 +276,10 @@ app.get('/api_2/:type', (req, res) => {
 
   const filePath = csvPaths[type];
   const dateKey = dateKeys[type];
+  const dayPast = daysPastList[type];
 
   const filterDate = new Date();
-  filterDate.setDate(filterDate.getDate() - 30);
+  filterDate.setDate(filterDate.getDate() - dayPast);
 
   if (!filePath) {
     return res.status(400).json({ error: `Unknown type '${type}'` });

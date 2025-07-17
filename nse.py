@@ -2181,16 +2181,16 @@ def syncUpAllNseFillings():
   
   syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
-  # syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
+  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   pass
 
 '''
@@ -3365,7 +3365,8 @@ def nse_xbrl_to_json(url):
 "Consolidated" , "Non-Consolidated"
 '''
 def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=False, delaySec=8):
-    result_date_list = ["31-Dec-2023", "31-Mar-2024", "30-Jun-2024", "30-Sep-2024", "31-Dec-2024"]
+    result_date_list = ["31-Mar-2023", "30-Jun-2023", "30-Sep-2023", "31-Dec-2023",
+                        "31-Mar-2024", "30-Jun-2024", "30-Sep-2024", "31-Dec-2024"]
 
     response = fetchUrl(getBaseUrl("financialResults"))
     cookies = response.cookies
@@ -3794,8 +3795,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-# nseStockList = getAllNseSymbols(local=False)
-# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated")
+nseStockList = getAllNseSymbols(local=False)
+fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
 
 # dummyList = [{"SYMBOL":"BAJAJELEC"}]
 # syncUpNseResults(dummyList)
@@ -3811,6 +3812,6 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-syncUpAllNseFillings()
+# syncUpAllNseFillings()
 # *************************************************************************
 

@@ -38,6 +38,13 @@ function SymbolPage() {
         console.error('Error fetching data', error);
         setLoading(false);
       });
+
+      if (symbol) {
+        document.title = `${symbol} | Scan360`;
+      }
+      return () => {
+        document.title = "Scan360"; // Optional cleanup
+      };
   }, [symbol]);
 
 // Utility function to generate N ticks between min and max

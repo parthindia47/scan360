@@ -77,7 +77,7 @@ function FundRaise() {
           {loading ? (
             <div className="text-center text-blue-600">Loading...</div>
           ) : (
-            <table className="table-auto border-collapse w-full">
+            <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead className="bg-gray-200">
                 <tr>
                   <th className="p-2 text-left">Company</th>
@@ -100,8 +100,7 @@ function FundRaise() {
       {/* 🔹 QIP Filings */}
       {activeTab === 'qipFilings' && (
         <>
-          <h1 className="text-xl font-bold mb-4">QIP Filings</h1>
-          <table className="table-auto border-collapse w-full">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
                 <th className="p-2 text-left">Company</th>
@@ -123,8 +122,7 @@ function FundRaise() {
       {/* 🔹 Preferential Issue */}
       {activeTab === 'prefIssue' && (
         <>
-          <h1 className="text-xl font-bold mb-4">Preferential Issues</h1>
-          <table className="table-auto border-collapse w-full">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
                 <th className="p-2 text-left">Company</th>
@@ -148,8 +146,7 @@ function FundRaise() {
       {/* 🔹 Scheme of Arrangement */}
       {activeTab === 'schemeOfArrangement' && (
         <>
-          <h1 className="text-xl font-bold mb-4">Scheme of Arrangement</h1>
-          <table className="table-auto border-collapse w-full">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
                 <th className="p-2 text-left">Company</th>
