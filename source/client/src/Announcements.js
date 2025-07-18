@@ -24,8 +24,6 @@ function Announcements() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Announcements (Last 2 Days)</h1>
-
       {loading ? (
         <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>
       ) : (

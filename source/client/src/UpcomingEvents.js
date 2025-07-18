@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  flexRender,
+} from '@tanstack/react-table';
 
 function UpcomingEvents() {
   const [eventsData, setEventsData] = useState([]);

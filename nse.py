@@ -2179,18 +2179,18 @@ def syncUpAllNseFillings():
   response = fetchUrl(getBaseUrl(urlType="announcement"))
   cookies = response.cookies
   
-  syncUpNseDocuments(urlType="announcement", cookies=cookies)
+  # syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   
-  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  # syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  # syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   pass
 
 '''
@@ -2202,51 +2202,51 @@ def fetchAllNseFillings():
   response = fetchUrl(getBaseUrl(urlType="announcement"))
   cookies = response.cookies
   
-  fetchNseDocuments(urlType="announcement",
-                  index="equities",
-                  start_date=datetime(2025, 6, 1), 
-                  end_date=datetime(2025, 7, 12),
-                  cookies=cookies)
+  # fetchNseDocuments(urlType="announcement",
+  #                 index="equities",
+  #                 start_date=datetime(2025, 6, 1), 
+  #                 end_date=datetime(2025, 7, 12),
+  #                 cookies=cookies)
   
-  fetchNseDocuments(urlType="events",
-                    index="equities",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="events",
+  #                   index="equities",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   
   fetchNseDocuments("upcomingIssues", cookies=cookies)
 
-  fetchNseDocuments("forthcomingListing", cookies=cookies)
+  # fetchNseDocuments("forthcomingListing", cookies=cookies)
   
-  fetchNseDocuments(urlType="rightsFilings",
-                    index="equities",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="rightsFilings",
+  #                   index="equities",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   
-  fetchNseDocuments(urlType="qipFilings",
-                    index="qip",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="qipFilings",
+  #                   index="qip",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   
-  fetchNseDocuments(urlType="prefIssue",
-                    index="inListing",
-                    start_date=datetime(2025, 6, 1),
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="prefIssue",
+  #                   index="inListing",
+  #                   start_date=datetime(2025, 6, 1),
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   
-  fetchNseDocuments(urlType="schemeOfArrangement",
-                    index="equities",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="schemeOfArrangement",
+  #                   index="equities",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   
-  fetchNseDocuments(urlType="integratedResults",
-                    index="equities",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="integratedResults",
+  #                   index="equities",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   pass
   
 
@@ -3795,11 +3795,13 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-nseStockList = getAllNseSymbols(local=False)
-fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+# nseStockList = getAllNseSymbols(local=False)
+# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
 
 # dummyList = [{"SYMBOL":"BAJAJELEC"}]
 # syncUpNseResults(dummyList)
+
+# fetchAllNseFillings()
 
 # **************************** Daily Sync Up ********************************
 # nseStockList = getAllNseSymbols(local=False)
@@ -3812,6 +3814,6 @@ fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolida
 
 # recalculateYFinStockInfo()
 
-# syncUpAllNseFillings()
+syncUpAllNseFillings()
 # *************************************************************************
 
