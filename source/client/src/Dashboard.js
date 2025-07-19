@@ -8,6 +8,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [sortConfigs, setSortConfigs] = useState({});
   const [activeType, setActiveType] = useState(null); // 🔹 active tab
+  const [weighted, setWeighted] = useState(true); // 🔹 active tab
 
   useEffect(() => {
     axios.get('http://localhost:5000/industries')
@@ -83,6 +84,11 @@ function Dashboard() {
     return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
   };
 
+  const totalSymbols = new Set(
+    Object.values(groupedByType[activeType] || {})
+      .flatMap(industryData => industryData.stocks.map(stock => stock.symbol))
+  ).size;
+
   return (
     <div className="p-6">
       {loading ? (
@@ -124,6 +130,25 @@ function Dashboard() {
           {/* 🔹 Table for Active Tab */}
           {activeType && (
             <>
+              <div className="text-sm text-gray-500 flex justify-between items-center">
+                <div className="text-gray-400">Updates Daily. Tracked Symbols - {totalSymbols}</div>
+                {activeType === 'EQUITY' && (
+                  <div className="space-x-2">
+                    <button
+                      className={`px-3 py-1 text-xs border rounded-full ${weighted ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-100'}`}
+                      onClick={() => setWeighted(true)}
+                    >
+                      Weighted
+                    </button>
+                    <button
+                      className={`px-3 py-1 text-xs border rounded-full ${!weighted ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-100'}`}
+                      onClick={() => setWeighted(false)}
+                    >
+                      Equal Weight
+                    </button>
+                  </div>
+                )}
+              </div>
               <table className="table-auto w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-100">
@@ -157,8 +182,9 @@ function Dashboard() {
                     .sort(([, a], [, b]) => {
                       const field = sortConfigs[activeType]?.field || '1D';
                       const direction = sortConfigs[activeType]?.direction || 'desc';
-                      const valA = parseFloat(a.weightedReturns[field]) || 0;
-                      const valB = parseFloat(b.weightedReturns[field]) || 0;
+                      const key = weighted ? field : `${field}_N`;
+                      const valA = parseFloat(a.weightedReturns[key]) || 0;
+                      const valB = parseFloat(b.weightedReturns[key]) || 0;
                       return direction === 'asc' ? valA - valB : valB - valA;
                     })
                     .map(([industry, data], index) => (
@@ -168,13 +194,11 @@ function Dashboard() {
                           <td className="p-2 cursor-pointer text-blue-600" onClick={() => toggleExpand(industry)}>
                             {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} {"(" + data.stocks.length + ")"}
                           </td>
-                          <td style={getColorStyle(data.weightedReturns['ltpVs52WHigh'])}>{data.weightedReturns['ltpVs52WHigh']}</td>
-                          <td style={getColorStyle(data.weightedReturns['1D'])}>{data.weightedReturns['1D']}</td>
-                          <td style={getColorStyle(data.weightedReturns['1W'])}>{data.weightedReturns['1W']}</td>
-                          <td style={getColorStyle(data.weightedReturns['1M'])}>{data.weightedReturns['1M']}</td>
-                          <td style={getColorStyle(data.weightedReturns['3M'])}>{data.weightedReturns['3M']}</td>
-                          <td style={getColorStyle(data.weightedReturns['6M'])}>{data.weightedReturns['6M'] || '-'}</td>
-                          <td style={getColorStyle(data.weightedReturns['1Y'])}>{data.weightedReturns['1Y'] || '-'}</td>
+                          {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
+                            <td key={field} style={getColorStyle(data.weightedReturns[weighted ? field : field + '_N'])}>
+                              {data.weightedReturns[weighted ? field : field + '_N'] || '-'}
+                            </td>
+                          ))}
                         </tr>
 
                       {expanded?.[activeType]?.[industry] &&
@@ -225,15 +249,12 @@ function Dashboard() {
                                   )}
                                   </>
                                 )}
-
                               </td>
-                              <td style={getColorStyle(stock.dummyData.ltpVs52WHigh)}>{stock.dummyData.ltpVs52WHigh}</td>
-                              <td style={getColorStyle(stock.dummyData['1D'])}>{stock.dummyData['1D']}</td>
-                              <td style={getColorStyle(stock.dummyData['1W'])}>{stock.dummyData['1W']}</td>
-                              <td style={getColorStyle(stock.dummyData['1M'])}>{stock.dummyData['1M']}</td>
-                              <td style={getColorStyle(stock.dummyData['3M'])}>{stock.dummyData['3M']}</td>
-                              <td style={getColorStyle(stock.dummyData['6M'])}>{stock.dummyData['6M'] || '-'}</td>
-                              <td style={getColorStyle(stock.dummyData['1Y'])}>{stock.dummyData['1Y'] || '-'}</td>
+                              {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
+                                <td key={field} style={getColorStyle(stock.dummyData[field])}>
+                                  {stock.dummyData[field] || '-'}
+                                </td>
+                              ))}
                             </tr>
                       ))}
                       </React.Fragment>

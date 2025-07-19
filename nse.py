@@ -91,6 +91,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from mcx import download_mcx_bhavcopy
 import traceback
+from urllib.parse import urlparse
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -123,6 +124,10 @@ csv_list = {
     "COMMODITY_NSE": CsvFile(
         remote_url="",
         local_url="stock_info/input/commodity_nse.csv"
+    ),
+    "CRYPTO": CsvFile(
+        remote_url="",
+        local_url="stock_info/input/crypto_pair.csv"
     ),
     "NSE_HOLIDAYS":  CsvFile(
         remote_url="",
@@ -2152,7 +2157,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
       print("saved " + csv_filename)
       
 def syncUpYahooFinOtherSymbols():
-  symbolTypeList = ["GLOBAL_INDEX","CURRENCY","COMMODITY_ETF"]
+  symbolTypeList = ["GLOBAL_INDEX","CURRENCY","COMMODITY_ETF","CRYPTO"]
   for symbolType in symbolTypeList:
     symbolList = getJsonFromCsvForSymbols(symbolType)
     print(symbolList)
@@ -2179,18 +2184,18 @@ def syncUpAllNseFillings():
   response = fetchUrl(getBaseUrl(urlType="announcement"))
   cookies = response.cookies
   
-  # syncUpNseDocuments(urlType="announcement", cookies=cookies)
+  syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   pass
 
 '''
@@ -3228,10 +3233,11 @@ def compare_dfs(nse_df, yahoo_df):
   else:
       print("\n✅ All values matched between NSE and Yahoo.")
       
-def nse_xbrl_to_json(url):
-    # Fetch and parse the XML
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, "xml")
+def nse_xbrl_to_json(xml_path):
+
+    with open(xml_path, "r", encoding="utf-8") as f:
+      content = f.read()
+      soup = BeautifulSoup(content, "xml")
 
     # Parse all tags with values
     xbrl_data = []
@@ -3360,6 +3366,34 @@ def nse_xbrl_to_json(url):
     # print(json.dumps(xbrl_data, indent=2))
     
     return result_obj
+  
+def save_xml_from_url(url, save_dir="."):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        # Extract filename from URL
+        parsed_url = urlparse(url)
+        filename = os.path.basename(parsed_url.path)
+
+        if not filename.lower().endswith(".xml"):
+            print("❌ URL does not point to an XML file.")
+            return None
+
+        # Ensure save directory exists
+        os.makedirs(save_dir, exist_ok=True)
+        file_path = os.path.join(save_dir, filename)
+
+        with open(file_path, "wb") as f:
+            f.write(response.content)
+
+        print(f"✅ XML saved to {file_path}")
+        return file_path
+
+    except Exception as e:
+        print(f"❌ Error downloading or saving XML from {url}")
+        print("Error:", e)
+        return None
 
 '''
 "Consolidated" , "Non-Consolidated"
@@ -3376,7 +3410,8 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
         print(f"🔄 Fetching {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
-        csv_path = f"stock_results/{sub_folder}/{symbol}.csv"
+        csv_dir = f"stock_results/{sub_folder}/{symbol}"
+        csv_path = f"{csv_dir}/{symbol}.csv"
 
         if partial and os.path.exists(csv_path):
             print(f"⏩ Skipping (already exists): {csv_path}")
@@ -3426,7 +3461,9 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
                 print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
 
                 # Step 3: Parse XBRL only for latest one
-                json_obj = nse_xbrl_to_json(xbrl_url)
+                local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
+
+                json_obj = nse_xbrl_to_json(local_xml_path)
                 json_obj["toDate"] = to_date
                 json_obj["audited"] = matching_entry.get("audited")
                 json_obj["xbrl"] = xbrl_url

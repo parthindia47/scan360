@@ -230,6 +230,17 @@ const loadIndustries = async () => {
       return (weightedSum / totalMarketCap).toFixed(2) + '%';
     };
 
+    const unweightedAverage = (field) => {
+      const validValues = stocks
+        .map(stock => parseFloat(stock.dummyData[field]))
+        .filter(val => !isNaN(val));
+
+      if (validValues.length === 0) return 'N/A';
+
+      const sum = validValues.reduce((a, b) => a + b, 0);
+      return (sum / validValues.length).toFixed(2) + '%';
+    };
+
     data.weightedReturns = {
       '1D': weightedAverage('1D'),
       '1W': weightedAverage('1W'),
@@ -237,7 +248,16 @@ const loadIndustries = async () => {
       '3M': weightedAverage('3M'),
       '6M': weightedAverage('6M'),
       '1Y': weightedAverage('1Y'),
-      'ltpVs52WHigh': weightedAverage('ltpVs52WHigh')
+
+      '1D_N': unweightedAverage('1D'),
+      '1W_N': unweightedAverage('1W'),
+      '1M_N': unweightedAverage('1M'),
+      '3M_N': unweightedAverage('3M'),
+      '6M_N': unweightedAverage('6M'),
+      '1Y_N': unweightedAverage('1Y'),
+
+      'ltpVs52WHigh': weightedAverage('ltpVs52WHigh'),
+      'ltpVs52WHigh_N': unweightedAverage('ltpVs52WHigh')
     };
   }
 };
@@ -304,6 +324,63 @@ app.get('/api_2/:type', (req, res) => {
     });
 });
 
+
+app.get('/api_2/:type', (req, res) => {
+  const { type } = req.params;
+
+  const filePath = csvPaths[type];
+  const dateKey = dateKeys[type];
+  const dayPast = daysPastList[type];
+
+  const filterDate = new Date();
+  filterDate.setDate(filterDate.getDate() - dayPast);
+
+  if (!filePath) {
+    return res.status(400).json({ error: `Unknown type '${type}'` });
+  }
+
+  // Step 1: Read stock info first
+  const stockMap = {}; // symbol => marketCap
+  fs.createReadStream(stockInfoFilePath)
+    .pipe(csv())
+    .on('data', (row) => {
+      if (row.symbol && row.marketCap) {
+        const cleanSymbol = row.symbol.trim().toUpperCase().replace(/\.NS$/, '');
+        stockMap[cleanSymbol] = parseFloat(row.marketCap);
+      }
+    })
+    .on('end', () => {
+      // Step 2: Process the requested type CSV
+      const results = [];
+
+      fs.createReadStream(filePath)
+        .pipe(csv())
+        .on('data', (row) => {
+          const dtStr = row[dateKey] || '';
+          const parsed = new Date(dtStr);
+
+          if (!isNaN(parsed) && parsed >= filterDate) {
+            // Try to attach marketCap if symbol is present
+            const symbol = (row.symbol || '').trim().toUpperCase();
+            if (symbol && stockMap[symbol] !== undefined) {
+              row.marketCap = stockMap[symbol];
+            }
+            results.push(row);
+          }
+        })
+        .on('end', () => res.json(results))
+        .on('error', err => {
+          console.error(`Error reading file for type '${type}':`, err);
+          res.status(500).json({ error: `Failed to load data for type '${type}'` });
+        });
+    })
+    .on('error', err => {
+      console.error('Error reading stock info file:', err);
+      res.status(500).json({ error: 'Failed to load stock info data' });
+    });
+});
+
+
 // ========================================================================
 /* returns
 {
@@ -364,6 +441,33 @@ app.get('/api_2/candles/:symbol', (req, res) => {
 
 });
 
+app.get('/api_2/info/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  yFinSymbol = symbol + ".NS"
+  let found = false;
+
+  const result = {};
+
+  fs.createReadStream(stockInfoFilePath)
+    .pipe(csv())
+    .on('data', (row) => {
+      if ((row.symbol || '').toUpperCase() === yFinSymbol.toUpperCase()) {
+        Object.assign(result, row);
+        found = true;
+      }
+    })
+    .on('end', () => {
+      if (found) {
+        res.json(result);
+      } else {
+        res.status(404).json({ error: `Symbol '${symbol}' not found.` });
+      }
+    })
+    .on('error', (err) => {
+      console.error('Error reading CSV:', err);
+      res.status(500).json({ error: 'Error reading stock info CSV.' });
+    });
+});
 
 app.listen(5000, () => {
   console.log('Server running on port 5000');

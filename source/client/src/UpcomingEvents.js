@@ -103,7 +103,16 @@ return (
                 ) : (
                   eventsData.map((row, idx) => (
                     <tr key={idx} className="border-t hover:bg-gray-50">
-                      <td className="p-2">{row.symbol || '—'}</td>
+                      <td className="p-2">
+                        <a
+                          href={`symbol/${row.symbol}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          {row.symbol || '—'}
+                        </a>
+                      </td>
                       <td className="p-2">{row.company || '—'}</td>
                       <td className="p-2">{row.purpose || '—'}</td>
                       <td className="p-2">{formatDate(row.date)}</td>

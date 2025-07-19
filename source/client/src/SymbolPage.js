@@ -25,6 +25,7 @@ const timeFrames = {
 function SymbolPage() {
   const [candles, setCandles] = useState({ close: [], volume: [] });
   const [loading, setLoading] = useState(true);
+  const [stockInfo, setStockInfo] = useState(null);
   const [selectedRange, setSelectedRange] = useState('1Y');
   const { symbol } = useParams();
 
@@ -46,6 +47,19 @@ function SymbolPage() {
         document.title = "Scan360"; // Optional cleanup
       };
   }, [symbol]);
+
+  useEffect(() => {
+    axios.get(`http://localhost:5000/api_2/info/${symbol}`)
+      .then(res => {
+        setStockInfo(res.data)
+      })
+      .catch(err => {
+        console.error('Error fetching stock info:', err);
+        setStockInfo(null);
+      });
+
+  }, [symbol]);
+
 
 // Utility function to generate N ticks between min and max
 const generateTicks = (min, max, count, toFixed = null) => {
@@ -103,6 +117,12 @@ const generateTicks = (min, max, count, toFixed = null) => {
   return (
     <div className="p-4">
       <h3 className="text-2xl font-bold mb-4">{symbol}</h3>
+
+      {/* {stockInfo && stockInfo.longBusinessSummary && (
+        <div className="mt-4 p-4 bg-gray-50 border rounded text-sm text-gray-700 leading-relaxed">
+          <p>{stockInfo.longBusinessSummary}</p>
+        </div>
+      )} */}
 
       {/* Timeline Buttons */}
       <div className="mb-6 flex flex-wrap gap-3">
