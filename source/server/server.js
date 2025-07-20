@@ -33,7 +33,7 @@ const csvPaths = {
 };
 
 const dateKeys = {
-  announcements: "",
+  announcements: "an_dt",
 
   events: "date",
   upcomingIssues: "issueEndDate",
@@ -270,61 +270,7 @@ app.get('/industries', async (req, res) => {
   res.json(industryData);
 });
 
-app.get('/api/announcements', (req, res) => {
-  const results = [];
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-  fs.createReadStream(announcementPath)
-    .pipe(csv())
-    .on('data', (row) => {
-      const dtStr = row.an_dt || row.sort_date || '';
-      const parsed = new Date(dtStr);
-
-      if (!isNaN(parsed) && parsed >= twoDaysAgo) {
-        results.push(row);
-      }
-    })
-    .on('end', () => res.json(results))
-    .on('error', err => res.status(500).json({ error: 'Failed to load announcements' }));
-});
-
 // ========================================================================
-
-app.get('/api_2/:type', (req, res) => {
-  const { type } = req.params;
-
-  const filePath = csvPaths[type];
-  const dateKey = dateKeys[type];
-  const dayPast = daysPastList[type];
-
-  const filterDate = new Date();
-  filterDate.setDate(filterDate.getDate() - dayPast);
-
-  if (!filePath) {
-    return res.status(400).json({ error: `Unknown type '${type}'` });
-  }
-
-  const results = [];
-
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on('data', (row) => {
-      const dtStr = row[dateKey] || '';
-      const parsed = new Date(dtStr);
-
-      if (!isNaN(parsed) && parsed >= filterDate) {
-        results.push(row);
-      }
-    })
-    .on('end', () => res.json(results))
-    .on('error', err => {
-      console.error(`Error reading file for type '${type}':`, err);
-      res.status(500).json({ error: `Failed to load data for type '${type}'` });
-    });
-});
-
-
 app.get('/api_2/:type', (req, res) => {
   const { type } = req.params;
 
@@ -357,6 +303,7 @@ app.get('/api_2/:type', (req, res) => {
         .pipe(csv())
         .on('data', (row) => {
           const dtStr = row[dateKey] || '';
+          
           const parsed = new Date(dtStr);
 
           if (!isNaN(parsed) && parsed >= filterDate) {

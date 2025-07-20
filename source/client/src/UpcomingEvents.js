@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  flexRender,
-} from '@tanstack/react-table';
 
 function UpcomingEvents() {
   const [eventsData, setEventsData] = useState([]);
@@ -14,6 +7,10 @@ function UpcomingEvents() {
   const [forthcomingListingData, setForthcomingListingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('events'); // 🔹 tracks which tab is active
+  const [filtered, setFiltered] = useState(false); // ✅ Missing
+  const [marketCapFilter, setMarketCapFilter] = useState(false);
+  const [selectedKeyword, setSelectedKeyword] = useState(null); // or null if nothing selected
+  const [periodFilter, setPeriodFilter] = useState(null); // "today" | "next3days" | null
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/events')
@@ -52,7 +49,36 @@ function UpcomingEvents() {
     return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
   };
 
-return (
+  const filteredData = eventsData.filter((row) => {
+    const text = `${row.purpose || ''}`.toLowerCase();
+    const marketCap = parseFloat(row.marketCap ?? 0);
+
+    const keywordMatch = selectedKeyword
+      ? text.includes(selectedKeyword.toLowerCase())
+      : true;
+
+    const marketCapMatch = marketCapFilter
+      ? marketCap > 800 * 1e7
+      : true;
+
+    const eventDate = new Date(row.date);
+    const today = new Date();
+    const dateMatch =
+      periodFilter === 'today'
+        ? eventDate.toDateString() === today.toDateString()
+        : periodFilter === 'next3days'
+        ? eventDate >= today &&
+          eventDate <= new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)
+        : true;
+
+    return keywordMatch && marketCapMatch && dateMatch;
+  });
+
+  const sortedData = [...filteredData].sort(
+    (a, b) => new Date(a.date) - new Date(b.date)
+  );
+
+  return (
     <div className="p-4">
       {/* 🔹 Navbar Tabs */}
       <div className="flex border-b mb-4 gap-x-6 ml-1">
@@ -84,25 +110,76 @@ return (
           {loading ? (
             <div className="text-center text-blue-600">Loading...</div>
           ) : (
+            <>
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2 mb-2">
+                {["Financial Results", "Stock Split", "Bonus", "Dividend"].map(keyword => (
+                  <button
+                    key={keyword}
+                    onClick={() =>
+                      setSelectedKeyword(selectedKeyword === keyword ? null : keyword)
+                    }
+                    className={`px-3 py-1 text-xs rounded-full border ${
+                      selectedKeyword === keyword ? 'bg-green-300 text-black font-semibold' : 'bg-gray-200'
+                    }`}
+                  >
+                    {keyword}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                {["today", "next3days"].map((label) => (
+                  <button
+                    key={label}
+                    onClick={() =>
+                      setPeriodFilter(periodFilter === label ? null : label)
+                    }
+                    className={`px-3 py-1 text-xs rounded-full border font-medium ${
+                      periodFilter === label
+                        ? 'bg-indigo-300 text-black'
+                        : 'bg-indigo-100 text-gray-800'
+                    }`}
+                  >
+                    {label === 'today' ? 'Today' : 'Next 3 Days'}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setMarketCapFilter(!marketCapFilter)}
+                  className={`px-3 py-1 text-xs rounded-full border ${
+                    marketCapFilter ? 'bg-green-300 text-black font-semibold' : 'bg-gray-200'
+                  }`}
+                >
+                  Market Cap &gt; 800 Cr
+                </button>
+              </div>
+
+              <div className="text-sm text-gray-600">
+                Total rows {sortedData.length}
+              </div>
+            </div>
+
             <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead>
                 <tr className="bg-gray-200">
+                  <th className="p-2 text-left">Date</th>
                   <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Company</th>
                   <th className="p-2 text-left">Purpose</th>
-                  <th className="p-2 text-left">Date</th>
                 </tr>
               </thead>
               <tbody>
-                {eventsData.length === 0 ? (
+                {sortedData.length === 0 ? (
                   <tr>
                     <td colSpan="4" className="text-center text-gray-500 py-4">
-                      No recent events found.
+                      No matching events found.
                     </td>
                   </tr>
                 ) : (
-                  eventsData.map((row, idx) => (
+                  sortedData.map((row, idx) => (
                     <tr key={idx} className="border-t hover:bg-gray-50">
+                      <td className="p-2">{formatDate(row.date)}</td>
                       <td className="p-2">
                         <a
                           href={`symbol/${row.symbol}`}
@@ -115,12 +192,13 @@ return (
                       </td>
                       <td className="p-2">{row.company || '—'}</td>
                       <td className="p-2">{row.purpose || '—'}</td>
-                      <td className="p-2">{formatDate(row.date)}</td>
+                      
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+            </>
           )}
         </>
       )}

@@ -82,6 +82,7 @@ function FundRaise() {
                 <tr>
                   <th className="p-2 text-left">Company</th>
                   <th className="p-2 text-left">Draft Date</th>
+                  <th className="p-2 text-left">Attachment</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,6 +90,20 @@ function FundRaise() {
                   <tr key={idx} className="border-t hover:bg-gray-50">
                     <td className="p-2">{row.company || '—'}</td>
                     <td className="p-2">{formatDate(row.draftDate)}</td>
+                    <td className="p-2">
+                      {row.draftAttch ? (
+                        <a
+                          href={row.draftAttch}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          View Draft
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -105,13 +120,28 @@ function FundRaise() {
               <tr>
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Date</th>
+                <th className="p-2 text-left">Attachment</th>
               </tr>
             </thead>
             <tbody>
-              {qipData.map((item, idx) => (
+              {qipData.map((row, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
-                  <td className="p-2">{item.company || '—'}</td>
-                  <td className="p-2">{formatDate(item.date)}</td>
+                  <td className="p-2">{row.company || '—'}</td>
+                  <td className="p-2">{formatDate(row.date)}</td>
+                  <td className="p-2">
+                    {row.attachFile ? (
+                      <a
+                        href={row.attachFile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View File
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -125,17 +155,51 @@ function FundRaise() {
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
+                <th className="p-2 text-left">Symbol</th>
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Allotment Date</th>
                 <th className="p-2 text-left">Submission Date</th>
+                <th className="p-2 text-left">Offer Price</th>
+                <th className="p-2 text-left">Amount Raised</th>
+                <th className="p-2 text-left">Attachment</th>
               </tr>
             </thead>
             <tbody>
-              {prefData.map((item, idx) => (
+              {prefData.map((row, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
-                  <td className="p-2">{item.nameOfTheCompany || '—'}</td>
-                  <td className="p-2">{formatDate(item.dateOfAllotmentOfShares)}</td>
-                  <td className="p-2">{formatDate(item.dateOfSubmission)}</td>
+                  <td className="p-2">
+                    <a
+                      href={`symbol/${row.nseSymbol}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {row.nseSymbol || '—'}
+                    </a>
+                  </td>
+                  <td className="p-2">{row.nameOfTheCompany || '—'}</td>
+                  <td className="p-2">{formatDate(row.dateOfAllotmentOfShares)}</td>
+                  <td className="p-2">{formatDate(row.dateOfSubmission)}</td>
+                  <td className="p-2">{row.offerPricePerSecurity}</td>
+                  <td className="p-2">
+                    {row.amountRaised
+                      ? `₹${(parseFloat(row.amountRaised) / 1e7).toFixed(2)} Cr`
+                      : '—'}
+                  </td>
+                  <td className="p-2">
+                    {row.xmlFileName ? (
+                      <a
+                        href={row.xmlFileName}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View File
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -152,14 +216,29 @@ function FundRaise() {
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Date</th>
                 <th className="p-2 text-left">Details</th>
+                <th className="p-3 text-left">Attachment</th>
               </tr>
             </thead>
             <tbody>
-              {schemeData.map((item, idx) => (
+              {schemeData.map((row, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
-                  <td className="p-2">{item.company || '—'}</td>
-                  <td className="p-2">{formatDate(item.date)}</td>
-                  <td className="p-2">{(item.scheme_details || '-').slice(0, 100)}...</td>
+                  <td className="p-2">{row.company || '—'}</td>
+                  <td className="p-2">{formatDate(row.date)}</td>
+                  <td className="p-2">{(row.scheme_details || '-')}</td>
+                  <td className="p-3">
+                    {row.date_attachmnt ? (
+                      <a
+                        href={row.date_attachmnt}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View File
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

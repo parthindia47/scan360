@@ -21,9 +21,10 @@ function Announcements() {
   const [loading, setLoading] = useState(true);
   const [filtered, setFiltered] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
+  const [marketCapFilter, setMarketCapFilter] = useState(false);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/announcements')
+    axios.get('http://localhost:5000/api_2/announcements')
       .then(res => {
         setData(res.data);
         setLoading(false);
@@ -52,12 +53,15 @@ function Announcements() {
     return result;
   };
 
-  const filteredData = filtered
-    ? data.filter(row => {
-        const combinedText = `${row.announcement_type || ''} ${row.attchmntText || row.desc || ''}`.toLowerCase();
-        return announcementKeywords.some(k => combinedText.includes(k.toLowerCase()));
-      })
-    : data;
+  const filteredData = data.filter((row) => {
+    const text = `${row.announcement_type || ''} ${row.attchmntText || row.desc || ''}`.toLowerCase();
+    const marketCap = parseFloat(row.marketCap) || 0;
+
+    const keywordMatch = announcementKeywords.some(k => text.includes(k.toLowerCase()));
+    const marketCapMatch = marketCap > 800 * 1e7; // 800 Cr
+
+    return (!filtered || keywordMatch) && (!marketCapFilter || marketCapMatch);
+  });
 
   const sortedData = [...filteredData].sort(
     (a, b) => new Date(b.an_dt || b.sort_date) - new Date(a.an_dt || a.sort_date)
@@ -66,19 +70,36 @@ function Announcements() {
   return (
     <div className="p-4">
 
-      <button
-        onClick={() => setFiltered(!filtered)}
-        className="mb-4 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-400"
-      >
-        {filtered ? 'All Announcements' : 'Important Keywords'}
-      </button>
-
-      <div className="mb-2 text-sm text-gray-600">
-        Total rows {sortedData.length}
-      </div>
       {loading ? (
         <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>
       ) : (
+        <>
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-2 mb-2">
+            <button
+              onClick={() => setFiltered(!filtered)}
+              className={`px-3 py-1 text-xs rounded-full border ${
+                filtered ? 'bg-green-300 text-black font-semibold' : 'bg-gray-200'
+              }`}
+            >
+              Important Keywords
+            </button>
+
+            <button
+              onClick={() => setMarketCapFilter(!marketCapFilter)}
+              className={`px-3 py-1 text-xs rounded-full border ${
+                marketCapFilter ? 'bg-green-300 text-black font-semibold' : 'bg-gray-200'
+              }`}
+            >
+              Market Cap &gt; 800 Cr
+            </button>
+          </div>
+
+          <div className="text-sm text-gray-600">
+            Total rows {sortedData.length}
+          </div>
+        </div>
+
         <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
           <thead>
             <tr className="bg-gray-200">
@@ -135,7 +156,7 @@ function Announcements() {
                           className="ml-2 text-blue-600 underline text-xs"
                           onClick={() => toggleExpanded(idx)}
                         >
-                          {isExpanded ? 'less' : 'full'}
+                          {isExpanded ? 'less' : 'more'}
                         </button>
                       )}
                     </td>
@@ -159,6 +180,7 @@ function Announcements() {
             )}
           </tbody>
         </table>
+        </>
       )}
     </div>
   );
