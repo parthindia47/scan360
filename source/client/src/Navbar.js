@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom';
 function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-gray-100 border-b border-gray-300 shadow-sm">
-      <div className="px-6 py-3 flex items-center space-x-6">
+      <div className="px-6 py-2 flex items-center space-x-6">
         {/* Logo / Brand */}
         <div className="text-xl font-bold text-blue-700">Scan360</div>
 

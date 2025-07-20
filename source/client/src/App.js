@@ -16,7 +16,7 @@ function App() {
   return (
     <Router>
       <Navbar />
-      <div style={{ padding: '20px 20px 60px' }}>  {/* extra bottom padding to prevent overlap */}
+      <div style={{ padding: '20px 20px 20px' }}>  {/* extra bottom padding to prevent overlap */}
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/announcements" element={<Announcements />} />
