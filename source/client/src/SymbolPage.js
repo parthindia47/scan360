@@ -116,7 +116,31 @@ const generateTicks = (min, max, count, toFixed = null) => {
 
   return (
     <div className="p-1">
-      <h5 className="text-2xl font-bold mb-2">{symbol}</h5>
+      {stockInfo && (
+        <div className="mb-2">
+          <h5 className="text-2xl font-bold flex items-center gap-2">
+            {symbol}
+            {stockInfo.currentPrice && stockInfo.previousClose && (() => {
+              const curr = parseFloat(stockInfo.currentPrice);
+              const prev = parseFloat(stockInfo.previousClose);
+              if (!isNaN(curr) && !isNaN(prev) && prev !== 0) {
+                const percentChange = ((curr - prev) / prev) * 100;
+                const isPositive = percentChange >= 0;
+
+                const changeText = `${isPositive ? '+' : ''}${percentChange.toFixed(2)}%`;
+                const changeColor = isPositive ? 'text-green-600' : 'text-red-600';
+
+                return (
+                  <span className={`ml-2 text-sm font-semibold ${changeColor}`}>
+                    {changeText}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </h5>
+        </div>
+      )}
 
       {stockInfo && stockInfo.longBusinessSummary && (
         <div className="mt-2 mb-2 text-sm">

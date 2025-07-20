@@ -84,10 +84,14 @@ function Dashboard() {
     return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
   };
 
+  const industryDataList = Object.values(groupedByType[activeType] || {});
+
   const totalSymbols = new Set(
-    Object.values(groupedByType[activeType] || {})
-      .flatMap(industryData => industryData.stocks.map(stock => stock.symbol))
+    industryDataList.flatMap(industryData => industryData.stocks.map(stock => stock.symbol))
   ).size;
+
+  // Get the lastCandleDate of the first stock in the first industry
+  const lastUpdateDate = industryDataList[0]?.stocks?.[0]?.lastUpdateDate || null;
 
   return (
     <div className="p-6">
@@ -131,7 +135,10 @@ function Dashboard() {
           {activeType && (
             <>
               <div className="text-sm text-gray-500 flex justify-between items-center">
-                <div className="text-gray-400">Updates Daily. Tracked Symbols - {totalSymbols}</div>
+                <div className="text-gray-400">
+                  Updates Daily, last updated - {formatDate(lastUpdateDate)}.
+                  Tracked Symbols - {totalSymbols}
+                </div>
                 {activeType === 'EQUITY' && (
                   <div className="space-x-2">
                     <button

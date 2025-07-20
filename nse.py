@@ -1695,6 +1695,7 @@ def recalculate_financials(row, current_price, volume, type):
       except Exception as e:
           print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
 
+    updated_row['previousClose'] = updated_row['currentPrice']
     updated_row['currentPrice'] = current_price
     updated_row['volume'] = volume
     return updated_row

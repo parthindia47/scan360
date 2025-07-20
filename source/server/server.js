@@ -93,7 +93,6 @@ function loadEventsFromCSV(callback) {
     });
 }
 
-
 const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
     return resolve({
@@ -113,12 +112,17 @@ const getStockReturns = async (symbolWithNS) => {
     });
   }
 
+  let lastCandleDate = null;
+
   return new Promise((resolve) => {
     fs.createReadStream(csvPath)
       .pipe(csv())
       .on('data', (row) => {
         if (row['Close']) {
           candles.push(parseFloat(row['Close']));
+        }
+        if (row['Date']) {
+          lastCandleDate = row['Date']; // always overwrite — last value will be from last row
         }
       })
       .on('end', () => {
@@ -158,7 +162,8 @@ const getStockReturns = async (symbolWithNS) => {
           '6M': calc(132),
           '1Y': calc(252),
           'ltpVs52WHigh': ltpVs52WHigh,
-          '1M_candle': last20Candles
+          '1M_candle': last20Candles,
+          'lastCandleDate': lastCandleDate  // 👈 added here
         });
       })
       .on('error', () => {
@@ -169,8 +174,6 @@ const getStockReturns = async (symbolWithNS) => {
       });
   });
 };
-
-
 
 const loadIndustries = async () => {
   const results = [];
@@ -207,6 +210,7 @@ const loadIndustries = async () => {
         roe: parseFloat(row['returnOnEquity'] || '0'),
         events: eventsMap[symbol_clean] || [], // ← Add matched events here
         sparklineData: realReturns['1M_candle'],
+        lastUpdateDate: realReturns['lastCandleDate'],
         dummyData: {
           weight: 1,
           ...realReturns

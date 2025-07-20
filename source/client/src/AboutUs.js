@@ -22,10 +22,10 @@ function AboutUs() {
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">Our Mission</h2>
       <p className="mb-6">
         We aim to empower users with various financial metrics, smart filtering tools, and industry-level tracking so they
-        can scan opportunities across multiple sectors — all in one place.
+        can scan opportunities across multiple sectors — all in one place. We want to capture all the data which impact stock market. Be it how the number of new job openings affects software companies, or how the number of app downloads impacts Zomato, or how gold prices influence jewellery stocks and gold finance companies. At Scan360, we're all about data and how it impacts stocks.
       </p>
 
-      <h2 className="text-2xl font-semibold text-gray-900 mb-4">What Scan360 Offers</h2>
+      <h2 className="text-2xl font-semibold text-gray-900 mb-4">What Scan360 Currently Offers</h2>
       <ul className="list-disc list-inside space-y-3 mb-6">
         <li>
           <strong>Industry Heatmaps:</strong> Visualize how different sectors are performing.
@@ -34,10 +34,10 @@ function AboutUs() {
           <strong>Stock Filtering:</strong> Filter stocks based on PE ratio, ROE, Market Cap, and custom metrics.
         </li>
         <li>
-          <strong>Announcements & Events:</strong> Stay updated with latest earnings, fundraises, and corporate actions.
+          <strong>Announcements & Events:</strong> Stay updated with latest earnings, fund raises, and corporate actions.
         </li>
         <li>
-          <strong>AI-Powered Insights:</strong> Use intelligent tools to uncover trends and forecasts.
+          <strong>AI-Powered Insights:</strong> Coming soon ...
         </li>
       </ul>
 

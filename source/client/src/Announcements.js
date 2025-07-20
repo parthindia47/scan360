@@ -88,6 +88,7 @@ function Announcements() {
         <>
         <div className="mb-4">
           <div className="flex flex-wrap gap-2 mb-2">
+            <div className="text-gray-600">Use Filters : </div>
             <button
               onClick={() => setFiltered(!filtered)}
               className={`px-3 py-1 text-xs rounded-full border ${

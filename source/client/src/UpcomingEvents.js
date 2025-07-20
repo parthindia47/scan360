@@ -113,6 +113,7 @@ function UpcomingEvents() {
             <>
             <div className="mb-4">
               <div className="flex flex-wrap gap-2 mb-2">
+                <div className="text-gray-600">Filters Subjects : </div>
                 {["Financial Results", "Stock Split", "Bonus", "Dividend"].map(keyword => (
                   <button
                     key={keyword}
@@ -129,6 +130,7 @@ function UpcomingEvents() {
               </div>
 
               <div className="flex flex-wrap gap-2 mb-3">
+                <div className="text-gray-600">Filters Period : </div>
                 {["today", "next3days"].map((label) => (
                   <button
                     key={label}
