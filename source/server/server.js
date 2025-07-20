@@ -41,7 +41,7 @@ const dateKeys = {
 
   rightsFilings: "draftDate",
   qipFilings: "date",
-  prefIssue: "dateOfSubmission",
+  prefIssue: "boardResDate",
   schemeOfArrangement: "date",
 };
 
@@ -54,7 +54,7 @@ const daysPastList = {
 
   rightsFilings: 10,
   qipFilings: 10,
-  prefIssue: 10,
+  prefIssue: 5,
   schemeOfArrangement: 10,
 };
 

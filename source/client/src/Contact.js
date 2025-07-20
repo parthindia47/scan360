@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 function Contact() {
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = `Contact Us | Scan360`;
+
+    return () => {
+      document.title = prevTitle;
+    };
+  }, []);
+
   return (
     <div className="max-w-3xl mx-auto p-6 text-gray-800">
       <h1 className="text-2xl font-bold mb-4">Contact Us</h1>

@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 function AboutUs() {
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = `About | Scan360`;
+
+    return () => {
+      document.title = prevTitle;
+    };
+  }, []);
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-12 text-gray-800">
       <h1 className="text-3xl font-bold text-blue-700 mb-6">About Scan360</h1>

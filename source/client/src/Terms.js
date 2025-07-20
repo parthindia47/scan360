@@ -1,6 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 function Terms() {
+
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = `Terms | Scan360`;
+
+    return () => {
+      document.title = prevTitle;
+    };
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto p-6 text-gray-800">
       <h1 className="text-3xl font-bold mb-4">Terms of Service</h1>

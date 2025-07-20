@@ -44,8 +44,14 @@ function FundRaise() {
     return isNaN(date) ? '—' : date.toLocaleDateString('en-IN');
   };
 
+  const sortedPrefData = [...prefData].sort((a, b) => {
+    const dateA = new Date(a.boardResDate);
+    const dateB = new Date(b.boardResDate);
+    return dateB - dateA;
+  });
+
   return (
-    <div className="p-4">
+    <div className="p-4 mb-6">
       {/* 🔹 Tabs */}
       <div className="flex border-b mb-4 gap-x-6 ml-1">
         {['rightsFilings', 'qipFilings', 'prefIssue', 'schemeOfArrangement'].map(tab => (
@@ -158,14 +164,14 @@ function FundRaise() {
                 <th className="p-2 text-left">Symbol</th>
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Allotment Date</th>
-                <th className="p-2 text-left">Submission Date</th>
+                <th className="p-2 text-left">Board Resolution Date</th>
                 <th className="p-2 text-left">Offer Price</th>
                 <th className="p-2 text-left">Amount Raised</th>
                 <th className="p-2 text-left">Attachment</th>
               </tr>
             </thead>
             <tbody>
-              {prefData.map((row, idx) => (
+              {sortedPrefData.map((row, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
                   <td className="p-2">
                     <a
@@ -179,7 +185,7 @@ function FundRaise() {
                   </td>
                   <td className="p-2">{row.nameOfTheCompany || '—'}</td>
                   <td className="p-2">{formatDate(row.dateOfAllotmentOfShares)}</td>
-                  <td className="p-2">{formatDate(row.dateOfSubmission)}</td>
+                  <td className="p-2">{formatDate(row.boardResDate)}</td>
                   <td className="p-2">{row.offerPricePerSecurity}</td>
                   <td className="p-2">
                     {row.amountRaised
