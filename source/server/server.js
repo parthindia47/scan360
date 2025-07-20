@@ -46,7 +46,7 @@ const dateKeys = {
 };
 
 const daysPastList = {
-  announcements: 2,
+  announcements: 3,
 
   events: 2,
   upcomingIssues: 2,

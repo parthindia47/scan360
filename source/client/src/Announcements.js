@@ -22,6 +22,7 @@ function Announcements() {
   const [filtered, setFiltered] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [marketCapFilter, setMarketCapFilter] = useState(false);
+  const [todayFilter, setTodayFilter] = useState(false);
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/announcements')
@@ -53,14 +54,25 @@ function Announcements() {
     return result;
   };
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // normalize time to midnight
+
   const filteredData = data.filter((row) => {
+
     const text = `${row.announcement_type || ''} ${row.attchmntText || row.desc || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap) || 0;
 
     const keywordMatch = announcementKeywords.some(k => text.includes(k.toLowerCase()));
     const marketCapMatch = marketCap > 800 * 1e7; // 800 Cr
 
-    return (!filtered || keywordMatch) && (!marketCapFilter || marketCapMatch);
+    const rowDate = new Date(row.an_dt || row.sort_date || '');
+    rowDate.setHours(0, 0, 0, 0);
+
+    const isToday = rowDate.getTime() === today.getTime();
+
+    return (!filtered || keywordMatch)
+      && (!marketCapFilter || marketCapMatch)
+      && (!todayFilter || isToday);
   });
 
   const sortedData = [...filteredData].sort(
@@ -92,6 +104,15 @@ function Announcements() {
               }`}
             >
               Market Cap &gt; 800 Cr
+            </button>
+
+            <button
+              onClick={() => setTodayFilter(!todayFilter)}
+              className={`px-3 py-1 text-xs rounded-full border ${
+                todayFilter ? 'bg-blue-300 text-black font-semibold' : 'bg-indigo-100 text-gray-800'
+              }`}
+            >
+              Today
             </button>
           </div>
 

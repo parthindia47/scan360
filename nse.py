@@ -3832,8 +3832,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-# nseStockList = getAllNseSymbols(local=False)
-# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+nseStockList = getAllNseSymbols(local=False)
+fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
 
 # dummyList = [{"SYMBOL":"BAJAJELEC"}]
 # syncUpNseResults(dummyList)
@@ -3851,6 +3851,6 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-syncUpAllNseFillings()
+# syncUpAllNseFillings()
 # *************************************************************************
 
