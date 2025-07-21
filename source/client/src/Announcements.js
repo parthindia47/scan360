@@ -22,13 +22,27 @@ function Announcements() {
   const [filtered, setFiltered] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [marketCapFilter, setMarketCapFilter] = useState(false);
-  const [todayFilter, setTodayFilter] = useState(false);
+  const [selectedDateFilter, setSelectedDateFilter] = useState(null);
+  const [uniqueDates, setUniqueDates] = useState([]);
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/announcements')
       .then(res => {
         setData(res.data);
         setLoading(false);
+
+        // Extract unique dates
+        const dateSet = new Set(
+          res.data
+            .map(row => row.an_dt)
+            .filter(Boolean)
+            .map(d => {
+              const dt = new Date(d);
+              return dt.toLocaleDateString('en-CA'); // yyyy-mm-dd in local timezone
+            })
+        );
+        const sortedDates = Array.from(dateSet).sort((a, b) => new Date(b) - new Date(a));
+        setUniqueDates(sortedDates);
       })
       .catch(err => {
         console.error('Failed to fetch announcements', err);
@@ -54,25 +68,24 @@ function Announcements() {
     return result;
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // normalize time to midnight
-
   const filteredData = data.filter((row) => {
-
     const text = `${row.announcement_type || ''} ${row.attchmntText || row.desc || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap) || 0;
 
     const keywordMatch = announcementKeywords.some(k => text.includes(k.toLowerCase()));
-    const marketCapMatch = marketCap > 800 * 1e7; // 800 Cr
+    const marketCapMatch = marketCap > 800 * 1e7;
 
     const rowDate = new Date(row.an_dt || row.sort_date || '');
     rowDate.setHours(0, 0, 0, 0);
 
-    const isToday = rowDate.getTime() === today.getTime();
+    const localRowDate = rowDate.toLocaleDateString('en-CA'); // yyyy-mm-dd in local timezone
+    const isSameSelectedDate = selectedDateFilter
+      ? localRowDate === selectedDateFilter
+      : true;
 
     return (!filtered || keywordMatch)
       && (!marketCapFilter || marketCapMatch)
-      && (!todayFilter || isToday);
+      && isSameSelectedDate;
   });
 
   const sortedData = [...filteredData].sort(
@@ -106,18 +119,34 @@ function Announcements() {
             >
               Market Cap &gt; 800 Cr
             </button>
-
-            <button
-              onClick={() => setTodayFilter(!todayFilter)}
-              className={`px-3 py-1 text-xs rounded-full border ${
-                todayFilter ? 'bg-blue-300 text-black font-semibold' : 'bg-indigo-100 text-gray-800'
-              }`}
-            >
-              Today
-            </button>
           </div>
 
-          <div className="text-sm text-gray-600">
+          {uniqueDates.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              <div className="text-gray-600 mr-2">Filter by Date:</div>
+              {uniqueDates.map(dateStr => (
+                <button
+                  key={dateStr}
+                  onClick={() => setSelectedDateFilter(dateStr)}
+                  className={`px-3 py-1 text-xs rounded-full border ${
+                    selectedDateFilter === dateStr ? 'bg-yellow-300 font-semibold' : 'bg-gray-100'
+                  }`}
+                >
+                  {new Date(dateStr).toLocaleDateString('en-IN')}
+                </button>
+              ))}
+              {selectedDateFilter && (
+                <button
+                  onClick={() => setSelectedDateFilter(null)}
+                  className="px-2 py-1 text-xs border border-red-400 rounded-full bg-white text-red-600 ml-2"
+                >
+                  Clear Date
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="text-sm mt-3 text-gray-600">
             Total rows {sortedData.length}
           </div>
         </div>
@@ -158,13 +187,6 @@ function Announcements() {
                       </a>
                     </td>
                     <td className="p-2">{row.announcement_type || row.desc || '—'}</td>
-                    {/* <td className="p-2 whitespace-normal break-words w-48">
-                      <span
-                        dangerouslySetInnerHTML={{
-                          __html: highlightText(row.announcement_type || row.desc || '—')
-                        }}
-                      />
-                    </td> */}
                     <td className="p-2">
                       <span
                         dangerouslySetInnerHTML={{

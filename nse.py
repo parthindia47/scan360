@@ -3846,7 +3846,7 @@ fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolida
 # syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
 
 # syncUpYahooFinOtherSymbols()
 

@@ -74,8 +74,16 @@ function UpcomingEvents() {
     return keywordMatch && marketCapMatch && dateMatch;
   });
 
-  const sortedData = [...filteredData].sort(
+  const sortedEventsData = [...filteredData].sort(
     (a, b) => new Date(a.date) - new Date(b.date)
+  );
+
+  const sortedUpcomingIssuesData = [...upcomingIssuesData].sort(
+    (a, b) => new Date(b.issueEndDate) - new Date(a.issueEndDate)
+  );
+
+  const sortedForthcomingListingData = [...forthcomingListingData].sort(
+    (a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate)
   );
 
   return (
@@ -158,7 +166,7 @@ function UpcomingEvents() {
               </div>
 
               <div className="text-sm text-gray-600">
-                Total rows {sortedData.length}
+                Total rows {sortedEventsData.length}
               </div>
             </div>
 
@@ -172,14 +180,14 @@ function UpcomingEvents() {
                 </tr>
               </thead>
               <tbody>
-                {sortedData.length === 0 ? (
+                {sortedEventsData.length === 0 ? (
                   <tr>
                     <td colSpan="4" className="text-center text-gray-500 py-4">
                       No matching events found.
                     </td>
                   </tr>
                 ) : (
-                  sortedData.map((row, idx) => (
+                  sortedEventsData.map((row, idx) => (
                     <tr key={idx} className="border-t hover:bg-gray-50">
                       <td className="p-2">{formatDate(row.date)}</td>
                       <td className="p-2">
@@ -222,7 +230,7 @@ function UpcomingEvents() {
               </tr>
             </thead>
             <tbody>
-              {upcomingIssuesData.map((item, idx) => (
+              {sortedUpcomingIssuesData.map((item, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
                   <td className="p-2">{item.companyName || '—'}</td>
                   <td className="p-2">{item.series || '—'}</td>
@@ -266,7 +274,7 @@ function UpcomingEvents() {
               </tr>
             </thead>
             <tbody>
-              {forthcomingListingData.map((item, idx) => (
+              {sortedForthcomingListingData.map((item, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
                   <td className="p-2">{item.companyName || '—'}</td>
                   <td className="p-2">{item.series || '—'}</td>

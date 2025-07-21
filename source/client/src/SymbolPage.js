@@ -116,10 +116,14 @@ const generateTicks = (min, max, count, toFixed = null) => {
 
   return (
     <div className="p-1">
-      {stockInfo && (
-        <div className="mb-2">
-          <h5 className="text-2xl font-bold flex items-center gap-2">
-            {symbol}
+      <div>
+        <div>
+          {stockInfo && (
+          <div className="mb-2">
+            <h3 className="text-2xl font-bold flex items-center gap-2">{stockInfo.longName}
+            <p className={"ml-2 text-base"}>
+              ₹{parseFloat(stockInfo.currentPrice).toFixed(2)}
+            </p>
             {stockInfo.currentPrice && stockInfo.previousClose && (() => {
               const curr = parseFloat(stockInfo.currentPrice);
               const prev = parseFloat(stockInfo.previousClose);
@@ -131,46 +135,41 @@ const generateTicks = (min, max, count, toFixed = null) => {
                 const changeColor = isPositive ? 'text-green-600' : 'text-red-600';
 
                 return (
-                  <span className={`ml-2 text-sm font-semibold ${changeColor}`}>
+                  <p className={`ml-2 text-sm font-semibold ${changeColor}`}>
                     {changeText}
-                  </span>
+                  </p>
                 );
               }
               return null;
             })()}
-          </h5>
-        </div>
-      )}
+            </h3>
+          </div>)}
 
-      {stockInfo && stockInfo.longBusinessSummary && (
-        <div className="mt-2 mb-2 text-sm">
-          <p className="flex flex-wrap gap-2">
-            <span className="font-medium">{stockInfo.longName}</span> |
-            <span>
-              <span className="text-gray-500">Current Price:</span>{' '}
-              ₹{parseFloat(stockInfo.currentPrice).toFixed(2)}
-            </span> |
-            <span>
-              <span className="text-gray-500">Market Cap:</span>{' '}
-              ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
-            </span> |
-            <span>
-              <span className="text-gray-500">ROE:</span>{' '}
-              {stockInfo.returnOnEquity ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%` : '—'}
-            </span> |
-            <span>
-              <span className="text-gray-500">PE:</span>{' '}
-              {isNaN(parseFloat(stockInfo.trailingPE))
-                ? '—'
-                : parseFloat(stockInfo.trailingPE).toFixed(2)}
-            </span>
-          </p>
+          {stockInfo && stockInfo.longBusinessSummary && (
+          <div className="mt-2 mb-2 text-sm">
+            <p className="flex flex-wrap gap-2">
+              <span>
+                <span className="text-gray-500">Market Cap:</span>{' '}
+                ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
+              </span> |
+              <span>
+                <span className="text-gray-500">ROE:</span>{' '}
+                {stockInfo.returnOnEquity ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%` : '—'}
+              </span> |
+              <span>
+                <span className="text-gray-500">PE:</span>{' '}
+                {isNaN(parseFloat(stockInfo.trailingPE))
+                  ? '—'
+                  : parseFloat(stockInfo.trailingPE).toFixed(2)}
+              </span>
+            </p>
+          </div>)}
         </div>
-      )}
 
+      </div>
 
       {/* Timeline Buttons */}
-      <div className="mb-6 flex flex-wrap gap-3">
+      <div className="mt-6 mb-1 flex flex-wrap gap-3">
         {Object.keys(timeFrames).map((range) => {
           const isActive = selectedRange === range;
 
@@ -189,7 +188,6 @@ const generateTicks = (min, max, count, toFixed = null) => {
           );
         })}
       </div>
-
 
       {/* Combined Price + Volume Chart */}
       <ResponsiveContainer width="100%" height={400}>
