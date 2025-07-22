@@ -93,7 +93,7 @@ function Announcements() {
   );
 
   return (
-    <div className="p-4">
+    <div className="p-4 mb-4">
 
       {loading ? (
         <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>

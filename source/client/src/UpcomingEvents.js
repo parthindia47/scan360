@@ -87,7 +87,7 @@ function UpcomingEvents() {
   );
 
   return (
-    <div className="p-4">
+    <div className="p-4 mb-4">
       {/* 🔹 Navbar Tabs */}
       <div className="flex border-b mb-4 gap-x-6 ml-1">
         {['events', 'upcomingIssues', 'forthcomingListing'].map(tab => (

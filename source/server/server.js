@@ -367,7 +367,7 @@ app.get('/api_2/candles/:symbol', (req, res) => {
   fs.createReadStream(filePath)
   .pipe(csv())
   .on('data', (row) => {
-    const closeVal = parseFloat(parseFloat(row['Close']).toFixed(2));
+    const closeVal = parseFloat(parseFloat(row['Close']));
     const volumeVal = parseFloat(row['Volume']);
     const dateVal = row['Date'];
 
@@ -402,7 +402,8 @@ app.get('/api_2/info/:symbol', (req, res) => {
   fs.createReadStream(stockInfoFilePath)
     .pipe(csv())
     .on('data', (row) => {
-      if ((row.symbol || '').toUpperCase() === yFinSymbol.toUpperCase()) {
+      if (((row.symbol || '').toUpperCase() === yFinSymbol.toUpperCase()) || 
+           ((row.symbol || '').toUpperCase() === symbol.toUpperCase())) {
         Object.assign(result, row);
         found = true;
       }

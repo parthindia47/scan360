@@ -94,7 +94,7 @@ function Dashboard() {
   const lastUpdateDate = industryDataList[0]?.stocks?.[0]?.lastUpdateDate || null;
 
   return (
-    <div className="p-6">
+    <div className="p-6 mb-4">
       {loading ? (
         <div className="text-center p-10">
           <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>

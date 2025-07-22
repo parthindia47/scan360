@@ -1373,6 +1373,11 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   
   # Convert the list of dictionaries to a DataFrame
   df = pd.DataFrame(jsonObj)
+  
+  # Drop 'sr_no' if present and urlType matches
+  if urlType == "upcomingIssues" and 'sr_no' in df.columns:
+      df = df.drop(columns=['sr_no'])
+        
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
 
@@ -2180,11 +2185,14 @@ def getIndexForNseDocuments(urlType):
         "integratedResults":"equities",
     }
     return index_type[urlType]
-   
-def syncUpAllNseFillings():
+
+def getNseCookies():
   response = fetchUrl(getBaseUrl(urlType="announcement"))
   cookies = response.cookies
-  
+  return cookies
+
+def syncUpAllNseFillings(cookies = None):
+
   syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
   syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
@@ -2295,17 +2303,18 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
-def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False):
+def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, cookies = None):
     ist_timezone = pytz.timezone('Asia/Kolkata')
     current_date = get_last_trading_day()
     unsupported_tickers = []
     bhavCopy = None
     
     if useNseBhavCopy:
-      bhavCopy = fetchNseJsonObj("commoditySpotAll", index="commodityspotrates")
+      bhavCopy = fetchNseJsonObj("commoditySpotAll", index="commodityspotrates",cookies=cookies)
     else:
-      response = fetchUrl(getBaseUrl("commodityIndividual"))
-      cookies = response.cookies
+      if not cookies:
+        response = fetchUrl(getBaseUrl("commodityIndividual"))
+        cookies = response.cookies
 
     for idx, obj in enumerate(nseCommodityList):
         print("fetching " + str(idx) + " " + obj["SYMBOL"] )
@@ -3833,8 +3842,11 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-nseStockList = getAllNseSymbols(local=False)
-fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+# nseStockList = getAllNseSymbols(local=False)
+# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+
+
+fetchNseDocuments("upcomingIssues")
 
 # dummyList = [{"SYMBOL":"BAJAJELEC"}]
 # syncUpNseResults(dummyList)
@@ -3842,16 +3854,18 @@ fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolida
 # fetchAllNseFillings()
 
 # **************************** Daily Sync Up ********************************
-# nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+cookies_local = getNseCookies()
 
-# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True)
+nseStockList = getAllNseSymbols(local=False)
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# syncUpYahooFinOtherSymbols()
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# recalculateYFinStockInfo()
+syncUpYahooFinOtherSymbols()
 
-# syncUpAllNseFillings()
+recalculateYFinStockInfo()
+
+syncUpAllNseFillings(cookies=cookies_local)
 # *************************************************************************
 

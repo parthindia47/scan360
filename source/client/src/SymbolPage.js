@@ -26,8 +26,15 @@ function SymbolPage() {
   const [candles, setCandles] = useState({ close: [], volume: [] });
   const [loading, setLoading] = useState(true);
   const [stockInfo, setStockInfo] = useState(null);
+  const [tickPrefix, setTickPrefix] = useState("");
   const [selectedRange, setSelectedRange] = useState('1Y');
   const { symbol } = useParams();
+  let decimalPoints = 2;
+
+  if(symbol.endsWith('USD') && symbol.length === 6)
+  {
+    decimalPoints = 4;
+  }
 
   useEffect(() => {
     axios.get(`http://localhost:5000/api_2/candles/${symbol}`)
@@ -52,6 +59,14 @@ function SymbolPage() {
     axios.get(`http://localhost:5000/api_2/info/${symbol}`)
       .then(res => {
         setStockInfo(res.data)
+        const quoteType = res.data.quoteType;
+        if (quoteType === 'USD') {
+          setTickPrefix("$");
+        } else if (quoteType === 'WORLD_INDEX') {
+          setTickPrefix("");
+        } else {
+          setTickPrefix("₹");
+        }
       })
       .catch(err => {
         console.error('Error fetching stock info:', err);
@@ -61,19 +76,19 @@ function SymbolPage() {
   }, [symbol]);
 
 
-// Utility function to generate N ticks between min and max
-const generateTicks = (min, max, count, toFixed = null) => {
-  if (min === max) {
-    // Prevent division by zero; add ±1 step around flat value
-    return Array.from({ length: count }, (_, i) => min + (i - Math.floor(count / 2)));
-  }
+  // Utility function to generate N ticks between min and max
+  const generateTicks = (min, max, count, toFixed = null) => {
+    if (min === max) {
+      // Prevent division by zero; add ±1 step around flat value
+      return Array.from({ length: count }, (_, i) => min + (i - Math.floor(count / 2)));
+    }
 
-  const step = (max - min) / (count - 1);
-  return Array.from({ length: count }, (_, i) => {
-    const val = min + i * step;
-    return toFixed !== null ? Number(val.toFixed(toFixed)) : Math.round(val);
-  });
-};
+    const step = (max - min) / (count - 1);
+    return Array.from({ length: count }, (_, i) => {
+      const val = min + i * step;
+      return toFixed !== null ? Number(val.toFixed(toFixed)) : Math.round(val);
+    });
+  };
 
   const getChartData = () => {
     const totalLength = candles.close.length;
@@ -96,7 +111,7 @@ const generateTicks = (min, max, count, toFixed = null) => {
   const yMax = Math.max(...closePrices);
 
   // Generate ticks
-  const priceTicks = generateTicks(yMin, yMax, 8, 2);   // Two decimals for price
+  const priceTicks = generateTicks(yMin, yMax, 8, decimalPoints);   // Two decimals for price
   const volumeData = chartData.map(d => d.volume);
   const vMin = Math.min(...volumeData);
   const vMax = Math.max(...volumeData);
@@ -117,55 +132,69 @@ const generateTicks = (min, max, count, toFixed = null) => {
   return (
     <div className="p-1">
       <div>
-        <div>
-          {stockInfo && (
-          <div className="mb-2">
-            <h3 className="text-2xl font-bold flex items-center gap-2">{stockInfo.longName}
-            <p className={"ml-2 text-base"}>
-              ₹{parseFloat(stockInfo.currentPrice).toFixed(2)}
-            </p>
-            {stockInfo.currentPrice && stockInfo.previousClose && (() => {
-              const curr = parseFloat(stockInfo.currentPrice);
-              const prev = parseFloat(stockInfo.previousClose);
-              if (!isNaN(curr) && !isNaN(prev) && prev !== 0) {
-                const percentChange = ((curr - prev) / prev) * 100;
-                const isPositive = percentChange >= 0;
+        {stockInfo && (
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-4">
 
-                const changeText = `${isPositive ? '+' : ''}${percentChange.toFixed(2)}%`;
-                const changeColor = isPositive ? 'text-green-600' : 'text-red-600';
+            {/* Left Column — 1/4 width */}
+            <div className="flex-[1]">
+              {/* Row 1: Name, Price, % Change */}
+              <div className="flex flex-wrap items-center gap-3 mb-1">
+                <h3 className="text-2xl font-bold">{stockInfo.longName}</h3>
+                <span className="text-base">
+                  {tickPrefix}{parseFloat(stockInfo.currentPrice).toFixed(decimalPoints)}
+                </span>
+                {stockInfo.currentPrice && stockInfo.previousClose && (() => {
+                  const curr = parseFloat(stockInfo.currentPrice);
+                  const prev = parseFloat(stockInfo.previousClose);
+                  if (!isNaN(curr) && !isNaN(prev) && prev !== 0) {
+                    const percentChange = ((curr - prev) / prev) * 100;
+                    const isPositive = percentChange >= 0;
+                    const changeColor = isPositive ? 'text-green-600' : 'text-red-600';
+                    return (
+                      <span className={`text-sm font-semibold ${changeColor}`}>
+                        {`${isPositive ? '+' : ''}${percentChange.toFixed(2)}%`}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
 
-                return (
-                  <p className={`ml-2 text-sm font-semibold ${changeColor}`}>
-                    {changeText}
-                  </p>
-                );
-              }
-              return null;
-            })()}
-            </h3>
-          </div>)}
+              {/* Row 2: Market Cap, ROE, PE */}
+              {stockInfo.longBusinessSummary && (
+              <div className="text-sm text-gray-800 flex flex-wrap gap-3">
+                <span>
+                  <span className="text-gray-500">Market Cap:</span>{' '}
+                  ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
+                </span>
+                <span>
+                  <span className="text-gray-500">ROE:</span>{' '}
+                  {stockInfo.returnOnEquity
+                    ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
+                    : '—'}
+                </span>
+                <span>
+                  <span className="text-gray-500">PE:</span>{' '}
+                  {isNaN(parseFloat(stockInfo.trailingPE))
+                    ? '—'
+                    : parseFloat(stockInfo.trailingPE).toFixed(2)}
+                </span>
+              </div>
+              )}
+            </div>
 
-          {stockInfo && stockInfo.longBusinessSummary && (
-          <div className="mt-2 mb-2 text-sm">
-            <p className="flex flex-wrap gap-2">
-              <span>
-                <span className="text-gray-500">Market Cap:</span>{' '}
-                ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
-              </span> |
-              <span>
-                <span className="text-gray-500">ROE:</span>{' '}
-                {stockInfo.returnOnEquity ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%` : '—'}
-              </span> |
-              <span>
-                <span className="text-gray-500">PE:</span>{' '}
-                {isNaN(parseFloat(stockInfo.trailingPE))
-                  ? '—'
-                  : parseFloat(stockInfo.trailingPE).toFixed(2)}
-              </span>
-            </p>
-          </div>)}
-        </div>
 
+            {/* Right Column — 3/4 width */}
+            {stockInfo.longBusinessSummary && (
+              <div className="flex-[1]">
+                <h4 className="text-base font-semibold mb-1">About</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {stockInfo.longBusinessSummary.split('.').slice(0, 1).join('. ') + '.'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Timeline Buttons */}
@@ -225,7 +254,7 @@ const generateTicks = (min, max, count, toFixed = null) => {
             ticks={priceTicks}
             tick={{ fontSize: 12 }}
             label={{ value: "Price", angle: -90, position: "insideRight" }}
-            tickFormatter={(value) => value.toFixed(2)}
+            tickFormatter={(value) => value.toFixed(decimalPoints)}
           />
 
         <Tooltip
@@ -235,7 +264,7 @@ const generateTicks = (min, max, count, toFixed = null) => {
               return (
                 <div className="bg-white p-2 border rounded shadow text-sm">
                   <div>{date}</div>
-                  <div>₹{close.toFixed(2)}</div>
+                  <div>{tickPrefix}{close.toFixed(decimalPoints)}</div>
                   <div><strong>Vol:</strong> {volume.toLocaleString()}</div>
                 </div>
               );
@@ -263,8 +292,6 @@ const generateTicks = (min, max, count, toFixed = null) => {
           />
         </ComposedChart>
       </ResponsiveContainer>
-
-
     </div>
   );
 }
