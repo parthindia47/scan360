@@ -1374,9 +1374,18 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   # Convert the list of dictionaries to a DataFrame
   df = pd.DataFrame(jsonObj)
   
-  # Drop 'sr_no' if present and urlType matches
+  # Some actions to about duplicates
   if urlType == "upcomingIssues" and 'sr_no' in df.columns:
       df = df.drop(columns=['sr_no'])
+      
+  if urlType == "upcomingIssues" and 'issueSize' in df.columns:
+      df['issueSize'] = df['issueSize'].round(0).astype('Int64')
+      
+  if urlType == "qipFilings" and 'sharehold' in df.columns:
+      df = df.drop(columns=['sharehold'])
+      
+  if urlType == "qipFilings" and 'allottee' in df.columns:
+      df = df.drop(columns=['allottee'])
         
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
@@ -2238,11 +2247,11 @@ def fetchAllNseFillings():
   #                   end_date=datetime(2025, 7, 12),
   #                   cookies=cookies)
   
-  # fetchNseDocuments(urlType="qipFilings",
-  #                   index="qip",
-  #                   start_date=datetime(2025, 6, 1), 
-  #                   end_date=datetime(2025, 7, 12),
-  #                   cookies=cookies)
+  fetchNseDocuments(urlType="qipFilings",
+                    index="qip",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 7, 12),
+                    cookies=cookies)
   
   # fetchNseDocuments(urlType="prefIssue",
   #                   index="inListing",
@@ -3846,7 +3855,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
 
 
-fetchNseDocuments("upcomingIssues")
+# fetchAllNseFillings()
 
 # dummyList = [{"SYMBOL":"BAJAJELEC"}]
 # syncUpNseResults(dummyList)
@@ -3856,15 +3865,15 @@ fetchNseDocuments("upcomingIssues")
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
 
-nseStockList = getAllNseSymbols(local=False)
-syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# nseStockList = getAllNseSymbols(local=False)
+# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-syncUpYahooFinOtherSymbols()
+# syncUpYahooFinOtherSymbols()
 
-recalculateYFinStockInfo()
+# recalculateYFinStockInfo()
 
 syncUpAllNseFillings(cookies=cookies_local)
 # *************************************************************************

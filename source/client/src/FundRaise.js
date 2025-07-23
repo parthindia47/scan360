@@ -44,9 +44,27 @@ function FundRaise() {
     return isNaN(date) ? '—' : date.toLocaleDateString('en-IN');
   };
 
+  const sortedRightsData = [...rightsData].sort((a, b) => {
+    const dateA = new Date(a.draftDate);
+    const dateB = new Date(b.draftDate);
+    return dateB - dateA;
+  });
+
   const sortedPrefData = [...prefData].sort((a, b) => {
     const dateA = new Date(a.boardResDate);
     const dateB = new Date(b.boardResDate);
+    return dateB - dateA;
+  });
+
+  const sortedQipData = [...qipData].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dateB - dateA;
+  });
+
+  const sortedSchemeData = [...schemeData].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
     return dateB - dateA;
   });
 
@@ -92,7 +110,7 @@ function FundRaise() {
                 </tr>
               </thead>
               <tbody>
-                {rightsData.map((row, idx) => (
+                {sortedRightsData.map((row, idx) => (
                   <tr key={idx} className="border-t hover:bg-gray-50">
                     <td className="p-2">{row.company || '—'}</td>
                     <td className="p-2">{formatDate(row.draftDate)}</td>
@@ -130,7 +148,7 @@ function FundRaise() {
               </tr>
             </thead>
             <tbody>
-              {qipData.map((row, idx) => (
+              {sortedQipData.map((row, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
                   <td className="p-2">{row.company || '—'}</td>
                   <td className="p-2">{formatDate(row.date)}</td>
@@ -226,7 +244,7 @@ function FundRaise() {
               </tr>
             </thead>
             <tbody>
-              {schemeData.map((row, idx) => (
+              {sortedSchemeData.map((row, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
                   <td className="p-2">{row.company || '—'}</td>
                   <td className="p-2">{formatDate(row.date)}</td>
