@@ -13,7 +13,7 @@ const announcementKeywords = [
   "downgraded", "Buy recommendation", "Positive outlook", "Guidance raised", "Milestone achieved", "Supply agreement",
   "Exclusive agreement", "Patent filing", "Product approval", "Regulatory approval", "Secondary offering",
   "Share repurchase", "Equity infusion", "Capital raise", "Increase in volume", "Spurt in Volume",
-  "Movement in price", "name change"
+  "Movement in price", "name change", "Demand Notice", "Incorporation"
 ];
 
 function Announcements() {

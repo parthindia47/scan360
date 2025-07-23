@@ -9,6 +9,7 @@ app.use(cors());
 
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
+const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
@@ -61,6 +62,25 @@ const daysPastList = {
 
 let eventsMap = {}; // key: symbol, value: array of events
 
+// ===================== Helper Functions ====================================
+
+function toCrores(value, decimals = 2) {
+  const num = parseFloat(value);
+  if (isNaN(num)) return null;
+  return +(num / 1e7).toFixed(decimals);
+}
+
+const formatDate = (rawDateStr) => {
+  const dateObj = new Date(rawDateStr);
+  if (isNaN(dateObj)) return rawDateStr; // fallback in case of bad date
+  return dateObj.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+// ========================================================================
 // Step 1: Load events.csv and build eventsMap
 function loadEventsFromCSV(callback) {
   const twoDaysAgo = new Date();
@@ -340,16 +360,6 @@ app.get('/api_2/:type', (req, res) => {
 }
 */
 
-const formatDate = (rawDateStr) => {
-  const dateObj = new Date(rawDateStr);
-  if (isNaN(dateObj)) return rawDateStr; // fallback in case of bad date
-  return dateObj.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
-};
-
 app.get('/api_2/candles/:symbol', (req, res) => {
   const { symbol } = req.params;
   const filePath = path.join(candleDataFolder, `${symbol}.csv`);
@@ -420,6 +430,49 @@ app.get('/api_2/info/:symbol', (req, res) => {
       res.status(500).json({ error: 'Error reading stock info CSV.' });
     });
 });
+
+app.get('/api_2/consolidated/:symbol', (req, res) => {
+  const { symbol } = req.params;
+  const filePath = path.join(consolidatedDataFolder, symbol, `${symbol}.csv`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `Data for symbol '${symbol}' not found.` });
+  }
+
+  const result = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv())
+    .on('data', (row) => {
+      // Optionally parse numeric fields
+      const parsedRow = {
+        Sales: toCrores(row.Sales),
+        InterestBanking: toCrores(row.InterestBanking),
+        Expenses: toCrores(row.Expenses),
+        OperatingProfit: toCrores(row.OperatingProfit),
+        OPM: parseFloat(row.OPM).toFixed(1),
+        OtherIncome: toCrores(row.OtherIncome),
+        ExceptionalItem: toCrores(row.ExceptionalItem),
+        Interest: toCrores(row.Interest),
+        Depreciation: toCrores(row.Depreciation),
+        ProfitBeforeTax: toCrores(row.ProfitBeforeTax),
+        TaxPercentage: parseFloat(row.TaxPercentage).toFixed(1),
+        NetProfit: toCrores(row.NetProfit),
+        EPS: parseFloat(row.EPS),
+        toDate: row.toDate,
+        audited: row.audited,
+        xbrl: row.xbrl,
+        broadCastDate: row.broadCastDate
+      };
+      result.push(parsedRow);
+    })
+    .on('end', () => res.json(result))
+    .on('error', (err) => {
+      console.error(`Error reading CSV for '${symbol}':`, err);
+      res.status(500).json({ error: `Failed to load consolidated data for symbol '${symbol}'` });
+    });
+});
+
 
 app.listen(5000, () => {
   console.log('Server running on port 5000');

@@ -28,6 +28,7 @@ function SymbolPage() {
   const [stockInfo, setStockInfo] = useState(null);
   const [tickPrefix, setTickPrefix] = useState("");
   const [selectedRange, setSelectedRange] = useState('1Y');
+  const [consolidatedData, setConsolidatedData] = useState([]);
   const { symbol } = useParams();
   let decimalPoints = 2;
 
@@ -73,6 +74,15 @@ function SymbolPage() {
         setStockInfo(null);
       });
 
+  }, [symbol]);
+
+  useEffect(() => {
+    axios.get(`http://localhost:5000/api_2/consolidated/${symbol}`)
+      .then(res => setConsolidatedData(res.data))
+      .catch(err => {
+        console.error('Error fetching consolidated data:', err);
+        setConsolidatedData([]);
+      });
   }, [symbol]);
 
 
@@ -130,7 +140,7 @@ function SymbolPage() {
   }
 
   return (
-    <div className="p-1">
+    <div className="p-1 mb-10">
       <div>
         {stockInfo && (
           <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-4">
@@ -292,6 +302,54 @@ function SymbolPage() {
           />
         </ComposedChart>
       </ResponsiveContainer>
+
+      {consolidatedData.length > 0 && (
+      <div className="mt-8 overflow-x-auto">
+        <h4 className="text-lg font-semibold">Consolidated Results</h4>
+        <span className="text-gray-500">Figures in Rs. Crores</span>
+        <table className="min-w-full border text-sm text-left">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border px-2 py-1"></th>
+              {consolidatedData.map((row, idx) => (
+                <th key={idx} className="border px-2 py-1 whitespace-nowrap text-right">
+                  {row.toDate}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              "Sales", "OperatingProfit", "OPM", "OtherIncome",
+              "Interest", "Depreciation", "ProfitBeforeTax",
+              "NetProfit", "EPS"
+            ].map((metric, rowIdx) => (
+              <tr
+                key={metric}
+                className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+              >
+                <td className="border px-2 py-1 font-medium">{metric}</td>
+                {consolidatedData.map((row, idx) => {
+                  const value = row[metric];
+                  const formattedValue =
+                    value !== undefined
+                      ? metric === "OPM"
+                        ? `${parseFloat(value).toFixed(1)}%`
+                        : parseFloat(value).toLocaleString()
+                      : '—';
+
+                  return (
+                    <td key={idx} className="border px-2 py-1 text-right">
+                      {formattedValue}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      )}
     </div>
   );
 }
