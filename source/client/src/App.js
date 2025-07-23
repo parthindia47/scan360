@@ -9,6 +9,7 @@ import FundRaise from './FundRaise';
 import AboutUs from './AboutUs';
 import Terms from './Terms';
 import Contact from './Contact';
+import Results from './Results';
 
 import Footer from './Footer';
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/results" element={<Results />} />
         </Routes>
       </div>
       <Footer />

@@ -21,6 +21,7 @@ const rightsFilingsPath = path.join(__dirname, '../../stock_fillings/rightsFilin
 const qipFilingsPath = path.join(__dirname, '../../stock_fillings/qipFilings_nse.csv');
 const prefIssuePath = path.join(__dirname, '../../stock_fillings/prefIssue_nse.csv');
 const schemeOfArrangementPath = path.join(__dirname, '../../stock_fillings/schemeOfArrangement_nse.csv');
+const integratedResultsPath = path.join(__dirname, '../../stock_fillings/integratedResults_nse.csv');
 
 const csvPaths = {
   announcements: announcementPath,
@@ -31,6 +32,7 @@ const csvPaths = {
   qipFilings: qipFilingsPath,
   prefIssue: prefIssuePath,
   schemeOfArrangement: schemeOfArrangementPath,
+  integratedResults: integratedResultsPath,
 };
 
 const dateKeys = {
@@ -44,6 +46,8 @@ const dateKeys = {
   qipFilings: "date",
   prefIssue: "boardResDate",
   schemeOfArrangement: "date",
+
+  integratedResults: "creation_Date"
 };
 
 const daysPastList = {
@@ -57,6 +61,8 @@ const daysPastList = {
   qipFilings: 10,
   prefIssue: 5,
   schemeOfArrangement: 10,
+
+  integratedResults: 2
 };
 
 
