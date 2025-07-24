@@ -78,7 +78,10 @@ function SymbolPage() {
 
   useEffect(() => {
     axios.get(`http://localhost:5000/api_2/consolidated/${symbol}`)
-      .then(res => setConsolidatedData(res.data))
+      .then(res => {
+        const sortedData = res.data.sort((a, b) => new Date(a.toDate) - new Date(b.toDate));
+        setConsolidatedData(sortedData);
+      })
       .catch(err => {
         console.error('Error fetching consolidated data:', err);
         setConsolidatedData([]);

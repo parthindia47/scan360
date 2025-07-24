@@ -122,7 +122,7 @@ function UpcomingEvents() {
             <div className="mb-4">
               <div className="flex flex-wrap gap-2 mb-2">
                 <div className="text-gray-600">Filters Subjects : </div>
-                {["Financial Results", "Stock Split", "Bonus", "Dividend"].map(keyword => (
+                {["Financial Results", "Stock Split", "Bonus", "Dividend", "Fund Raising"].map(keyword => (
                   <button
                     key={keyword}
                     onClick={() =>

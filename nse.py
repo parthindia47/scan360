@@ -1379,7 +1379,11 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
       df = df.drop(columns=['sr_no'])
       
   if urlType == "upcomingIssues" and 'issueSize' in df.columns:
-      df['issueSize'] = df['issueSize'].round(0).astype('Int64')
+      df['issueSize'] = (
+          pd.to_numeric(df['issueSize'], errors='coerce')  # Convert non-numeric to NaN
+          .round(0)
+          .astype('Int64')  # Nullable integer type
+      )
       
   if urlType == "qipFilings" and 'sharehold' in df.columns:
       df = df.drop(columns=['sharehold'])
@@ -3510,48 +3514,54 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
 integarated filings always show quaterly results
 # dummyList = [{"SYMBOL":"BAJAJCON"}]
 '''        
-def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated", delaySec=8):
-    result_date_list = ["31-Mar-2025"]
-
-    # response = fetchUrl(getBaseUrl("integratedResults"))
-    # cookies = response.cookies
+def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated", cookies=None, delaySec=8):
+    result_date_list = ["31-Mar-2025", "30-Jun-2025"]
 
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
         print(f"🔄 Fetching {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
-        csv_path = f"stock_results/{sub_folder}/{symbol}.csv"
+        csv_dir = f"stock_results/{sub_folder}/{symbol}"
+        csv_path = f"{csv_dir}/{symbol}.csv"
 
-        # Load existing data if available
         if os.path.exists(csv_path):
             df = pd.read_csv(csv_path)
         else:
             df = pd.DataFrame()
-            
-        # print(df)
+
+        # Skip fetching if all result_date_list are already in df['toDate']
+        if not df.empty:
+            existing_dates = set(df['toDate'].astype(str).str.strip().str.lower())
+            if all(date.lower() in existing_dates for date in result_date_list):
+                print(f"⏩ Skipping {symbol}: All result dates already present.")
+                continue
+
         try:
             data = fetchNseJsonObj(
                 urlType="integratedResults",
                 index="equities",
-                symbol=symbol
+                symbol=symbol,
+                cookies=cookies
             )
-            # print(data)
 
             for result_date in result_date_list:
-                # Step 1: Filter entries
+                # ✅ Skip this result_date if already present
+                if not df.empty and result_date.lower() in existing_dates:
+                    print(f"⏭️ Skipping {symbol} for {result_date}: Already exists.")
+                    continue
+
                 matching_entries = [
                     item for item in data
-                    if item.get("qe_Date").lower() == result_date.lower() and item.get("consolidated", "") == resultType
+                    if item.get("qe_Date", "").lower() == result_date.lower() and item.get("consolidated", "") == resultType
                 ]
 
                 if not matching_entries and resultType == "Standalone":
-                    matching_entries = [item for item in data if item.get("qe_Date").lower() == result_date.lower()]
+                    matching_entries = [item for item in data if item.get("qe_Date", "").lower() == result_date.lower()]
 
                 if not matching_entries:
                     continue
 
-                # Step 2: Choose most recent entry by broadCastDate
                 def parse_broadcast(item):
                     try:
                         return datetime.strptime(item.get("creation_Date", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
@@ -3568,21 +3578,20 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
                 to_date = matching_entry.get("qe_Date")
                 broad_cast_date = matching_entry.get("creation_Date")
 
-                # Step 3: Parse HTML XBRL
                 print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
-                json_obj = nse_html_to_json_results(html_url)
+                local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
+                json_obj = nse_xbrl_to_json(local_xml_path)
+
                 json_obj["toDate"] = to_date
                 json_obj["audited"] = matching_entry.get("audited")
                 json_obj["xbrl"] = xbrl_url
                 json_obj["broadCastDate"] = broad_cast_date
 
-                # Step 4: Check if we need to insert or update
                 if df.empty:
                     df = pd.DataFrame([json_obj])
                 else:
-                    # Append and keep only the latest by toDate
                     df = pd.concat([df, pd.DataFrame([json_obj])], ignore_index=True)
-                    df = df.sort_values("broadCastDate")  # Ensure latest entries come last
+                    df = df.sort_values("broadCastDate")
                     df = df.drop_duplicates(subset="toDate", keep="last").reset_index(drop=True)
 
                 time.sleep(delaySec)
@@ -3591,7 +3600,6 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
             print(f"❌ Error fetching data for {symbol}: {e}")
             continue
 
-        # Step 5: Save updated CSV
         if not df.empty:
             os.makedirs(os.path.dirname(csv_path), exist_ok=True)
             df.to_csv(csv_path, index=False)
@@ -3851,8 +3859,10 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 
 # recalculateYFinStockInfo()
 
-# nseStockList = getAllNseSymbols(local=False)
+cookies_local = getNseCookies()
+nseStockList = getAllNseSymbols(local=False)
 # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+syncUpNseResults(nseStockList, cookies=cookies_local)
 
 
 # fetchAllNseFillings()
@@ -3863,7 +3873,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # fetchAllNseFillings()
 
 # **************************** Daily Sync Up ********************************
-cookies_local = getNseCookies()
+# cookies_local = getNseCookies()
 
 # nseStockList = getAllNseSymbols(local=False)
 # syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
@@ -3875,6 +3885,6 @@ cookies_local = getNseCookies()
 
 # recalculateYFinStockInfo()
 
-syncUpAllNseFillings(cookies=cookies_local)
+# syncUpAllNseFillings(cookies=cookies_local)
 # *************************************************************************
 
