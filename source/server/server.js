@@ -55,7 +55,7 @@ const daysPastList = {
 
   events: 2,
   upcomingIssues: 2,
-  forthcomingListing: 2,
+  forthcomingListing: 3,
 
   rightsFilings: 10,
   qipFilings: 10,
@@ -322,7 +322,11 @@ app.get('/api_2/:type', (req, res) => {
     .on('data', (row) => {
       if (row.symbol && row.marketCap) {
         const cleanSymbol = row.symbol.trim().toUpperCase().replace(/\.NS$/, '');
-        stockMap[cleanSymbol] = parseFloat(row.marketCap);
+        stockMap[cleanSymbol] = {
+          marketCap: parseFloat(row.marketCap || 0),
+          currentPrice: parseFloat(row.currentPrice || 0),
+          previousClose: parseFloat(row.previousClose || 0)
+        };
       }
     })
     .on('end', () => {
@@ -340,7 +344,9 @@ app.get('/api_2/:type', (req, res) => {
             // Try to attach marketCap if symbol is present
             const symbol = (row.symbol || '').trim().toUpperCase();
             if (symbol && stockMap[symbol] !== undefined) {
-              row.marketCap = stockMap[symbol];
+              row.marketCap = stockMap[symbol].marketCap;
+              row.currentPrice = stockMap[symbol].currentPrice;
+              row.previousClose = stockMap[symbol].previousClose;
             }
             results.push(row);
           }

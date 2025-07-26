@@ -23,6 +23,7 @@ function Announcements() {
   const [expandedRows, setExpandedRows] = useState({});
   const [marketCapFilter, setMarketCapFilter] = useState(false);
   const [selectedDateFilter, setSelectedDateFilter] = useState(null);
+  const [priceChangeFilter, setPriceChangeFilter] = useState(false);
   const [uniqueDates, setUniqueDates] = useState([]);
 
   useEffect(() => {
@@ -77,16 +78,20 @@ function Announcements() {
 
     const rowDate = new Date(row.an_dt || row.sort_date || '');
     rowDate.setHours(0, 0, 0, 0);
+    const localRowDate = rowDate.toLocaleDateString('en-CA');
+    const isSameSelectedDate = selectedDateFilter ? localRowDate === selectedDateFilter : true;
 
-    const localRowDate = rowDate.toLocaleDateString('en-CA'); // yyyy-mm-dd in local timezone
-    const isSameSelectedDate = selectedDateFilter
-      ? localRowDate === selectedDateFilter
-      : true;
+    // Price change check
+    const current = parseFloat(row.currentPrice);
+    const prev = parseFloat(row.previousClose);
+    const priceMoved = !isNaN(current) && !isNaN(prev) && prev > 0 && Math.abs((current - prev) / prev) * 100 > 3;
 
     return (!filtered || keywordMatch)
       && (!marketCapFilter || marketCapMatch)
+      && (!priceChangeFilter || priceMoved)
       && isSameSelectedDate;
   });
+
 
   const sortedData = [...filteredData].sort(
     (a, b) => new Date(b.an_dt || b.sort_date) - new Date(a.an_dt || a.sort_date)
@@ -118,6 +123,15 @@ function Announcements() {
               }`}
             >
               Market Cap &gt; 800 Cr
+            </button>
+
+            <button
+              onClick={() => setPriceChangeFilter(!priceChangeFilter)}
+              className={`px-3 py-1 text-xs rounded-full border ${
+                priceChangeFilter ? 'bg-green-300 text-black font-semibold' : 'bg-gray-200'
+              }`}
+            >
+              Price Move &gt; 3%
             </button>
           </div>
 
@@ -185,6 +199,13 @@ function Announcements() {
                       >
                         {row.symbol || '—'}
                       </a>
+                      <br />
+                      {row.currentPrice && row.previousClose ? (
+                        <span className="text-xs text-gray-500">
+                          ₹{parseFloat(row.previousClose).toFixed(2)} → ₹{parseFloat(row.currentPrice).toFixed(2)} (
+                          {(((parseFloat(row.currentPrice) - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100).toFixed(2)}%)
+                        </span>
+                      ) : null}
                     </td>
                     <td className="p-2">{row.announcement_type || row.desc || '—'}</td>
                     <td className="p-2">

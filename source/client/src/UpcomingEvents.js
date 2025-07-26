@@ -7,10 +7,11 @@ function UpcomingEvents() {
   const [forthcomingListingData, setForthcomingListingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('events'); // 🔹 tracks which tab is active
-  const [filtered, setFiltered] = useState(false); // ✅ Missing
   const [marketCapFilter, setMarketCapFilter] = useState(false);
   const [selectedKeyword, setSelectedKeyword] = useState(null); // or null if nothing selected
   const [periodFilter, setPeriodFilter] = useState(null); // "today" | "next3days" | null
+  const [selectedSeries, setSelectedSeries] = useState(null);
+  
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/events')
@@ -49,6 +50,14 @@ function UpcomingEvents() {
     return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
   };
 
+  const activeSeriesOptions = [
+    ...new Set(
+      upcomingIssuesData
+        .filter((item) => item.status === "Active" && item.series)
+        .map((item) => item.series)
+    ),
+  ];
+
   const filteredData = eventsData.filter((row) => {
     const text = `${row.purpose || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap ?? 0);
@@ -74,11 +83,19 @@ function UpcomingEvents() {
     return keywordMatch && marketCapMatch && dateMatch;
   });
 
+  const filteredUpcomingIssueData = (data, selectedSeries) => {
+    return data.filter((item) => {
+      const seriesMatch = selectedSeries ? item.series === selectedSeries : true;
+
+      return seriesMatch;
+    });
+  };
+
   const sortedEventsData = [...filteredData].sort(
     (a, b) => new Date(a.date) - new Date(b.date)
   );
 
-  const sortedUpcomingIssuesData = [...upcomingIssuesData].sort(
+  const sortedUpcomingIssuesData = [...filteredUpcomingIssueData(upcomingIssuesData, selectedSeries)].sort(
     (a, b) => new Date(b.issueEndDate) - new Date(a.issueEndDate)
   );
 
@@ -107,7 +124,7 @@ function UpcomingEvents() {
           >
             {tab === 'events' ? 'Events' :
              tab === 'upcomingIssues' ? 'Upcoming Issues' :
-             'Forthcoming Listings'}
+             'Upcoming Listings'}
           </a>
         ))}
       </div>
@@ -216,6 +233,25 @@ function UpcomingEvents() {
       {/* 🔹 Upcoming Issues */}
       {activeTab === 'upcomingIssues' && (
         <>
+        <div className="mb-4 flex flex-wrap gap-2 items-center">
+          <span className="text-gray-600 text-sm">Filter by Series:</span>
+          {activeSeriesOptions.map((seriesVal) => (
+            <button
+              key={seriesVal}
+              onClick={() =>
+                setSelectedSeries((prev) => (prev === seriesVal ? null : seriesVal))
+              }
+              className={`px-3 py-1 text-xs rounded-full border ${
+                selectedSeries === seriesVal
+                  ? 'bg-blue-500 text-white font-semibold'
+                  : 'bg-gray-100 text-gray-800'
+              }`}
+            >
+              {seriesVal}
+            </button>
+          ))}
+        </div>
+
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>

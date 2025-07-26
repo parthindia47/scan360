@@ -1378,11 +1378,20 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   if urlType == "upcomingIssues" and 'sr_no' in df.columns:
       df = df.drop(columns=['sr_no'])
       
+  if urlType == "upcomingIssues" and 'lotSize' in df.columns:
+      df = df.drop(columns=['lotSize'])
+      
+  if urlType == "upcomingIssues" and 'priceBand' in df.columns:
+      df = df.drop(columns=['priceBand'])
+      
   if urlType == "upcomingIssues" and 'issueSize' in df.columns:
-      df['issueSize'] = (
-          pd.to_numeric(df['issueSize'], errors='coerce')  # Convert non-numeric to NaN
-          .round(0)
-          .astype('Int64')  # Nullable integer type
+      df['issueSize'] = df['issueSize'].apply(
+          lambda x: int(float(x)) if str(x).strip() not in ["", "nan", "NaN", "None"] else 0
+      )
+
+  if urlType == "upcomingIssues" and 'isBse' in df.columns:
+      df['isBse'] = df['isBse'].apply(
+          lambda x: int(float(x)) if str(x).strip() not in ["", "nan", "NaN", "None"] else 0
       )
       
   if urlType == "qipFilings" and 'sharehold' in df.columns:
@@ -1913,6 +1922,8 @@ def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_
       #remove if any duplicate
       df = df[~df.index.duplicated()]
       df.to_csv(file_name, encoding='utf-8')
+      
+      print(df)
 
       print(">>> Data saved to " + file_name)
     else:
@@ -2024,6 +2035,7 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
 
   # Read the CSV data into a DataFrame
   df = pd.read_csv(csv_filename)
+  print(df)
   
   date_key = getDateKeyForNseDocument(urlType)
   
@@ -2038,6 +2050,8 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
   if urlType == "upcomingIssues" or urlType == "forthcomingListing":
     start_date = None
     end_date = None
+    
+  # print(df)
 
   #print("offsetDays",offsetDays,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
   try:
@@ -3860,9 +3874,12 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # recalculateYFinStockInfo()
 
 cookies_local = getNseCookies()
-nseStockList = getAllNseSymbols(local=False)
-# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
-syncUpNseResults(nseStockList, cookies=cookies_local)
+# nseStockList = getAllNseSymbols(local=False)
+# # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+# syncUpNseResults(nseStockList, cookies=cookies_local)
+
+fetchNseDocuments("upcomingIssues", cookies=cookies_local)
+syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 
 # fetchAllNseFillings()
