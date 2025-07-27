@@ -81,6 +81,7 @@ import zipfile
 import re
 import PyPDF2
 import pytesseract
+import shutil
 from pdf2image import convert_from_path
 from curl_cffi import requests
 from dataclasses import dataclass
@@ -169,6 +170,7 @@ nseSegments = {"equities":"equities",
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
+ist = pytz.timezone("Asia/Kolkata")
 scrappingStartingDate = datetime(1994, 1, 1)
 current_datetime = datetime.now()
 current_date = current_datetime.date()
@@ -1705,11 +1707,16 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
+def convert_date_to_panda_date(date_input):
+  panda_date = pd.to_datetime(date_input)
+  if panda_date.tzinfo is None:
+      panda_date = ist.localize(panda_date)
+  return panda_date
 
-def recalculate_financials(row, current_price, volume, type):
+def recalculate_financials(row, current_price, volume, candle_date, candle_type):
     updated_row = row.copy()
 
-    if type == "NSE":
+    if candle_type == "NSE":
       try:
           if pd.notna(row.get('trailingEps')) and row['trailingEps'] != 0:
               updated_row['trailingPE'] = current_price / row['trailingEps']
@@ -1722,11 +1729,44 @@ def recalculate_financials(row, current_price, volume, type):
       except Exception as e:
           print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
 
-    updated_row['previousClose'] = updated_row['currentPrice']
-    updated_row['currentPrice'] = current_price
+    candle_date = convert_date_to_panda_date(candle_date)
+    lastUpdateDate = convert_date_to_panda_date(updated_row['lastUpdateDate'])
+
+    if lastUpdateDate.date() != candle_date.date():
+      updated_row['previousClose'] = updated_row['currentPrice']
+      updated_row['currentPrice'] = current_price
+      updated_row['lastUpdateDate'] = candle_date.date()
+    else:
+      #print("Not updating price, same date ", candle_date)
+      pass
+      
     updated_row['volume'] = volume
     return updated_row
-  
+
+def get_last5_financials(symbol):
+    try:
+        path = f"stock_results/consolidated/{symbol}/{symbol}.csv"
+        if not os.path.exists(path):
+            print(f"⚠️ File not found for {symbol}")
+            return None, None
+
+        df = pd.read_csv(path)
+        df['toDate'] = pd.to_datetime(df['toDate'], format="%d-%b-%Y")
+
+        # Drop rows where toDate is NaT or Sales/NetProfit is NaN
+        df = df.dropna(subset=['toDate', 'Sales', 'NetProfit'])
+
+        # Sort by date ascending, then take the last 5 rows
+        df = df.sort_values('toDate').tail(5)
+
+        last5revenue = {dt.strftime("%d-%b-%Y"): int(val) for dt, val in zip(df['toDate'], df['Sales'])}
+        last5PAT = {dt.strftime("%d-%b-%Y"): int(val) for dt, val in zip(df['toDate'], df['NetProfit'])}
+
+        return json.dumps(last5revenue), json.dumps(last5PAT)
+    except Exception as e:
+        print(f"❌ Error processing {symbol}: {e}")
+        return None, None
+      
 '''
 bhavcopy will give us df
 SYMBOL	 SERIES	 DATE1	 PREV_CLOSE	 OPEN_PRICE	 HIGH_PRICE	 LOW_PRICE	 LAST_PRICE	 CLOSE_PRICE	 AVG_PRICE
@@ -1746,6 +1786,8 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
       
     if os.path.exists(local_url):
       df = pd.read_csv(local_url)
+      df["last5Revenue"] = df["last5Revenue"].astype("object")
+      df["last5PAT"] = df["last5PAT"].astype("object")
     else:
       print("No local file exists")
       return
@@ -1755,28 +1797,38 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
       try:
         if row.get("fullExchangeName") == "NSE" and row.get("quoteType") == "EQUITY":
           # NSE Tickers
-          symbol = row["symbol"].replace(".NS", "")
+          symbol_clean = row["symbol"].replace(".NS", "")
+          
+        if useNseBhavCopy:
           row_bhavCopy = bhavCopy[
-              (bhavCopy['SYMBOL'] == symbol.upper()) &
+              (bhavCopy['SYMBOL'] == symbol_clean.upper()) &
               (bhavCopy['SERIES'].str.strip().isin(['EQ', 'BE', 'BZ']))
           ]
 
           if not row_bhavCopy.empty:
             close_price = row_bhavCopy.iloc[0]["CLOSE_PRICE"]
+            date1 = row_bhavCopy.iloc[0]["DATE1"]
             volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
             
-            df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, type="NSE")
+            df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type="NSE")  
         else:
           # Other Tickers
-          symbol_csv_filename = "stock_charts\\" + row["symbol"] + ".csv"
+          symbol_csv_filename = "stock_charts\\" + symbol_clean + ".csv"
           df_symbol = pd.read_csv(symbol_csv_filename)
 
           close_price = df_symbol.iloc[-1]['Close']
           volume = df_symbol.iloc[-1]['Volume']
-          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, type="OTHER")
+          date1 = df_symbol.iloc[-1]['Date']
+          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type="OTHER")
+          
+        if exchange == "NSE":
+          last5Revenue, last5PAT =  get_last5_financials(symbol_clean)
+          df.at[idx, "last5Revenue"] = last5Revenue
+          df.at[idx, "last5PAT"] = last5PAT
       except Exception as e:
         traceback.print_exc()  # <-- this prints the full stack trace with line number
-        bhavcopy_not_found_tickers.append(row["symbol"])
+        print("SYMBOL NAME " + symbol_clean)
+        bhavcopy_not_found_tickers.append(symbol_clean)
           
     df.to_csv(local_url, index=False)
     print(f"✅ Saved updated file to: {local_url}")
@@ -2035,7 +2087,7 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
 
   # Read the CSV data into a DataFrame
   df = pd.read_csv(csv_filename)
-  print(df)
+  # print(df)
   
   date_key = getDateKeyForNseDocument(urlType)
   
@@ -3432,10 +3484,39 @@ def save_xml_from_url(url, save_dir="."):
         print("Error:", e)
         return None
 
+def modify_result_files(nseStockList, resultType="Consolidated"):
+    for idx, obj in enumerate(nseStockList):
+        symbol = obj["SYMBOL"]
+        print(f"🔄 Processing {idx}: {symbol}")
+
+        sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
+        csv_dir = f"stock_results/{sub_folder}/{symbol}"
+        csv_path = f"{csv_dir}/{symbol}.csv"
+
+        if os.path.exists(csv_path):
+            try:
+                df = pd.read_csv(csv_path)
+
+                # Convert 'audited' column to lowercase if it exists
+                if 'audited' in df.columns:
+                    df['audited'] = df['audited'].astype(str).str.lower()
+
+                # Convert or create 'consolidated' column
+                if 'consolidated' in df.columns:
+                    df['consolidated'] = df['consolidated'].astype(str).str.lower()
+                else:
+                    df['consolidated'] = "consolidated"
+
+                # Save CSV back
+                df.to_csv(csv_path, index=False)
+                print(f"✅ Updated: {symbol}")
+            except Exception as e:
+                print(f"❌ Failed for {symbol}: {e}")
+                
 '''
-"Consolidated" , "Non-Consolidated"
+"consolidated" , "non-consolidated"
 '''
-def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=False, delaySec=8):
+def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="consolidated", partial=False, delaySec=4):
     result_date_list = ["31-Mar-2023", "30-Jun-2023", "30-Sep-2023", "31-Dec-2023",
                         "31-Mar-2024", "30-Jun-2024", "30-Sep-2024", "31-Dec-2024"]
 
@@ -3446,7 +3527,7 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
         symbol = obj["SYMBOL"]
         print(f"🔄 Fetching {idx}: {symbol}")
 
-        sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
+        sub_folder = "consolidated" if resultType == "consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
         csv_path = f"{csv_dir}/{symbol}.csv"
 
@@ -3466,18 +3547,34 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
             )
 
             for result_date in result_date_list:
-                # Step 1: Find matching entries
-                matching_entries = [
-                    item for item in data
-                    if item.get("toDate") == result_date and item.get("consolidated", "") == resultType
-                ]
+                matching_entries = []
 
-                # Fallback for standalone cases (no "consolidated" key)
-                if not matching_entries and resultType == "Non-Consolidated":
-                    matching_entries = [item for item in data if item.get("toDate") == result_date]
+                if resultType == "consolidated":
+                    # Step 1: Prefer Consolidated
+                    matching_entries = [
+                        item for item in data
+                        if item.get("toDate") == result_date and item.get("consolidated", "").lower() == resultType
+                    ]
+
+                    # Step 2: Fallback to Non-Consolidated if not found
+                    # if not matching_entries:
+                    #     matching_entries = [
+                    #         item for item in data
+                    #         if item.get("toDate") == result_date and item.get("consolidated", "").lower() == "non-consolidated"
+                    #     ]
+
+                elif resultType == "non-consolidated":
+                    # Only fetch if explicitly Non-Consolidated
+                    matching_entries = [
+                        item for item in data
+                        if item.get("toDate") == result_date and item.get("consolidated", "").lower() == resultType
+                    ]
 
                 if not matching_entries:
+                    print(f"⚠️ No matching entries for {symbol} on {result_date}")
+                    # print(data)
                     continue
+                    
 
                 # Step 2: Choose the most recent by broadCastDate
                 def parse_broadcast(item):
@@ -3502,7 +3599,8 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
 
                 json_obj = nse_xbrl_to_json(local_xml_path)
                 json_obj["toDate"] = to_date
-                json_obj["audited"] = matching_entry.get("audited")
+                json_obj["audited"] = matching_entry.get("audited").lower()
+                json_obj["consolidated"] = matching_entry.get("consolidated").lower()
                 json_obj["xbrl"] = xbrl_url
                 json_obj["broadCastDate"] = broad_cast_date
 
@@ -3527,15 +3625,16 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Conso
 '''
 integarated filings always show quaterly results
 # dummyList = [{"SYMBOL":"BAJAJCON"}]
+"Standalone" / "Consolidated"
 '''        
-def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated", cookies=None, delaySec=8):
+def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated", cookies=None, delaySec=8):
     result_date_list = ["31-Mar-2025", "30-Jun-2025"]
 
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
         print(f"🔄 Fetching {idx}: {symbol}")
 
-        sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
+        sub_folder = "consolidated" if resultType == "consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
         csv_path = f"{csv_dir}/{symbol}.csv"
 
@@ -3564,16 +3663,35 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
                 if not df.empty and result_date.lower() in existing_dates:
                     print(f"⏭️ Skipping {symbol} for {result_date}: Already exists.")
                     continue
+                  
+                matching_entries = []
 
-                matching_entries = [
-                    item for item in data
-                    if item.get("qe_Date", "").lower() == result_date.lower() and item.get("consolidated", "") == resultType
-                ]
+                if resultType == "consolidated":
+                    # Step 1: Prefer Consolidated
+                    matching_entries = [
+                        item for item in data
+                        if item.get("qe_Date", "").lower() == result_date.lower() and
+                          str(item.get("consolidated") or "").lower() == resultType.lower()
+                    ]
 
-                if not matching_entries and resultType == "Standalone":
-                    matching_entries = [item for item in data if item.get("qe_Date", "").lower() == result_date.lower()]
+                    # Step 2: Fallback to Non-Consolidated if not found
+                    # if not matching_entries:
+                    #     matching_entries = [
+                    #         item for item in data
+                    #         if item.get("qe_Date", "").lower() == result_date.lower() and
+                    #            str(item.get("consolidated") or "").lower() == "non-consolidated"
+                    #     ]
+
+                elif resultType == "standalone":
+                    matching_entries = [
+                        item for item in data
+                        if item.get("qe_Date", "").lower() == result_date.lower() and
+                          str(item.get("consolidated") or "").lower() == resultType.lower()
+                    ]
+
 
                 if not matching_entries:
+                    # print(data)
                     continue
 
                 def parse_broadcast(item):
@@ -3597,7 +3715,11 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
                 json_obj = nse_xbrl_to_json(local_xml_path)
 
                 json_obj["toDate"] = to_date
-                json_obj["audited"] = matching_entry.get("audited")
+                json_obj["audited"] = matching_entry.get("audited").lower()
+                
+                res_type_local = matching_entry.get("consolidated", "").lower()
+                res_type_local = "consolidated" if res_type_local == "consolidated" else "non-consolidated"
+                json_obj["consolidated"] = res_type_local
                 json_obj["xbrl"] = xbrl_url
                 json_obj["broadCastDate"] = broad_cast_date
 
@@ -3874,17 +3996,19 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="Consolidated"
 # recalculateYFinStockInfo()
 
 cookies_local = getNseCookies()
-# nseStockList = getAllNseSymbols(local=False)
-# # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="Consolidated", partial=True)
+# dummyList = [{"SYMBOL":"EQUITASBNK"}]
+nseStockList = getAllNseSymbols(local=False)
+fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
 # syncUpNseResults(nseStockList, cookies=cookies_local)
+# modify_result_files(nseStockList)
 
-fetchNseDocuments("upcomingIssues", cookies=cookies_local)
-syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
+# fetchNseDocuments("upcomingIssues", cookies=cookies_local)
+# syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 
 # fetchAllNseFillings()
 
-# dummyList = [{"SYMBOL":"BAJAJELEC"}]
+# dummyList = [{"SYMBOL":"UJJIVANSFB"}]
 # syncUpNseResults(dummyList)
 
 # fetchAllNseFillings()
@@ -3900,8 +4024,12 @@ syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 # syncUpYahooFinOtherSymbols()
 
-# recalculateYFinStockInfo()
+# recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True)
 
 # syncUpAllNseFillings(cookies=cookies_local)
+
+# last5Revenue, last5PAT =  get_last5_financials("RELIANCE")
+# print(last5Revenue)
+# print(last5PAT)
 # *************************************************************************
 

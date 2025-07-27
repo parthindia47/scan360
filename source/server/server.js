@@ -62,13 +62,12 @@ const daysPastList = {
   prefIssue: 5,
   schemeOfArrangement: 10,
 
-  integratedResults: 2
+  integratedResults: 4
 };
-
 
 let eventsMap = {}; // key: symbol, value: array of events
 
-// ===================== Helper Functions ====================================
+// ===================== Helper Functions ===================================
 
 function toCrores(value, decimals = 2) {
   const num = parseFloat(value);
@@ -86,11 +85,10 @@ const formatDate = (rawDateStr) => {
   });
 };
 
-// ========================================================================
-// Step 1: Load events.csv and build eventsMap
+// ===================== Data Loading Functions =============================
 function loadEventsFromCSV(callback) {
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const offsetDate = new Date();
+  offsetDate.setDate(offsetDate.getDate() - 10);
 
   fs.createReadStream(eventsPath)
     .pipe(csv())
@@ -101,7 +99,7 @@ function loadEventsFromCSV(callback) {
       const eventDate = new Date(row.date);
       if (isNaN(eventDate.getTime())) return; // skip invalid dates
 
-      if (eventDate < twoDaysAgo) return; // skip old events
+      if (eventDate < offsetDate) return; // skip old events
 
       if (!eventsMap[symbol]) {
         eventsMap[symbol] = [];
@@ -292,6 +290,7 @@ const loadIndustries = async () => {
   }
 };
 
+// ==================== Main DashBoard API ===============================
 app.get('/industries', async (req, res) => {
   if (Object.keys(industryData).length === 0) {
     await loadIndustries();
@@ -300,7 +299,7 @@ app.get('/industries', async (req, res) => {
   res.json(industryData);
 });
 
-// ========================================================================
+// ===================== Document APIS ===================================
 app.get('/api_2/:type', (req, res) => {
   const { type } = req.params;
 
@@ -325,7 +324,9 @@ app.get('/api_2/:type', (req, res) => {
         stockMap[cleanSymbol] = {
           marketCap: parseFloat(row.marketCap || 0),
           currentPrice: parseFloat(row.currentPrice || 0),
-          previousClose: parseFloat(row.previousClose || 0)
+          previousClose: parseFloat(row.previousClose || 0),
+          last5Revenue: row.last5Revenue ? JSON.parse(row.last5Revenue) : null,
+          last5PAT: row.last5PAT ? JSON.parse(row.last5PAT) : null,
         };
       }
     })
@@ -347,6 +348,8 @@ app.get('/api_2/:type', (req, res) => {
               row.marketCap = stockMap[symbol].marketCap;
               row.currentPrice = stockMap[symbol].currentPrice;
               row.previousClose = stockMap[symbol].previousClose;
+              row.last5Revenue = stockMap[symbol].last5Revenue;
+              row.last5PAT = stockMap[symbol].last5PAT;
             }
             results.push(row);
           }
@@ -363,15 +366,13 @@ app.get('/api_2/:type', (req, res) => {
     });
 });
 
-
-// ========================================================================
+// ===================== Other APIs ======================================
 /* returns
 {
   "close": [<oldest>, ..., <latest>],
   "volume": [<oldest>, ..., <latest>]
 }
 */
-
 app.get('/api_2/candles/:symbol', (req, res) => {
   const { symbol } = req.params;
   const filePath = path.join(candleDataFolder, `${symbol}.csv`);

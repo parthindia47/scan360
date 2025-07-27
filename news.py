@@ -192,7 +192,7 @@ def fetchGetJson(url, headers=None, cookies=None, payload=None):
 
 
 # ==========================================================================
-# ============================  sensiBull ==================================
+# ============================  sensiBull Events ===========================
 def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
   baseUrls = {
       "economicCalender":"https://web.sensibull.com/stock-market-calendar/economic-calendar" ,
@@ -427,8 +427,35 @@ def google_search(query: str, num_results: int = 5):
 
     return df, json_result
 
+def fetch_rss_to_json_df(base_url, fromDate=None, toDate=None):
+    # Parse feed
+    feed = feedparser.parse(base_url)
+
+    # Extract and clean data
+    data = []
+    for entry in feed.entries:
+        published_dt = datetime(*entry.published_parsed[:6])  # Convert struct_time to datetime
+
+        # Apply date filter if specified
+        if fromDate and published_dt < fromDate:
+            continue
+        if toDate and published_dt > toDate:
+            continue
+
+        data.append({
+            "title": entry.title,
+            "link": entry.link,
+            "published": entry.published,
+            "published_parsed": published_dt.isoformat(),
+            "summary": entry.summary,
+            "source": entry.get("source", {}).get("title", "Unknown")
+        })
+
+    df = pd.DataFrame(data)
+    return df, data
+
 # ==========================================================================
-# ============================  Grow =================================
+# ============================  Grow IPOs =================================
 
 def getGrowJsonUrl(urlType):
   sectionsList = {
@@ -484,34 +511,6 @@ def testGrowScrapper():
   resp = growIpoDataScrapper("closedIpo")
   print(resp)
   
-
-def fetch_rss_to_json_df(base_url, fromDate=None, toDate=None):
-    # Parse feed
-    feed = feedparser.parse(base_url)
-
-    # Extract and clean data
-    data = []
-    for entry in feed.entries:
-        published_dt = datetime(*entry.published_parsed[:6])  # Convert struct_time to datetime
-
-        # Apply date filter if specified
-        if fromDate and published_dt < fromDate:
-            continue
-        if toDate and published_dt > toDate:
-            continue
-
-        data.append({
-            "title": entry.title,
-            "link": entry.link,
-            "published": entry.published,
-            "published_parsed": published_dt.isoformat(),
-            "summary": entry.summary,
-            "source": entry.get("source", {}).get("title", "Unknown")
-        })
-
-    df = pd.DataFrame(data)
-    return df, data
-
 
 #google_rss_feed_example()
 # get_redirected_url("https://news.google.com/rss/articles/CBMi2wFBVV95cUxPR0tSSHdwcTRzMUpiTUV0aFFIcE5hYU5xSlh6c3YzUUdOZHBSUktiWU4xeGtSNzFScE5ndGVRRHMybHJOMkJDUkpJWElYVC12MTZ6alJaMzFFS3ZOTXpLTnJ1QTRfdEhUbjJRWnFrT1E5SkFLTzJMYXNyQjBodFJuYW9vNERkM3lMWUhzR2hZWGQ5R3E5V1pCZjBvemFRbElqUzhfMFRPSjJGNU93M2tSQnNBbWJvelJNbWNOTzFUM21yUVFRQ2dXd3JTNW55cTdvcmh0T1NaVjVBc2c?oc=5", True)

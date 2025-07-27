@@ -175,27 +175,44 @@ function SymbolPage() {
 
               {/* Row 2: Market Cap, ROE, PE */}
               {stockInfo.longBusinessSummary && (
-              <div className="text-sm text-gray-800 flex flex-wrap gap-3">
-                <span>
-                  <span className="text-gray-500">Market Cap:</span>{' '}
-                  ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
-                </span>
-                <span>
-                  <span className="text-gray-500">ROE:</span>{' '}
-                  {stockInfo.returnOnEquity
-                    ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
-                    : '—'}
-                </span>
-                <span>
-                  <span className="text-gray-500">PE:</span>{' '}
-                  {isNaN(parseFloat(stockInfo.trailingPE))
-                    ? '—'
-                    : parseFloat(stockInfo.trailingPE).toFixed(2)}
-                </span>
-              </div>
+                <div className="text-sm text-gray-800 flex flex-wrap gap-x-6 gap-y-2 mb-2">
+                  <span>
+                    <span className="text-gray-500">NSE:</span>{' '}
+                    {symbol}
+                  </span>
+                  <span>
+                    <span className="text-gray-500">Market Cap:</span>{' '}
+                    ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
+                  </span>
+                  <span>
+                    <span className="text-gray-500">ROE:</span>{' '}
+                    {stockInfo.returnOnEquity
+                      ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
+                      : '—'}
+                  </span>
+                  <span>
+                    <span className="text-gray-500">PE:</span>{' '}
+                    {isNaN(parseFloat(stockInfo.trailingPE))
+                      ? '—'
+                      : parseFloat(stockInfo.trailingPE).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Row 3: Website Link */}
+              {stockInfo.website && (
+                <div className="text-base text-gray-800 mb-1">
+                  <a
+                    href={stockInfo.website.startsWith('http') ? stockInfo.website : `https://${stockInfo.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline break-all"
+                  >
+                    {stockInfo.website.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
               )}
             </div>
-
 
             {/* Right Column — 3/4 width */}
             {stockInfo.longBusinessSummary && (
@@ -307,9 +324,9 @@ function SymbolPage() {
       </ResponsiveContainer>
 
       {consolidatedData.length > 0 && (
-      <div className="mt-8 overflow-x-auto">
-        <h4 className="text-lg font-semibold">Consolidated Results</h4>
-        <span className="text-gray-500">Figures in Rs. Crores</span>
+      <div className="mt-8 overflow-x-auto rounded-lg border border-gray-300">
+        <h4 className="text-lg font-semibold">Financial Results</h4>
+        <span className="text-gray-400">Figures in Rs. Crores</span>
         <table className="min-w-full border text-sm text-left">
           <thead className="bg-gray-100">
             <tr>
@@ -329,7 +346,7 @@ function SymbolPage() {
             ].map((metric, rowIdx) => (
               <tr
                 key={metric}
-                className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-200'}
               >
                 <td className="border px-2 py-1 font-medium">{metric}</td>
                 {consolidatedData.map((row, idx) => {

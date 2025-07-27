@@ -4,6 +4,7 @@ import axios from 'axios';
 function Results() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'desc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/integratedResults')
@@ -17,11 +18,74 @@ function Results() {
       });
   }, []);
 
-  const sortedData = [...data].sort((a, b) => {
-    const dateA = new Date(a.broadcast_Date);
-    const dateB = new Date(b.broadcast_Date);
-    return dateB - dateA;
-  });
+  const sortedData = [...data]
+    .filter(row => row.type === "Integrated Filing- Financials")
+    .sort((a, b) => new Date(b.broadcast_Date) - new Date(a.broadcast_Date));
+
+  const getChange = (curr, prev) => {
+    if (isNaN(curr) || isNaN(prev) || prev === 0) return '—';
+
+    const change = ((curr - prev) / prev) * 100;
+    const colorClass = change >= 0 ? 'text-green-600' : 'text-red-600';
+
+    return (
+      <span className={`font-semibold ${colorClass}`}>
+        {change.toFixed(2)}%
+      </span>
+    );
+  };
+
+  function normalizeDateString(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).replace(/ /g, '-'); // => "30-Jun-2025"
+  }
+
+  function formatInCrores(value) {
+    if (typeof value !== 'number' || isNaN(value)) return '—';
+    return `₹${(value / 1e7).toFixed(2)} Cr`;
+  }
+
+  function getPrevDate(sortedDateKeys, currentDateStr, offset = 1) {
+    // Convert currentDateStr to a comparable date
+    const currentDate = new Date(currentDateStr);
+
+    // Create an array of { raw: "30-Jun-2024", dateObj: Date }
+    const dateObjects = sortedDateKeys
+      .map((d) => ({
+        raw: d,
+        dateObj: new Date(d)
+      }))
+      .sort((a, b) => a.dateObj - b.dateObj); // Ensure sorted
+
+    const currIndex = dateObjects.findIndex((d) =>
+      d.dateObj.toDateString() === currentDate.toDateString()
+    );
+
+    if (currIndex === -1 || currIndex - offset < 0) return null;
+
+    return dateObjects[currIndex - offset].raw;
+  }
+
+  const renderSortableHeader = (label, key) => (
+    <th
+      className="p-2 cursor-pointer select-none"
+      onClick={() =>
+        setSortConfig(prev => ({
+          key,
+          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }))
+      }
+    >
+      {label}
+      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽') : ''}
+    </th>
+  );
+
 
   if (loading) return <div className="p-4">Loading Financial results...</div>;
 
@@ -32,38 +96,101 @@ function Results() {
         <table className="table-auto border-collapse w-full text-sm">
           <thead className="bg-gray-200 text-left">
             <tr>
-              <th className="p-2">Symbol</th>
               <th className="p-2">Company</th>
-              <th className="p-2">Type</th>
               <th className="p-2">Quarter End</th>
               <th className="p-2">Broadcast Date</th>
-              <th className="p-2">XBRL</th>
-              <th className="p-2">Audited</th>
+
               <th className="p-2">Consolidated</th>
+            {renderSortableHeader('Change', 'change')}
+            {renderSortableHeader('Revenue Q-Q%', 'revQQ')}
+            {renderSortableHeader('PAT Q-Q%', 'patQQ')}
+            {renderSortableHeader('Revenue Y-Y%', 'revYY')}
+            {renderSortableHeader('PAT Y-Y%', 'patYY')}
+              <th className="p-2">XBRL</th>
             </tr>
           </thead>
           <tbody>
-            {sortedData.map((row, idx) => (
-              <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="p-2">{row.symbol}</td>
-                <td className="p-2">{row.cmName}</td>
-                <td className="p-2">{row.type}</td>
-                <td className="p-2">{row.qe_Date}</td>
-                <td className="p-2">{row.broadcast_Date}</td>
-                <td className="p-2">
-                  <a href={row.xbrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                    View
-                  </a>
-                </td>
-                <td className="p-2">{row.audited}</td>
-                <td className="p-2">{row.consolidated}</td>
-              </tr>
-            ))}
+            {sortedData.map((row, idx) => {
+              const revenueData = row.last5Revenue || {};
+              const patData = row.last5PAT || {};
+              const dates = Object.keys(revenueData).sort((a, b) => new Date(a) - new Date(b));
+              const currDate = normalizeDateString(row.qe_Date);
+
+              const prevQ = getPrevDate(dates, currDate, 1);
+              const prevY = getPrevDate(dates, currDate, 4);
+
+              const revCurr = revenueData[currDate];
+              const revPrevQ = revenueData[prevQ];
+              const revPrevY = revenueData[prevY];
+
+              const patCurr = patData[currDate];
+              const patPrevQ = patData[prevQ];
+              const patPrevY = patData[prevY];
+
+              return (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="p-2">
+                    <a
+                      href={`symbol/${row.symbol}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {row.cmName || '—'}
+                    </a>
+                  </td>
+
+                  <td className="p-2">{row.qe_Date}</td>
+                  <td className="p-2">{row.broadcast_Date}</td>
+
+                  <td className="p-2">{row.consolidated}</td>
+                  <td className="p-2">{getChange(row.currentPrice, row.previousClose)}</td>
+                  <td className="p-2">
+                    {getChange(revCurr, revPrevQ)}
+                    {revCurr && revPrevQ && (
+                      <div className="text-xs text-gray-500">
+                        {formatInCrores(revCurr)} Vs {formatInCrores(revPrevQ)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {getChange(patCurr, patPrevQ)}
+                    {patCurr && patPrevQ && (
+                      <div className="text-xs text-gray-500">
+                        {formatInCrores(patCurr)} Vs {formatInCrores(patPrevQ)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {getChange(revCurr, revPrevY)}
+                    {revCurr && revPrevY && (
+                      <div className="text-xs text-gray-500">
+                        {formatInCrores(revCurr)} Vs {formatInCrores(revPrevY)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {getChange(patCurr, patPrevY)}
+                    {patCurr && patPrevY && (
+                      <div className="text-xs text-gray-500">
+                        {formatInCrores(patCurr)} Vs {formatInCrores(patPrevY)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    <a href={row.xbrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                      View
+                    </a>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </div>
   );
 }
+
 
 export default Results;

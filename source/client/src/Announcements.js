@@ -69,6 +69,19 @@ function Announcements() {
     return result;
   };
 
+  const getChange = (curr, prev) => {
+    if (isNaN(curr) || isNaN(prev) || prev === 0) return '—';
+
+    const change = ((curr - prev) / prev) * 100;
+    const colorClass = change >= 0 ? 'text-green-600' : 'text-red-600';
+
+    return (
+      <span className={`font-semibold ${colorClass}`}>
+        {change.toFixed(2)}%
+      </span>
+    );
+  };
+
   const filteredData = data.filter((row) => {
     const text = `${row.announcement_type || ''} ${row.attchmntText || row.desc || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap) || 0;
@@ -133,6 +146,7 @@ function Announcements() {
             >
               Price Move &gt; 3%
             </button>
+
           </div>
 
           {uniqueDates.length > 0 && (
@@ -170,6 +184,7 @@ function Announcements() {
             <tr className="bg-gray-200">
               <th className="p-2 text-left">Date</th>
               <th className="p-2 text-left">Symbol</th>
+              <th className="p-2 text-left">Change</th>
               <th className="p-2 text-left">Type</th>
               <th className="p-2 text-left">Description</th>
               <th className="p-2 text-left">Attachment</th>
@@ -199,13 +214,9 @@ function Announcements() {
                       >
                         {row.symbol || '—'}
                       </a>
-                      <br />
-                      {row.currentPrice && row.previousClose ? (
-                        <span className="text-xs text-gray-500">
-                          ₹{parseFloat(row.previousClose).toFixed(2)} → ₹{parseFloat(row.currentPrice).toFixed(2)} (
-                          {(((parseFloat(row.currentPrice) - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100).toFixed(2)}%)
-                        </span>
-                      ) : null}
+                    </td>
+                    <td className="p-2">
+                      {getChange(row.currentPrice, row.previousClose)}
                     </td>
                     <td className="p-2">{row.announcement_type || row.desc || '—'}</td>
                     <td className="p-2">
