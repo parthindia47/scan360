@@ -25,6 +25,7 @@ function Announcements() {
   const [selectedDateFilter, setSelectedDateFilter] = useState(null);
   const [priceChangeFilter, setPriceChangeFilter] = useState(false);
   const [uniqueDates, setUniqueDates] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: 'an_dt', direction: 'desc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/announcements')
@@ -105,9 +106,44 @@ function Announcements() {
       && isSameSelectedDate;
   });
 
+  const enrichedData = filteredData.map(row => {
+    const curr = parseFloat(row.currentPrice);
+    const prev = parseFloat(row.previousClose);
+    const change = !isNaN(curr) && !isNaN(prev) && prev !== 0
+      ? ((curr - prev) / prev) * 100
+      : null;
 
-  const sortedData = [...filteredData].sort(
-    (a, b) => new Date(b.an_dt || b.sort_date) - new Date(a.an_dt || a.sort_date)
+    return { ...row, change };
+  });
+
+  const sortedData = [...enrichedData].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'change') {
+      const valA = isNaN(a.change) ? -Infinity : a.change;
+      const valB = isNaN(b.change) ? -Infinity : b.change;
+      return dir * (valA - valB);
+    }
+
+    const dateA = new Date(a.an_dt || a.sort_date);
+    const dateB = new Date(b.an_dt || b.sort_date);
+    return dir * (dateA - dateB);
+  });
+
+  const renderSortableHeader = (label, key) => (
+    <th
+      className="p-2 cursor-pointer select-none"
+      onClick={() =>
+        setSortConfig(prev => ({
+          key,
+          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }))
+      }
+    >
+      {label}
+      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
   );
 
   return (
@@ -182,9 +218,9 @@ function Announcements() {
         <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
           <thead>
             <tr className="bg-gray-200">
-              <th className="p-2 text-left">Date</th>
+              {renderSortableHeader('Date', 'an_dt')}
               <th className="p-2 text-left">Symbol</th>
-              <th className="p-2 text-left">Change</th>
+              {renderSortableHeader('Change', 'change')}
               <th className="p-2 text-left">Type</th>
               <th className="p-2 text-left">Description</th>
               <th className="p-2 text-left">Attachment</th>

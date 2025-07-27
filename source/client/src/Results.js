@@ -4,7 +4,7 @@ import axios from 'axios';
 function Results() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'broadcast_Date', direction: 'desc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/integratedResults')
@@ -18,9 +18,49 @@ function Results() {
       });
   }, []);
 
-  const sortedData = [...data]
+  const enrichedData = data
     .filter(row => row.type === "Integrated Filing- Financials")
-    .sort((a, b) => new Date(b.broadcast_Date) - new Date(a.broadcast_Date));
+    .map(row => {
+      const revenueData = row.last5Revenue || {};
+      const patData = row.last5PAT || {};
+      const dates = Object.keys(revenueData).sort((a, b) => new Date(a) - new Date(b));
+      const currDate = normalizeDateString(row.qe_Date);
+      const prevQ = getPrevDate(dates, currDate, 1);
+      const prevY = getPrevDate(dates, currDate, 4);
+
+      const revCurr = revenueData[currDate];
+      const revPrevQ = revenueData[prevQ];
+      const revPrevY = revenueData[prevY];
+
+      const patCurr = patData[currDate];
+      const patPrevQ = patData[prevQ];
+      const patPrevY = patData[prevY];
+
+      const getPercentChange = (curr, prev) =>
+        isNaN(curr) || isNaN(prev) || prev === 0 ? null : ((curr - prev) / prev) * 100;
+
+      return {
+        ...row,
+        revQQ: getPercentChange(revCurr, revPrevQ),
+        revYY: getPercentChange(revCurr, revPrevY),
+        patQQ: getPercentChange(patCurr, patPrevQ),
+        patYY: getPercentChange(patCurr, patPrevY),
+        change: getPercentChange(row.currentPrice, row.previousClose),
+      };
+    });
+
+  const sortedData = [...enrichedData].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'broadcast_Date') {
+      return dir * (new Date(a.broadcast_Date) - new Date(b.broadcast_Date));
+    }
+
+    const valA = a[key] ?? -Infinity;
+    const valB = b[key] ?? -Infinity;
+    return dir * (valA - valB);
+  });
 
   const getChange = (curr, prev) => {
     if (isNaN(curr) || isNaN(prev) || prev === 0) return '—';
@@ -82,7 +122,7 @@ function Results() {
       }
     >
       {label}
-      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽') : ''}
+      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
     </th>
   );
 
@@ -98,14 +138,14 @@ function Results() {
             <tr>
               <th className="p-2">Company</th>
               <th className="p-2">Quarter End</th>
-              <th className="p-2">Broadcast Date</th>
+              {renderSortableHeader('Broadcast Date', 'broadcast_Date')}
 
               <th className="p-2">Consolidated</th>
-            {renderSortableHeader('Change', 'change')}
-            {renderSortableHeader('Revenue Q-Q%', 'revQQ')}
-            {renderSortableHeader('PAT Q-Q%', 'patQQ')}
-            {renderSortableHeader('Revenue Y-Y%', 'revYY')}
-            {renderSortableHeader('PAT Y-Y%', 'patYY')}
+              {renderSortableHeader('Change', 'change')}
+              {renderSortableHeader('Revenue Q-Q%', 'revQQ')}
+              {renderSortableHeader('PAT Q-Q%', 'patQQ')}
+              {renderSortableHeader('Revenue Y-Y%', 'revYY')}
+              {renderSortableHeader('PAT Y-Y%', 'patYY')}
               <th className="p-2">XBRL</th>
             </tr>
           </thead>
