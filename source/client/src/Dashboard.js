@@ -54,6 +54,18 @@ function Dashboard() {
     });
   };
 
+  const expandAllIndustries = () => {
+    const industriesOfType = Object.keys(groupedByType[activeType] || {});
+    const expandedMap = {};
+    industriesOfType.forEach(ind => expandedMap[ind] = true);
+
+    setExpanded(prev => ({ ...prev, [activeType]: expandedMap }));
+  };
+
+  const collapseAllIndustries = () => {
+    setExpanded(prev => ({ ...prev, [activeType]: {} }));
+  };
+
   const toggleSort = (type, field) => {
     setSortConfigs(prev => {
       const current = prev[type] || { field: '1D', direction: 'desc' };
@@ -134,13 +146,26 @@ function Dashboard() {
           {/* 🔹 Table for Active Tab */}
           {activeType && (
             <>
-              <div className="text-sm text-gray-500 flex justify-between items-center">
-                <div className="text-gray-400">
-                  Updates Daily, last updated - {formatDate(lastUpdateDate)}.
-                  Tracked Symbols - {totalSymbols}
-                </div>
+            <div className="text-sm text-gray-500 flex justify-between items-center mb-2">
+              <div className="text-gray-400">
+                Updates Daily, last updated - {formatDate(lastUpdateDate)}.
+                Tracked Symbols - {totalSymbols}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={expandAllIndustries}
+                  className="px-2 py-1 text-xs border border-green-600 text-green-700 rounded hover:bg-green-50"
+                >
+                  Expand All
+                </button>
+                <button
+                  onClick={collapseAllIndustries}
+                  className="px-2 py-1 text-xs border border-red-600 text-red-700 rounded hover:bg-red-50"
+                >
+                  Collapse All
+                </button>
                 {activeType === 'EQUITY' && (
-                  <div className="space-x-2">
+                  <>
                     <button
                       className={`px-3 py-1 text-xs border rounded-full ${weighted ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-100'}`}
                       onClick={() => setWeighted(true)}
@@ -153,9 +178,11 @@ function Dashboard() {
                     >
                       Equal Weight
                     </button>
-                  </div>
+                  </>
                 )}
               </div>
+            </div>
+
               <table className="table-auto w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-100">
