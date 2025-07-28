@@ -4028,8 +4028,5 @@ fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-conso
 
 # syncUpAllNseFillings(cookies=cookies_local)
 
-# last5Revenue, last5PAT =  get_last5_financials("RELIANCE")
-# print(last5Revenue)
-# print(last5PAT)
 # *************************************************************************
 

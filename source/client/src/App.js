@@ -10,6 +10,7 @@ import AboutUs from './AboutUs';
 import Terms from './Terms';
 import Contact from './Contact';
 import Results from './Results';
+import News from './News';
 
 import Footer from './Footer';
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/news" element={<News />} />
         </Routes>
       </div>
       <Footer />
