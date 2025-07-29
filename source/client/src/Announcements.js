@@ -83,6 +83,21 @@ function Announcements() {
     );
   };
 
+  const renderSortableHeader = (label, key) => (
+    <th
+      className="p-2 cursor-pointer select-none text-blue-600"
+      onClick={() =>
+        setSortConfig(prev => ({
+          key,
+          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }))
+      }
+    >
+      {label}
+      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
+  );
+
   const filteredData = data.filter((row) => {
     const text = `${row.announcement_type || ''} ${row.attchmntText || row.desc || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap) || 0;
@@ -98,7 +113,7 @@ function Announcements() {
     // Price change check
     const current = parseFloat(row.currentPrice);
     const prev = parseFloat(row.previousClose);
-    const priceMoved = !isNaN(current) && !isNaN(prev) && prev > 0 && Math.abs((current - prev) / prev) * 100 > 3;
+    const priceMoved = !isNaN(current) && !isNaN(prev) && prev > 0 && ((current - prev) / prev) * 100 > 3;
 
     return (!filtered || keywordMatch)
       && (!marketCapFilter || marketCapMatch)
@@ -130,21 +145,6 @@ function Announcements() {
     const dateB = new Date(b.an_dt || b.sort_date);
     return dir * (dateA - dateB);
   });
-
-  const renderSortableHeader = (label, key) => (
-    <th
-      className="p-2 cursor-pointer select-none"
-      onClick={() =>
-        setSortConfig(prev => ({
-          key,
-          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }))
-      }
-    >
-      {label}
-      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
 
   return (
     <div className="p-4 mb-4">

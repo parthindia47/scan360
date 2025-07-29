@@ -1376,7 +1376,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   # Convert the list of dictionaries to a DataFrame
   df = pd.DataFrame(jsonObj)
   
-  # Some actions to about duplicates
+  # "upcomingIssues" clean up
   if urlType == "upcomingIssues" and 'sr_no' in df.columns:
       df = df.drop(columns=['sr_no'])
       
@@ -1395,12 +1395,17 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
       df['isBse'] = df['isBse'].apply(
           lambda x: int(float(x)) if str(x).strip() not in ["", "nan", "NaN", "None"] else 0
       )
-      
+     
+  # "qipFilings" clean up 
   if urlType == "qipFilings" and 'sharehold' in df.columns:
       df = df.drop(columns=['sharehold'])
       
   if urlType == "qipFilings" and 'allottee' in df.columns:
       df = df.drop(columns=['allottee'])
+  
+  # "prefIssue" clean up    
+  if urlType == "prefIssue" and 'nseSymbol' in df.columns:
+      df.rename(columns={"nseSymbol": "symbol"}, inplace=True)
         
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
@@ -3998,8 +4003,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 cookies_local = getNseCookies()
 # dummyList = [{"SYMBOL":"EQUITASBNK"}]
 nseStockList = getAllNseSymbols(local=False)
-fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
-# syncUpNseResults(nseStockList, cookies=cookies_local)
+# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
+syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 # modify_result_files(nseStockList)
 
 # fetchNseDocuments("upcomingIssues", cookies=cookies_local)

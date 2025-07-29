@@ -7,7 +7,8 @@ function FundRaise() {
   const [prefData, setPrefData] = useState([]);
   const [schemeData, setSchemeData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('rightsFilings');
+  const [activeTab, setActiveTab] = useState('prefIssue');
+  const [sortConfig, setSortConfig] = useState({ key: 'boardResDate', direction: 'desc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/rightsFilings')
@@ -44,15 +45,62 @@ function FundRaise() {
     return isNaN(date) ? '—' : date.toLocaleDateString('en-IN');
   };
 
+  const getChange = (curr, prev) => {
+    if (isNaN(curr) || isNaN(prev) || prev === 0) return '—';
+
+    const change = ((curr - prev) / prev) * 100;
+    const colorClass = change >= 0 ? 'text-green-600' : 'text-red-600';
+
+    return (
+      <span className={`font-semibold ${colorClass}`}>
+        {change.toFixed(2)}%
+      </span>
+    );
+  };
+
+  const renderSortableHeader = (label, key) => (
+    <th
+      className="p-2 cursor-pointer select-none text-blue-600"
+      onClick={() =>
+        setSortConfig(prev => ({
+          key,
+          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }))
+      }
+    >
+      {label}
+      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
+  );
+
+  const enrichedData = prefData.map(row => {
+    const curr = parseFloat(row.currentPrice);
+    const prev = parseFloat(row.previousClose);
+    const change = !isNaN(curr) && !isNaN(prev) && prev !== 0
+      ? ((curr - prev) / prev) * 100
+      : null;
+
+    return { ...row, change };
+  });
+
+  const sortedPrefData = [...enrichedData].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'change') {
+      const valA = isNaN(a.change) ? -Infinity : a.change;
+      const valB = isNaN(b.change) ? -Infinity : b.change;
+      return dir * (valA - valB);
+    }
+
+    const dateA = new Date(a.boardResDate);
+    const dateB = new Date(b.boardResDate);
+    return dir * (dateB - dateA);
+  });
+
   const sortedRightsData = [...rightsData].sort((a, b) => {
     const dateA = new Date(a.draftDate);
     const dateB = new Date(b.draftDate);
-    return dateB - dateA;
-  });
-
-  const sortedPrefData = [...prefData].sort((a, b) => {
-    const dateA = new Date(a.boardResDate);
-    const dateB = new Date(b.boardResDate);
     return dateB - dateA;
   });
 
@@ -72,7 +120,7 @@ function FundRaise() {
     <div className="p-4 mb-4">
       {/* 🔹 Tabs */}
       <div className="flex border-b mb-4 gap-x-6 ml-1">
-        {['rightsFilings', 'qipFilings', 'prefIssue', 'schemeOfArrangement'].map(tab => (
+        {['prefIssue', 'qipFilings', 'schemeOfArrangement', 'rightsFilings'].map(tab => (
           <a
             key={tab}
             href="#"
@@ -95,44 +143,65 @@ function FundRaise() {
         ))}
       </div>
 
-      {/* 🔹 Rights Filings */}
-      {activeTab === 'rightsFilings' && (
+      {/* 🔹 Preferential Issue */}
+      {activeTab === 'prefIssue' && (
         <>
-          {loading ? (
-            <div className="text-center text-blue-600">Loading...</div>
-          ) : (
-            <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="p-2 text-left">Company</th>
-                  <th className="p-2 text-left">Draft Date</th>
-                  <th className="p-2 text-left">Attachment</th>
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="p-2 text-left">Symbol</th>
+                <th className="p-2 text-left">Company</th>
+                {renderSortableHeader('Change', 'change')}
+                <th className="p-2 text-left">Allotment Date</th>
+                {renderSortableHeader('Board Resolution Date', 'boardResDate')}
+                <th className="p-2 text-left">Offer Price</th>
+                <th className="p-2 text-left">Amount Raised</th>
+                <th className="p-2 text-left">Attachment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedPrefData.map((row, idx) => (
+                <tr key={idx} className="border-t hover:bg-gray-50">
+                  <td className="p-2">
+                    <a
+                      href={`symbol/${row.symbol}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {row.symbol || '—'}
+                    </a>
+                  </td>
+                  <td className="p-2">{row.nameOfTheCompany || '—'}</td>
+                  <td className="p-2">
+                    {getChange(row.currentPrice, row.previousClose)}
+                  </td>
+                  <td className="p-2">{formatDate(row.dateOfAllotmentOfShares)}</td>
+                  <td className="p-2">{formatDate(row.boardResDate)}</td>
+                  <td className="p-2">{row.offerPricePerSecurity}</td>
+                  <td className="p-2">
+                    {row.amountRaised
+                      ? `₹${(parseFloat(row.amountRaised) / 1e7).toFixed(2)} Cr`
+                      : '—'}
+                  </td>
+                  <td className="p-2">
+                    {row.xmlFileName ? (
+                      <a
+                        href={row.xmlFileName}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View File
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {sortedRightsData.map((row, idx) => (
-                  <tr key={idx} className="border-t hover:bg-gray-50">
-                    <td className="p-2">{row.company || '—'}</td>
-                    <td className="p-2">{formatDate(row.draftDate)}</td>
-                    <td className="p-2">
-                      {row.draftAttch ? (
-                        <a
-                          href={row.draftAttch}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          View Draft
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+              ))}
+            </tbody>
+          </table>
         </>
       )}
 
@@ -156,64 +225,6 @@ function FundRaise() {
                     {row.attachFile ? (
                       <a
                         href={row.attachFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        View File
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      {/* 🔹 Preferential Issue */}
-      {activeTab === 'prefIssue' && (
-        <>
-          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="p-2 text-left">Symbol</th>
-                <th className="p-2 text-left">Company</th>
-                <th className="p-2 text-left">Allotment Date</th>
-                <th className="p-2 text-left">Board Resolution Date</th>
-                <th className="p-2 text-left">Offer Price</th>
-                <th className="p-2 text-left">Amount Raised</th>
-                <th className="p-2 text-left">Attachment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPrefData.map((row, idx) => (
-                <tr key={idx} className="border-t hover:bg-gray-50">
-                  <td className="p-2">
-                    <a
-                      href={`symbol/${row.nseSymbol}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      {row.nseSymbol || '—'}
-                    </a>
-                  </td>
-                  <td className="p-2">{row.nameOfTheCompany || '—'}</td>
-                  <td className="p-2">{formatDate(row.dateOfAllotmentOfShares)}</td>
-                  <td className="p-2">{formatDate(row.boardResDate)}</td>
-                  <td className="p-2">{row.offerPricePerSecurity}</td>
-                  <td className="p-2">
-                    {row.amountRaised
-                      ? `₹${(parseFloat(row.amountRaised) / 1e7).toFixed(2)} Cr`
-                      : '—'}
-                  </td>
-                  <td className="p-2">
-                    {row.xmlFileName ? (
-                      <a
-                        href={row.xmlFileName}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline"
@@ -267,6 +278,47 @@ function FundRaise() {
               ))}
             </tbody>
           </table>
+        </>
+      )}
+
+      {/* 🔹 Rights Filings */}
+      {activeTab === 'rightsFilings' && (
+        <>
+          {loading ? (
+            <div className="text-center text-blue-600">Loading...</div>
+          ) : (
+            <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+              <thead className="bg-gray-200">
+                <tr>
+                  <th className="p-2 text-left">Company</th>
+                  <th className="p-2 text-left">Draft Date</th>
+                  <th className="p-2 text-left">Attachment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRightsData.map((row, idx) => (
+                  <tr key={idx} className="border-t hover:bg-gray-50">
+                    <td className="p-2">{row.company || '—'}</td>
+                    <td className="p-2">{formatDate(row.draftDate)}</td>
+                    <td className="p-2">
+                      {row.draftAttch ? (
+                        <a
+                          href={row.draftAttch}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          View Draft
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </>
       )}
     </div>

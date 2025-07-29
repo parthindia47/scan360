@@ -206,10 +206,20 @@ function SymbolPage() {
                     href={stockInfo.website.startsWith('http') ? stockInfo.website : `https://${stockInfo.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 underline break-all"
+                    className="text-blue-600 underline break-all mr-2"
                   >
                     {stockInfo.website.replace(/^https?:\/\//, '')}
                   </a>
+
+                  <a
+                    href={`https://www.screener.in/company/${symbol}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline break-all mr-2"
+                  >
+                    screener
+                  </a>
+
                 </div>
               )}
             </div>

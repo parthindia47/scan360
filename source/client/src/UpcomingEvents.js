@@ -11,6 +11,7 @@ function UpcomingEvents() {
   const [selectedKeyword, setSelectedKeyword] = useState(null); // or null if nothing selected
   const [periodFilter, setPeriodFilter] = useState(null); // "today" | "next3days" | null
   const [selectedSeries, setSelectedSeries] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   
 
   useEffect(() => {
@@ -50,6 +51,34 @@ function UpcomingEvents() {
     return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
   };
 
+  const getChange = (curr, prev) => {
+    if (isNaN(curr) || isNaN(prev) || prev === 0) return '—';
+
+    const change = ((curr - prev) / prev) * 100;
+    const colorClass = change >= 0 ? 'text-green-600' : 'text-red-600';
+
+    return (
+      <span className={`font-semibold ${colorClass}`}>
+        {change.toFixed(2)}%
+      </span>
+    );
+  };
+
+  const renderSortableHeader = (label, key) => (
+    <th
+      className="p-2 cursor-pointer select-none text-blue-600"
+      onClick={() =>
+        setSortConfig(prev => ({
+          key,
+          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }))
+      }
+    >
+      {label}
+      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
+  );
+
   const activeSeriesOptions = [
     ...new Set(
       upcomingIssuesData
@@ -70,17 +99,27 @@ function UpcomingEvents() {
       ? marketCap > 800 * 1e7
       : true;
 
-    const eventDate = new Date(row.date);
+    const eventDate = row.date ? new Date(row.date) : null;
     const today = new Date();
     const dateMatch =
       periodFilter === 'today'
-        ? eventDate.toDateString() === today.toDateString()
+        ? eventDate && eventDate.toDateString() === today.toDateString()
         : periodFilter === 'next3days'
         ? eventDate >= today &&
           eventDate <= new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)
         : true;
 
     return keywordMatch && marketCapMatch && dateMatch;
+  });
+
+  const enrichedData = filteredData.map(row => {
+    const curr = parseFloat(row.currentPrice);
+    const prev = parseFloat(row.previousClose);
+    const change = !isNaN(curr) && !isNaN(prev) && prev !== 0
+      ? ((curr - prev) / prev) * 100
+      : null;
+
+    return { ...row, change };
   });
 
   const filteredUpcomingIssueData = (data, selectedSeries) => {
@@ -91,9 +130,20 @@ function UpcomingEvents() {
     });
   };
 
-  const sortedEventsData = [...filteredData].sort(
-    (a, b) => new Date(a.date) - new Date(b.date)
-  );
+  const sortedEventsData = [...enrichedData].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'change') {
+      const valA = isNaN(a.change) ? -Infinity : a.change;
+      const valB = isNaN(b.change) ? -Infinity : b.change;
+      return dir * (valA - valB);
+    }
+
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dir * (dateA - dateB);
+  });
 
   const sortedUpcomingIssuesData = [...filteredUpcomingIssueData(upcomingIssuesData, selectedSeries)].sort(
     (a, b) => new Date(b.issueEndDate) - new Date(a.issueEndDate)
@@ -190,8 +240,9 @@ function UpcomingEvents() {
             <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead>
                 <tr className="bg-gray-200">
-                  <th className="p-2 text-left">Date</th>
+                  {renderSortableHeader('Date', 'date')}
                   <th className="p-2 text-left">Symbol</th>
+                  {renderSortableHeader('Change', 'change')}
                   <th className="p-2 text-left">Company</th>
                   <th className="p-2 text-left">Purpose</th>
                 </tr>
@@ -216,6 +267,9 @@ function UpcomingEvents() {
                         >
                           {row.symbol || '—'}
                         </a>
+                      </td>
+                      <td className="p-2">
+                        {getChange(row.currentPrice, row.previousClose)}
                       </td>
                       <td className="p-2">{row.company || '—'}</td>
                       <td className="p-2">{row.purpose || '—'}</td>
