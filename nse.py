@@ -660,7 +660,7 @@ def getJsonUrlQuery(urlType,
         "qipFilings": "https://www.nseindia.com/api/corporates/offerdocs/rights?index=",
         "prefIssue":"https://www.nseindia.com/api/corporate-further-issues-pref?index=",
         "commoditySpotAll":"https://www.nseindia.com/api/refrates?index=",
-        "commodityIndividual":"https://www.nseindia.com/api/historical/com/derivatives?"
+        "commodityIndividual":"https://www.nseindia.com/api/historical/com/derivatives?",
     }
     
     short_date_style = ["commodityIndividual"]
@@ -721,7 +721,8 @@ def getTopicJsonQuery(urlType):
         "publicPastIssues":"https://www.nseindia.com/api/public-past-issues",
         "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo",
         "tradingHoliday":"https://www.nseindia.com/api/holiday-master?type=trading",
-        "forthcomingListing": "https://www.nseindia.com/api/new-listing-today?index=ForthListing"
+        "forthcomingListing": "https://www.nseindia.com/api/new-listing-today?index=ForthListing",
+        "largeDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal"
     }
 
     baseUrl = baseUrls[urlType]
@@ -806,7 +807,8 @@ def getBaseUrl(urlType,symbol=None):
         "commoditySpotAll":"https://www.nseindia.com/commodity-getquote",
         "commodityIndividual":"https://www.nseindia.com/commodity-getquote",
         "tradingHoliday":"https://www.nseindia.com/resources/exchange-communication-holidays",
-        "forthcomingListing":"https://www.nseindia.com/market-data/new-stock-exchange-listings-forthcoming"
+        "forthcomingListing":"https://www.nseindia.com/market-data/new-stock-exchange-listings-forthcoming",
+        "largeDeals":"https://www.nseindia.com/market-data/large-deals"
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -4002,13 +4004,16 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 cookies_local = getNseCookies()
 # dummyList = [{"SYMBOL":"EQUITASBNK"}]
-nseStockList = getAllNseSymbols(local=False)
-# fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
-syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
+# nseStockList = getAllNseSymbols(local=False)
+# # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
+# syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 # modify_result_files(nseStockList)
 
 # fetchNseDocuments("upcomingIssues", cookies=cookies_local)
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
+
+res = fetchNseJsonObj("largeDeals",cookies=cookies_local)
+print(res)
 
 
 # fetchAllNseFillings()

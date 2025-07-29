@@ -10,6 +10,7 @@ const linksData = [
       { name: 'CNBC TV18', url: 'https://www.cnbctv18.com/market/' },
       { name: 'Business Standard', url: 'https://www.business-standard.com/markets' },
       { name: 'Moneycontrol', url: 'https://www.moneycontrol.com/news/' },
+      { name: 'Trendlyne Results', url: 'https://trendlyne.com/dashboard/results/industry/' },
     ],
   },
   {
@@ -44,6 +45,8 @@ const linksData = [
     category: 'Broker Reports',
     links: [
       { name: 'Dalal Street', url: 'https://www.dsij.in/markets/reports/broker-reports' },
+      { name: 'Trendlyne Upgrade', url: 'https://trendlyne.com/research-reports/recent-upgrades/' },
+      { name: 'Trendlyne Downgrade', url: 'https://trendlyne.com/research-reports/recent-downgrades/' },
       { name: 'Moneycontrol List', url: 'https://www.moneycontrol.com/markets/stock-ideas/?classic=true' },
       { name: 'Moneycontrol Daily Report', url: 'https://www.moneycontrol.com/markets/brokerage-view.php?c=4' },
     ],
