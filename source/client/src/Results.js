@@ -18,50 +18,6 @@ function Results() {
       });
   }, []);
 
-  const enrichedData = data
-    .filter(row => row.type === "Integrated Filing- Financials")
-    .map(row => {
-      const revenueData = row.last5Revenue || {};
-      const patData = row.last5PAT || {};
-      const dates = Object.keys(revenueData).sort((a, b) => new Date(a) - new Date(b));
-      const currDate = normalizeDateString(row.qe_Date);
-      const prevQ = getPrevDate(dates, currDate, 1);
-      const prevY = getPrevDate(dates, currDate, 4);
-
-      const revCurr = revenueData[currDate];
-      const revPrevQ = revenueData[prevQ];
-      const revPrevY = revenueData[prevY];
-
-      const patCurr = patData[currDate];
-      const patPrevQ = patData[prevQ];
-      const patPrevY = patData[prevY];
-
-      const getPercentChange = (curr, prev) =>
-        isNaN(curr) || isNaN(prev) || prev === 0 ? null : ((curr - prev) / prev) * 100;
-
-      return {
-        ...row,
-        revQQ: getPercentChange(revCurr, revPrevQ),
-        revYY: getPercentChange(revCurr, revPrevY),
-        patQQ: getPercentChange(patCurr, patPrevQ),
-        patYY: getPercentChange(patCurr, patPrevY),
-        change: getPercentChange(row.currentPrice, row.previousClose),
-      };
-    });
-
-  const sortedData = [...enrichedData].sort((a, b) => {
-    const { key, direction } = sortConfig;
-    const dir = direction === 'asc' ? 1 : -1;
-
-    if (key === 'broadcast_Date') {
-      return dir * (new Date(a.broadcast_Date) - new Date(b.broadcast_Date));
-    }
-
-    const valA = a[key] ?? -Infinity;
-    const valB = b[key] ?? -Infinity;
-    return dir * (valA - valB);
-  });
-
   const getChange = (curr, prev) => {
     if (isNaN(curr) || isNaN(prev) || prev === 0) return '—';
 
@@ -113,7 +69,7 @@ function Results() {
 
   const renderSortableHeader = (label, key) => (
     <th
-      className="p-2 cursor-pointer select-none"
+      className="p-2 cursor-pointer select-none text-blue-600"
       onClick={() =>
         setSortConfig(prev => ({
           key,
@@ -126,6 +82,49 @@ function Results() {
     </th>
   );
 
+  const enrichedData = data
+    .filter(row => row.type === "Integrated Filing- Financials")
+    .map(row => {
+      const revenueData = row.last5Revenue || {};
+      const patData = row.last5PAT || {};
+      const dates = Object.keys(revenueData).sort((a, b) => new Date(a) - new Date(b));
+      const currDate = normalizeDateString(row.qe_Date);
+      const prevQ = getPrevDate(dates, currDate, 1);
+      const prevY = getPrevDate(dates, currDate, 4);
+
+      const revCurr = revenueData[currDate];
+      const revPrevQ = revenueData[prevQ];
+      const revPrevY = revenueData[prevY];
+
+      const patCurr = patData[currDate];
+      const patPrevQ = patData[prevQ];
+      const patPrevY = patData[prevY];
+
+      const getPercentChange = (curr, prev) =>
+        isNaN(curr) || isNaN(prev) || prev === 0 ? null : ((curr - prev) / prev) * 100;
+
+      return {
+        ...row,
+        revQQ: getPercentChange(revCurr, revPrevQ),
+        revYY: getPercentChange(revCurr, revPrevY),
+        patQQ: getPercentChange(patCurr, patPrevQ),
+        patYY: getPercentChange(patCurr, patPrevY),
+        change: getPercentChange(row.currentPrice, row.previousClose),
+      };
+    });
+
+  const sortedData = [...enrichedData].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'broadcast_Date') {
+      return dir * (new Date(a.broadcast_Date) - new Date(b.broadcast_Date));
+    }
+
+    const valA = a[key] ?? -Infinity;
+    const valB = b[key] ?? -Infinity;
+    return dir * (valA - valB);
+  });
 
   if (loading) return <div className="p-4">Loading Financial results...</div>;
 
