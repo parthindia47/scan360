@@ -59,7 +59,7 @@ const daysPastList = {
 
   rightsFilings: 10,
   qipFilings: 10,
-  prefIssue: 5,
+  prefIssue: 20,
   schemeOfArrangement: 10,
 
   integratedResults: 4
