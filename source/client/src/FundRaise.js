@@ -8,7 +8,7 @@ function FundRaise() {
   const [schemeData, setSchemeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('prefIssue');
-  const [sortConfig, setSortConfig] = useState({ key: 'boardResDate', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'systemDate', direction: 'asc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/rightsFilings')
@@ -93,8 +93,8 @@ function FundRaise() {
       return dir * (valA - valB);
     }
 
-    const dateA = new Date(a.boardResDate);
-    const dateB = new Date(b.boardResDate);
+    const dateA = new Date(a.systemDate);
+    const dateB = new Date(b.systemDate);
     return dir * (dateB - dateA);
   });
 
@@ -153,7 +153,7 @@ function FundRaise() {
                 <th className="p-2 text-left">Company</th>
                 {renderSortableHeader('Change', 'change')}
                 <th className="p-2 text-left">Allotment Date</th>
-                {renderSortableHeader('Board Resolution Date', 'boardResDate')}
+                {renderSortableHeader('System Date', 'systemDate')}
                 <th className="p-2 text-left">Offer Price</th>
                 <th className="p-2 text-left">Amount Raised</th>
                 <th className="p-2 text-left">Attachment</th>
@@ -177,7 +177,7 @@ function FundRaise() {
                     {getChange(row.currentPrice, row.previousClose)}
                   </td>
                   <td className="p-2">{formatDate(row.dateOfAllotmentOfShares)}</td>
-                  <td className="p-2">{formatDate(row.boardResDate)}</td>
+                  <td className="p-2">{formatDate(row.systemDate)}</td>
                   <td className="p-2">{row.offerPricePerSecurity}</td>
                   <td className="p-2">
                     {row.amountRaised

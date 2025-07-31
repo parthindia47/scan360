@@ -44,7 +44,7 @@ const dateKeys = {
 
   rightsFilings: "draftDate",
   qipFilings: "date",
-  prefIssue: "boardResDate",
+  prefIssue: "systemDate",
   schemeOfArrangement: "date",
 
   integratedResults: "creation_Date"

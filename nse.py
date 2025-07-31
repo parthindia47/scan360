@@ -1358,7 +1358,7 @@ def getDateKeyForNseDocument(urlType):
       
       "rightsFilings":"draftDate",   #done
       "qipFilings":"date",           #done
-      "prefIssue":"boardResDate",    #done
+      "prefIssue":"systemDate",    #done
       "schemeOfArrangement":"date",  #done
       
       #results - "broadcast_Date" and "revised_Date" are combined
@@ -1714,11 +1714,31 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
+'''
+yahoo candles:
+2025-07-31 00:00:00+05:30	389	389.65	381.2	385.25	9943	0	0
+
+
+'''
 def convert_date_to_panda_date(date_input):
   panda_date = pd.to_datetime(date_input)
   if panda_date.tzinfo is None:
       panda_date = ist.localize(panda_date)
   return panda_date
+
+'''
+candle stick data is uniform with format
+2025-07-31 00:00:00+05:30,30850.0,31150.0,30375.0,30755.0,5096,0.0,0.0
+
+Bhav copy uses this format
+04-Jul-2025
+
+and in our csv it is getting stored, as python date object
+2025-07-31
+
+'''
+def convert_to_date(date_str, candle_type):
+  return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 def recalculate_financials(row, current_price, volume, candle_date, candle_type):
     updated_row = row.copy()
@@ -1737,14 +1757,18 @@ def recalculate_financials(row, current_price, volume, candle_date, candle_type)
           print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
 
     candle_date = convert_date_to_panda_date(candle_date)
-    lastUpdateDate = convert_date_to_panda_date(updated_row['lastUpdateDate'])
+    candle_date = candle_date.date()
+    
+    # this will be python date object, so we should not use pandas date
+    lastUpdateDate = convert_to_date(updated_row['lastUpdateDate'], candle_type)
+    #print("candle date ", candle_date, " csv date ", lastUpdateDate," symbol ", updated_row['symbol'])
 
-    if lastUpdateDate.date() != candle_date.date():
+    if lastUpdateDate != candle_date:
       updated_row['previousClose'] = updated_row['currentPrice']
       updated_row['currentPrice'] = current_price
-      updated_row['lastUpdateDate'] = candle_date.date()
+      updated_row['lastUpdateDate'] = candle_date
     else:
-      #print("Not updating price, same date ", candle_date)
+      print("Not updating price, same date ", candle_date)
       pass
       
     updated_row['volume'] = volume
@@ -1782,9 +1806,10 @@ fullExchangeName = NSE
 quoteType = EQUITY
 
 '''    
-def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
+def recalculateYFinStockInfo(useNseBhavCopy=True):
     bhavcopy_not_found_tickers = []
-    local_url = "stock_info\\yFinStockInfo_" + exchange + ".csv"
+    exchange_clean = None
+    local_url = "stock_info\\yFinStockInfo_NSE.csv"
 
     if useNseBhavCopy:
       #bhavCopy = get_bhavcopy(date(2025, 7, 2))
@@ -1796,17 +1821,21 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
       df["last5Revenue"] = df["last5Revenue"].astype("object")
       df["last5PAT"] = df["last5PAT"].astype("object")
     else:
-      print("No local file exists")
+      print("No stock info file exists")
       return
-
 
     for idx, row in df.iterrows():
       try:
-        if row.get("fullExchangeName") == "NSE" and row.get("quoteType") == "EQUITY":
-          # NSE Tickers
-          symbol_clean = row["symbol"].replace(".NS", "")
+        exchange_clean = row.get("fullExchangeName")
+        if not exchange_clean:
+          exchange_clean == "OTHER"
           
-        if useNseBhavCopy:
+        if exchange_clean == "NSE" and row.get("quoteType") == "EQUITY":
+          symbol_clean = row["symbol"].replace(".NS", "")
+        else:
+          symbol_clean = row["symbol"]
+          
+        if exchange_clean == "NSE" and useNseBhavCopy:
           row_bhavCopy = bhavCopy[
               (bhavCopy['SYMBOL'] == symbol_clean.upper()) &
               (bhavCopy['SERIES'].str.strip().isin(['EQ', 'BE', 'BZ']))
@@ -1817,7 +1846,7 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
             date1 = row_bhavCopy.iloc[0]["DATE1"]
             volume = row_bhavCopy.iloc[0].get("TTL_TRD_QNTY", 0)  # Use .get() to avoid crash if column missing
             
-            df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type="NSE")  
+            df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type=exchange_clean)
         else:
           # Other Tickers
           symbol_csv_filename = "stock_charts\\" + symbol_clean + ".csv"
@@ -1826,9 +1855,9 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
           close_price = df_symbol.iloc[-1]['Close']
           volume = df_symbol.iloc[-1]['Volume']
           date1 = df_symbol.iloc[-1]['Date']
-          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type="OTHER")
+          df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type=exchange_clean)
           
-        if exchange == "NSE":
+        if exchange_clean == "NSE":
           last5Revenue, last5PAT =  get_last5_financials(symbol_clean)
           df.at[idx, "last5Revenue"] = last5Revenue
           df.at[idx, "last5PAT"] = last5PAT
@@ -1842,7 +1871,7 @@ def recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True):
     
     if bhavcopy_not_found_tickers:
       df = pd.DataFrame(bhavcopy_not_found_tickers)
-      csv_filename = "stock_info\\temp\\bhavcopy_not_found_tickers_recalculateYFinStockInfo_" + exchange + ".csv"
+      csv_filename = "stock_info\\temp\\bhavcopy_not_found_tickers_recalculateYFinStockInfo_NSE.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       print("saved " + csv_filename)
 
@@ -2279,16 +2308,16 @@ def getNseCookies():
 
 def syncUpAllNseFillings(cookies = None):
 
-  syncUpNseDocuments(urlType="announcement", cookies=cookies)
+  # syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
-  syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  # syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
+  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   
-  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  # syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
   syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   pass
@@ -4009,11 +4038,16 @@ cookies_local = getNseCookies()
 # syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 # modify_result_files(nseStockList)
 
-# fetchNseDocuments("upcomingIssues", cookies=cookies_local)
+# fetchNseDocuments(urlType="prefIssue",
+#                   index="inListing",
+#                   start_date=datetime(2025, 6, 1),
+#                   end_date=datetime(2025, 7, 31),
+#                   cookies=cookies_local)
+
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
-res = fetchNseJsonObj("largeDeals",cookies=cookies_local)
-print(res)
+# res = fetchNseJsonObj("largeDeals",cookies=cookies_local)
+# print(res)
 
 
 # fetchAllNseFillings()
@@ -4034,7 +4068,7 @@ print(res)
 
 # syncUpYahooFinOtherSymbols()
 
-# recalculateYFinStockInfo(exchange="NSE", useNseBhavCopy=True)
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # syncUpAllNseFillings(cookies=cookies_local)
 
