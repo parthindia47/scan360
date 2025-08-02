@@ -328,6 +328,8 @@ app.get('/api_2/:type', (req, res) => {
           previousClose: parseFloat(row.previousClose || 0),
           last5revenue_consolidated: row.last5revenue_consolidated ? JSON.parse(row.last5revenue_consolidated) : null,
           last5PAT_consolidated: row.last5PAT_consolidated ? JSON.parse(row.last5PAT_consolidated) : null,
+          last5revenue_standalone: row.last5revenue_standalone ? JSON.parse(row.last5revenue_standalone) : null,
+          last5PAT_standalone: row.last5PAT_standalone ? JSON.parse(row.last5PAT_standalone) : null,
         };
       }
     })
@@ -351,6 +353,8 @@ app.get('/api_2/:type', (req, res) => {
               row.previousClose = stockMap[symbol].previousClose;
               row.last5revenue_consolidated = stockMap[symbol].last5revenue_consolidated;
               row.last5PAT_consolidated = stockMap[symbol].last5PAT_consolidated;
+              row.last5revenue_standalone = stockMap[symbol].last5revenue_standalone;
+              row.last5PAT_standalone = stockMap[symbol].last5PAT_standalone;
             }
             results.push(row);
           }
