@@ -239,7 +239,10 @@ function Announcements() {
                 const isExpanded = expandedRows[idx];
 
                 return (
-                  <tr key={idx} className="border-t hover:bg-gray-50">
+                  <tr 
+                    key={idx} 
+                    className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}
+                  >
                     <td className="p-2">{formatDate(row.an_dt || row.sort_date)}</td>
                     <td className="p-2">
                       <a

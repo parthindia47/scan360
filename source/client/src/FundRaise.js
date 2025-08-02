@@ -161,7 +161,7 @@ function FundRaise() {
             </thead>
             <tbody>
               {sortedPrefData.map((row, idx) => (
-                <tr key={idx} className="border-t hover:bg-gray-50">
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-2">
                     <a
                       href={`symbol/${row.symbol}`}
@@ -218,7 +218,7 @@ function FundRaise() {
             </thead>
             <tbody>
               {sortedQipData.map((row, idx) => (
-                <tr key={idx} className="border-t hover:bg-gray-50">
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-2">{row.company || '—'}</td>
                   <td className="p-2">{formatDate(row.date)}</td>
                   <td className="p-2">
@@ -256,7 +256,7 @@ function FundRaise() {
             </thead>
             <tbody>
               {sortedSchemeData.map((row, idx) => (
-                <tr key={idx} className="border-t hover:bg-gray-50">
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-2">{row.company || '—'}</td>
                   <td className="p-2">{formatDate(row.date)}</td>
                   <td className="p-2">{(row.scheme_details || '-')}</td>
@@ -297,7 +297,7 @@ function FundRaise() {
               </thead>
               <tbody>
                 {sortedRightsData.map((row, idx) => (
-                  <tr key={idx} className="border-t hover:bg-gray-50">
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                     <td className="p-2">{row.company || '—'}</td>
                     <td className="p-2">{formatDate(row.draftDate)}</td>
                     <td className="p-2">

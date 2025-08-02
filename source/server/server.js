@@ -10,6 +10,7 @@ app.use(cors());
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
+const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalone');
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
@@ -325,8 +326,8 @@ app.get('/api_2/:type', (req, res) => {
           marketCap: parseFloat(row.marketCap || 0),
           currentPrice: parseFloat(row.currentPrice || 0),
           previousClose: parseFloat(row.previousClose || 0),
-          last5Revenue: row.last5Revenue ? JSON.parse(row.last5Revenue) : null,
-          last5PAT: row.last5PAT ? JSON.parse(row.last5PAT) : null,
+          last5revenue_consolidated: row.last5revenue_consolidated ? JSON.parse(row.last5revenue_consolidated) : null,
+          last5PAT_consolidated: row.last5PAT_consolidated ? JSON.parse(row.last5PAT_consolidated) : null,
         };
       }
     })
@@ -348,8 +349,8 @@ app.get('/api_2/:type', (req, res) => {
               row.marketCap = stockMap[symbol].marketCap;
               row.currentPrice = stockMap[symbol].currentPrice;
               row.previousClose = stockMap[symbol].previousClose;
-              row.last5Revenue = stockMap[symbol].last5Revenue;
-              row.last5PAT = stockMap[symbol].last5PAT;
+              row.last5revenue_consolidated = stockMap[symbol].last5revenue_consolidated;
+              row.last5PAT_consolidated = stockMap[symbol].last5PAT_consolidated;
             }
             results.push(row);
           }
@@ -444,12 +445,19 @@ app.get('/api_2/info/:symbol', (req, res) => {
     });
 });
 
-app.get('/api_2/consolidated/:symbol', (req, res) => {
-  const { symbol } = req.params;
-  const filePath = path.join(consolidatedDataFolder, symbol, `${symbol}.csv`);
+app.get('/api_2/results/:type/:symbol', (req, res) => {
+  const { type, symbol } = req.params;
+  const baseType = type.toLowerCase();
+
+  if (!['consolidated', 'standalone'].includes(baseType)) {
+    return res.status(400).json({ error: `Invalid type '${type}'. Use 'consolidated' or 'standalone'.` });
+  }
+
+  const baseFolder = baseType === 'standalone' ? standaloneDataFolder : consolidatedDataFolder;
+  const filePath = path.join(baseFolder, symbol, `${symbol}.csv`);
 
   if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: `Data for symbol '${symbol}' not found.` });
+    return res.status(404).json({ error: `Data for symbol '${symbol}' not found. path '${filePath}'` });
   }
 
   const result = [];
@@ -481,8 +489,8 @@ app.get('/api_2/consolidated/:symbol', (req, res) => {
     })
     .on('end', () => res.json(result))
     .on('error', (err) => {
-      console.error(`Error reading CSV for '${symbol}':`, err);
-      res.status(500).json({ error: `Failed to load consolidated data for symbol '${symbol}'` });
+      console.error(`Error reading CSV for '${symbol}' (${type}):`, err);
+      res.status(500).json({ error: `Failed to load ${type} data for symbol '${symbol}'` });
     });
 });
 

@@ -29,6 +29,8 @@ function SymbolPage() {
   const [tickPrefix, setTickPrefix] = useState("");
   const [selectedRange, setSelectedRange] = useState('1Y');
   const [consolidatedData, setConsolidatedData] = useState([]);
+  const [standaloneData, setStandaloneData] = useState([]);
+  const [activeResultsTab, setActiveResultsTab] = useState('consolidated');
   const { symbol } = useParams();
   let decimalPoints = 2;
 
@@ -77,7 +79,7 @@ function SymbolPage() {
   }, [symbol]);
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api_2/consolidated/${symbol}`)
+    axios.get(`http://localhost:5000/api_2/results/consolidated/${symbol}`)
       .then(res => {
         const sortedData = res.data.sort((a, b) => new Date(a.toDate) - new Date(b.toDate));
         setConsolidatedData(sortedData);
@@ -87,6 +89,24 @@ function SymbolPage() {
         setConsolidatedData([]);
       });
   }, [symbol]);
+
+  useEffect(() => {
+    axios.get(`http://localhost:5000/api_2/results/standalone/${symbol}`)
+      .then(res => {
+        const sortedData = res.data.sort((a, b) => new Date(a.toDate) - new Date(b.toDate));
+        setStandaloneData(sortedData);
+      })
+      .catch(err => {
+        console.error('Error fetching consolidated data:', err);
+        setStandaloneData([]);
+      });
+  }, [symbol]);
+
+  useEffect(() => {
+    if (consolidatedData.length === 0 && standaloneData.length > 0) {
+      setActiveResultsTab('standalone');
+    }
+  }, [consolidatedData, standaloneData]);
 
 
   // Utility function to generate N ticks between min and max
@@ -206,7 +226,7 @@ function SymbolPage() {
                     href={stockInfo.website.startsWith('http') ? stockInfo.website : `https://${stockInfo.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 underline break-all mr-2"
+                    className="text-blue-600 underline break-all mr-3"
                   >
                     {stockInfo.website.replace(/^https?:\/\//, '')}
                   </a>
@@ -215,9 +235,9 @@ function SymbolPage() {
                     href={`https://www.screener.in/company/${symbol}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 underline break-all mr-2"
+                    className="text-blue-600 underline break-all mr-3"
                   >
-                    screener
+                    screener.in
                   </a>
 
                 </div>
@@ -228,9 +248,22 @@ function SymbolPage() {
             {stockInfo.longBusinessSummary && (
               <div className="flex-[1]">
                 <h4 className="text-base font-semibold mb-1">About</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {stockInfo.longBusinessSummary.split('.').slice(0, 1).join('. ') + '.'}
-                </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {(() => {
+                  const summary = stockInfo.longBusinessSummary;
+                  const first200 = summary.slice(0, 300);
+                  const lastPeriodIdx = first200.lastIndexOf(".");
+                  
+                  // If a period is found, cut up to and include it
+                  if (lastPeriodIdx !== -1) {
+                    return first200.slice(0, lastPeriodIdx + 1);
+                  }
+
+                  // Fallback: if no period in first 200 chars, return entire first sentence
+                  const firstSentenceEnd = summary.indexOf(".");
+                  return firstSentenceEnd !== -1 ? summary.slice(0, firstSentenceEnd + 1) : summary;
+                })()}
+              </p>
               </div>
             )}
           </div>
@@ -333,53 +366,76 @@ function SymbolPage() {
         </ComposedChart>
       </ResponsiveContainer>
 
-      {consolidatedData.length > 0 && (
-      <div className="mt-8 overflow-x-auto rounded-lg border border-gray-300">
-        <h4 className="text-lg font-semibold">Financial Results</h4>
-        <span className="text-gray-400">Figures in Rs. Crores</span>
-        <table className="min-w-full border text-sm text-left">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-2 py-1"></th>
-              {consolidatedData.map((row, idx) => (
-                <th key={idx} className="border px-2 py-1 whitespace-nowrap text-right">
-                  {row.toDate}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              "Sales", "OperatingProfit", "OPM", "OtherIncome",
-              "Interest", "Depreciation", "ProfitBeforeTax",
-              "NetProfit", "EPS"
-            ].map((metric, rowIdx) => (
-              <tr
-                key={metric}
-                className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-200'}
-              >
-                <td className="border px-2 py-1 font-medium">{metric}</td>
-                {consolidatedData.map((row, idx) => {
-                  const value = row[metric];
-                  const formattedValue =
-                    value !== undefined
-                      ? metric === "OPM"
-                        ? `${parseFloat(value).toFixed(1)}%`
-                        : parseFloat(value).toLocaleString()
-                      : '—';
+      {(consolidatedData.length > 0 || standaloneData.length > 0) ? (
+        <div className="mt-8 overflow-x-auto rounded-lg border border-gray-300">
+          <h4 className="text-lg font-semibold">Financial Results</h4>
+          <span className="text-gray-400">Figures in Rs. Crores</span>
 
-                  return (
-                    <td key={idx} className="border px-2 py-1 text-right">
-                      {formattedValue}
-                    </td>
-                  );
-                })}
+          {/* Tab buttons */}
+          {consolidatedData.length > 0 && standaloneData.length > 0 && (
+            <div className="my-2 flex gap-2">
+              <button
+                onClick={() => setActiveResultsTab('consolidated')}
+                className={`px-3 py-1 text-sm rounded border ${activeResultsTab === 'consolidated' ? 'bg-blue-200 font-semibold' : 'bg-gray-100'}`}
+              >
+                Consolidated
+              </button>
+              <button
+                onClick={() => setActiveResultsTab('standalone')}
+                className={`px-3 py-1 text-sm rounded border ${activeResultsTab === 'standalone' ? 'bg-blue-200 font-semibold' : 'bg-gray-100'}`}
+              >
+                Standalone
+              </button>
+            </div>
+          )}
+
+          {/* Table */}
+          <table className="min-w-full border text-sm text-left">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border px-2 py-1"></th>
+                {(activeResultsTab === 'consolidated' ? consolidatedData : standaloneData).map((row, idx) => (
+                  <th key={idx} className="border px-2 py-1 whitespace-nowrap text-right">
+                    {row.toDate}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {[
+                "Sales", "OperatingProfit", "OPM", "OtherIncome",
+                "Interest", "Depreciation", "ProfitBeforeTax",
+                "NetProfit", "EPS"
+              ].map((metric, rowIdx) => (
+                <tr
+                  key={metric}
+                  className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-200'}
+                >
+                  <td className="border px-2 py-1 font-medium">{metric}</td>
+                  {(activeResultsTab === 'consolidated' ? consolidatedData : standaloneData).map((row, idx) => {
+                    const value = row[metric];
+                    const formattedValue =
+                      value !== undefined
+                        ? metric === "OPM"
+                          ? `${parseFloat(value).toFixed(1)}%`
+                          : parseFloat(value).toLocaleString()
+                        : '—';
+
+                    return (
+                      <td key={idx} className="border px-2 py-1 text-right">
+                        {formattedValue}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="mt-6 text-gray-500 italic text-sm">No financial data available</div>
       )}
+
     </div>
   );
 }

@@ -256,7 +256,7 @@ function UpcomingEvents() {
                   </tr>
                 ) : (
                   sortedEventsData.map((row, idx) => (
-                    <tr key={idx} className="border-t hover:bg-gray-50">
+                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                       <td className="p-2">{formatDate(row.date)}</td>
                       <td className="p-2">
                         <a
@@ -321,7 +321,7 @@ function UpcomingEvents() {
             </thead>
             <tbody>
               {sortedUpcomingIssuesData.map((item, idx) => (
-                <tr key={idx} className="border-t hover:bg-gray-50">
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-2">{item.companyName || '—'}</td>
                   <td className="p-2">{item.series || '—'}</td>
                   <td className="p-2">{formatDate(item.issueStartDate)}</td>
@@ -365,7 +365,7 @@ function UpcomingEvents() {
             </thead>
             <tbody>
               {sortedForthcomingListingData.map((item, idx) => (
-                <tr key={idx} className="border-t hover:bg-gray-50">
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-2">{item.companyName || '—'}</td>
                   <td className="p-2">{item.series || '—'}</td>
                   <td className="p-2">{formatDate(item.effectiveDate)}</td>

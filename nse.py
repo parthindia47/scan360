@@ -1085,6 +1085,12 @@ def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
 # ==========================================================================
 # ==============================  Fetch JSON ===============================
 
+def get_df_from_json_list(jsonList):
+  if isinstance(jsonList, list):
+      if not jsonList:  # Check if list is empty
+          return pd.DataFrame()
+      return pd.DataFrame(jsonList)
+
 '''
 This is master function to fetch any type of fillings from NSE.
 step indicate how many days step it should fetch the data.
@@ -1129,7 +1135,7 @@ def fetchNseJsonObj(urlType,
     if jsonObjMaster:
       if urlType=="forthcomingListing" or urlType=="prefIssue" or urlType=="integratedResults":
         jsonObjMaster = jsonObjMaster["data"]
-      return jsonObjMaster  
+      return get_df_from_json_list(jsonObjMaster)
       
     # Ensure step is set properly if start and end dates are the same or close together
     # print("start_date ", start_date, " final_end_date ", final_end_date)
@@ -1169,9 +1175,7 @@ def fetchNseJsonObj(urlType,
 
         time.sleep(delaySec)  # Delay between API requests
 
-    if isinstance(jsonObjMaster, list):
-        jsonObjMaster = pd.DataFrame(jsonObjMaster)
-    return jsonObjMaster
+    return get_df_from_json_list(jsonObjMaster)
 
 # ==========================================================================
 # ============================  Yahoo Fin API ==============================
@@ -1738,7 +1742,7 @@ and in our csv it is getting stored, as python date object
 
 '''
 def convert_to_date(date_str, candle_type):
-  return datetime.strptime(date_str, "%Y-%m-%d").date()
+  return datetime.strptime(date_str, "%d-%m-%Y").date()
 
 def recalculate_financials(row, current_price, volume, candle_date, candle_type):
     updated_row = row.copy()
@@ -1775,28 +1779,48 @@ def recalculate_financials(row, current_price, volume, candle_date, candle_type)
     return updated_row
 
 def get_last5_financials(symbol):
-    try:
-        path = f"stock_results/consolidated/{symbol}/{symbol}.csv"
+    def load_last5(path):
         if not os.path.exists(path):
-            print(f"⚠️ File not found for {symbol}")
+            print(f"⚠️ File not found: {path}")
+            return None, None
+        try:
+            df = pd.read_csv(path)
+
+            if 'toDate' not in df.columns or 'Sales' not in df.columns or 'NetProfit' not in df.columns:
+                print(f"⚠️ Missing required columns in {path}")
+                return None, None
+
+            df['toDate'] = pd.to_datetime(df['toDate'], format="%d-%b-%Y", errors='coerce')
+            df = df.dropna(subset=['toDate', 'Sales', 'NetProfit'])
+
+            df = df.sort_values('toDate').tail(5)
+
+            last5revenue = {
+                dt.strftime("%d-%b-%Y"): int(val) for dt, val in zip(df['toDate'], df['Sales'])
+            }
+            last5PAT = {
+                dt.strftime("%d-%b-%Y"): int(val) for dt, val in zip(df['toDate'], df['NetProfit'])
+            }
+
+            return json.dumps(last5revenue), json.dumps(last5PAT)
+
+        except Exception as e:
+            print(f"❌ Error reading {path}: {e}")
             return None, None
 
-        df = pd.read_csv(path)
-        df['toDate'] = pd.to_datetime(df['toDate'], format="%d-%b-%Y")
+    consolidated_path = f"stock_results/consolidated/{symbol}/{symbol}.csv"
+    standalone_path = f"stock_results/standalone/{symbol}/{symbol}.csv"
 
-        # Drop rows where toDate is NaT or Sales/NetProfit is NaN
-        df = df.dropna(subset=['toDate', 'Sales', 'NetProfit'])
+    last5revenue_consolidated, last5PAT_consolidated = load_last5(consolidated_path)
+    last5revenue_standalone, last5PAT_standalone = load_last5(standalone_path)
 
-        # Sort by date ascending, then take the last 5 rows
-        df = df.sort_values('toDate').tail(5)
+    return {
+        "last5revenue_consolidated": last5revenue_consolidated,
+        "last5PAT_consolidated": last5PAT_consolidated,
+        "last5revenue_standalone": last5revenue_standalone,
+        "last5PAT_standalone": last5PAT_standalone,
+    }
 
-        last5revenue = {dt.strftime("%d-%b-%Y"): int(val) for dt, val in zip(df['toDate'], df['Sales'])}
-        last5PAT = {dt.strftime("%d-%b-%Y"): int(val) for dt, val in zip(df['toDate'], df['NetProfit'])}
-
-        return json.dumps(last5revenue), json.dumps(last5PAT)
-    except Exception as e:
-        print(f"❌ Error processing {symbol}: {e}")
-        return None, None
       
 '''
 bhavcopy will give us df
@@ -1818,8 +1842,10 @@ def recalculateYFinStockInfo(useNseBhavCopy=True):
       
     if os.path.exists(local_url):
       df = pd.read_csv(local_url)
-      df["last5Revenue"] = df["last5Revenue"].astype("object")
-      df["last5PAT"] = df["last5PAT"].astype("object")
+      df["last5revenue_consolidated"] = df["last5revenue_consolidated"].astype("object")
+      df["last5PAT_consolidated"] = df["last5PAT_consolidated"].astype("object")
+      df["last5revenue_standalone"] = df["last5revenue_standalone"].astype("object")
+      df["last5PAT_standalone"] = df["last5PAT_standalone"].astype("object")
     else:
       print("No stock info file exists")
       return
@@ -1856,11 +1882,13 @@ def recalculateYFinStockInfo(useNseBhavCopy=True):
           volume = df_symbol.iloc[-1]['Volume']
           date1 = df_symbol.iloc[-1]['Date']
           df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type=exchange_clean)
-          
+       
         if exchange_clean == "NSE":
-          last5Revenue, last5PAT =  get_last5_financials(symbol_clean)
-          df.at[idx, "last5Revenue"] = last5Revenue
-          df.at[idx, "last5PAT"] = last5PAT
+          last5_financials =  get_last5_financials(symbol_clean)
+          df.at[idx, "last5revenue_consolidated"] = last5_financials["last5revenue_consolidated"]
+          df.at[idx, "last5PAT_consolidated"] = last5_financials["last5PAT_consolidated"]
+          df.at[idx, "last5revenue_standalone"] = last5_financials["last5revenue_standalone"]
+          df.at[idx, "last5PAT_standalone"] = last5_financials["last5PAT_standalone"]       
       except Exception as e:
         traceback.print_exc()  # <-- this prints the full stack trace with line number
         print("SYMBOL NAME " + symbol_clean)
@@ -2123,8 +2151,10 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
 
   # Read the CSV data into a DataFrame
   df = pd.read_csv(csv_filename)
-  # print(df)
-  
+
+  # Print the length of the DataFrame
+  print(f"Current Entries : {len(df)}")
+
   date_key = getDateKeyForNseDocument(urlType)
   
   # Parse the 'Date' column as datetime
@@ -2148,6 +2178,11 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
                                       fromDate=start_date, 
                                       toDate=end_date,
                                       cookies=cookies)
+    print(f"New Entries : {len(master_json_list)}")
+    if master_json_list.empty:
+        print("⚠️ No new entries for ", urlType, ", Exiting.")
+        return
+    
     df_new = processJsonToDfForNseDocument(master_json_list, urlType)
             
     df.reset_index(drop=True)
@@ -2308,16 +2343,16 @@ def getNseCookies():
 
 def syncUpAllNseFillings(cookies = None):
 
-  # syncUpNseDocuments(urlType="announcement", cookies=cookies)
+  syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
-  # syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
+  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   
-  # syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
+  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
   syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   pass
@@ -3549,12 +3584,38 @@ def modify_result_files(nseStockList, resultType="Consolidated"):
             except Exception as e:
                 print(f"❌ Failed for {symbol}: {e}")
                 
+def modify_result_files_dates(nseStockList, resultType="Consolidated"):
+    for idx, obj in enumerate(nseStockList):
+        symbol = obj["SYMBOL"]
+        print(f"🔄 Processing {idx}: {symbol}")
+
+        sub_folder = "consolidated" if resultType.lower() == "consolidated" else "standalone"
+        csv_dir = f"stock_results/{sub_folder}/{symbol}"
+        csv_path = f"{csv_dir}/{symbol}.csv"
+
+        if os.path.exists(csv_path):
+            try:
+                df = pd.read_csv(csv_path)
+
+                if "toDate" in df.columns:
+                    df["toDate"] = df["toDate"].astype(str).str.lower()
+                    df.to_csv(csv_path, index=False)
+                    print(f"✅ Updated: {symbol}")
+                else:
+                    print(f"⚠️ 'toDate' column not found for {symbol}")
+
+            except Exception as e:
+                print(f"❌ Failed for {symbol}: {e}")
+
+                
 '''
 "consolidated" , "non-consolidated"
 '''
-def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="consolidated", partial=False, delaySec=4):
-    result_date_list = ["31-Mar-2023", "30-Jun-2023", "30-Sep-2023", "31-Dec-2023",
-                        "31-Mar-2024", "30-Jun-2024", "30-Sep-2024", "31-Dec-2024"]
+def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated", partial=False, delaySec=4):
+    result_date_list = [
+        "31-Mar-2023", "30-Jun-2023", "30-Sep-2023", "31-Dec-2023",
+        "31-Mar-2024", "30-Jun-2024", "30-Sep-2024", "31-Dec-2024"
+    ]
 
     response = fetchUrl(getBaseUrl("financialResults"))
     cookies = response.cookies
@@ -3582,61 +3643,51 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="conso
                 cookies=cookies
             )
 
+            # Ensure data is valid DataFrame
+            if not isinstance(data, pd.DataFrame) or data.empty:
+                print(f"⚠️ No data for {symbol}")
+                continue
+
+            # Clean and normalize columns
+            data["toDate"] = data["toDate"].astype(str).str.strip()
+            data["consolidated"] = data["consolidated"].astype(str).str.lower().str.strip()
+            data["broadCastDate"] = data["broadCastDate"].astype(str).fillna("01-Jan-1900 00:00:00")
+
             for result_date in result_date_list:
-                matching_entries = []
+                # Filter entries by result date and result type
+                filtered_df = data[
+                    (data["toDate"] == result_date) &
+                    (data["consolidated"] == resultType.lower())
+                ].copy()
 
-                if resultType == "consolidated":
-                    # Step 1: Prefer Consolidated
-                    matching_entries = [
-                        item for item in data
-                        if item.get("toDate") == result_date and item.get("consolidated", "").lower() == resultType
-                    ]
-
-                    # Step 2: Fallback to Non-Consolidated if not found
-                    # if not matching_entries:
-                    #     matching_entries = [
-                    #         item for item in data
-                    #         if item.get("toDate") == result_date and item.get("consolidated", "").lower() == "non-consolidated"
-                    #     ]
-
-                elif resultType == "non-consolidated":
-                    # Only fetch if explicitly Non-Consolidated
-                    matching_entries = [
-                        item for item in data
-                        if item.get("toDate") == result_date and item.get("consolidated", "").lower() == resultType
-                    ]
-
-                if not matching_entries:
+                if filtered_df.empty:
                     print(f"⚠️ No matching entries for {symbol} on {result_date}")
-                    # print(data)
                     continue
-                    
 
-                # Step 2: Choose the most recent by broadCastDate
-                def parse_broadcast(item):
-                    try:
-                        return datetime.strptime(item.get("broadCastDate", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
-                    except Exception:
-                        return datetime.min
+                # Parse broadCastDate safely
+                filtered_df["parsed_bc"] = pd.to_datetime(
+                    filtered_df["broadCastDate"], format="%d-%b-%Y %H:%M:%S", errors="coerce"
+                )
 
-                matching_entry = max(matching_entries, key=parse_broadcast)
+                # Use latest broadcast
+                latest_entry = filtered_df.sort_values("parsed_bc", ascending=False).iloc[0]
 
-                xbrl_url = matching_entry.get("xbrl")
+                xbrl_url = latest_entry.get("xbrl")
                 if not xbrl_url:
                     continue
 
-                to_date = matching_entry.get("toDate")
-                broad_cast_date = matching_entry.get("broadCastDate")
+                to_date = latest_entry.get("toDate")
+                broad_cast_date = latest_entry.get("broadCastDate")
 
                 print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
 
-                # Step 3: Parse XBRL only for latest one
                 local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
-
                 json_obj = nse_xbrl_to_json(local_xml_path)
+
+                # Enrich result
                 json_obj["toDate"] = to_date
-                json_obj["audited"] = matching_entry.get("audited").lower()
-                json_obj["consolidated"] = matching_entry.get("consolidated").lower()
+                json_obj["audited"] = str(latest_entry.get("audited", "")).lower()
+                json_obj["consolidated"] = str(latest_entry.get("consolidated", "")).lower()
                 json_obj["xbrl"] = xbrl_url
                 json_obj["broadCastDate"] = broad_cast_date
 
@@ -3648,7 +3699,7 @@ def fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="conso
             print(f"❌ Error fetching {symbol}: {e}")
             continue
 
-        # Step 4: Save results
+        # Save output
         if latest_by_date:
             output_rows = list(latest_by_date.values())
             df = pd.DataFrame(output_rows)
@@ -3694,49 +3745,38 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
                 cookies=cookies
             )
 
+            # 🛡 Ensure data is a DataFrame
+            if not isinstance(data, pd.DataFrame) or data.empty:
+                print(f"⚠️ No valid data returned for {symbol}. Skipping.")
+                continue
+
+            # Normalize relevant columns
+            data['qe_Date'] = data['qe_Date'].astype(str).str.strip().str.lower()
+            data['consolidated'] = data['consolidated'].astype(str).str.strip().str.lower()
+            data['creation_Date'] = data['creation_Date'].astype(str).fillna("01-Jan-1900 00:00:00")
+
             for result_date in result_date_list:
-                # ✅ Skip this result_date if already present
                 if not df.empty and result_date.lower() in existing_dates:
                     print(f"⏭️ Skipping {symbol} for {result_date}: Already exists.")
                     continue
-                  
-                matching_entries = []
 
-                if resultType == "consolidated":
-                    # Step 1: Prefer Consolidated
-                    matching_entries = [
-                        item for item in data
-                        if item.get("qe_Date", "").lower() == result_date.lower() and
-                          str(item.get("consolidated") or "").lower() == resultType.lower()
-                    ]
+                filtered_df = data[
+                    (data['qe_Date'] == result_date.lower()) &
+                    (data['consolidated'] == resultType.lower())
+                ].copy()
 
-                    # Step 2: Fallback to Non-Consolidated if not found
-                    # if not matching_entries:
-                    #     matching_entries = [
-                    #         item for item in data
-                    #         if item.get("qe_Date", "").lower() == result_date.lower() and
-                    #            str(item.get("consolidated") or "").lower() == "non-consolidated"
-                    #     ]
-
-                elif resultType == "standalone":
-                    matching_entries = [
-                        item for item in data
-                        if item.get("qe_Date", "").lower() == result_date.lower() and
-                          str(item.get("consolidated") or "").lower() == resultType.lower()
-                    ]
-
-
-                if not matching_entries:
-                    # print(data)
+                if filtered_df.empty:
                     continue
 
-                def parse_broadcast(item):
-                    try:
-                        return datetime.strptime(item.get("creation_Date", "01-Jan-1900 00:00:00"), "%d-%b-%Y %H:%M:%S")
-                    except:
-                        return datetime.min
+                # Sort by creation_Date (converted) to get the latest
+                try:
+                    filtered_df['parsed_creation'] = pd.to_datetime(
+                        filtered_df['creation_Date'], format="%d-%b-%Y %H:%M:%S", errors='coerce'
+                    )
+                except Exception:
+                    filtered_df['parsed_creation'] = pd.NaT
 
-                matching_entry = max(matching_entries, key=parse_broadcast)
+                matching_entry = filtered_df.sort_values('parsed_creation', ascending=False).iloc[0]
 
                 xbrl_url = matching_entry.get("xbrl")
                 html_url = matching_entry.get("ixbrl")
@@ -3751,11 +3791,9 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
                 json_obj = nse_xbrl_to_json(local_xml_path)
 
                 json_obj["toDate"] = to_date
-                json_obj["audited"] = matching_entry.get("audited").lower()
-                
+                json_obj["audited"] = str(matching_entry.get("audited", "")).lower()
                 res_type_local = matching_entry.get("consolidated", "").lower()
-                res_type_local = "consolidated" if res_type_local == "consolidated" else "non-consolidated"
-                json_obj["consolidated"] = res_type_local
+                json_obj["consolidated"] = "consolidated" if res_type_local == "consolidated" else "non-consolidated"
                 json_obj["xbrl"] = xbrl_url
                 json_obj["broadCastDate"] = broad_cast_date
 
@@ -3769,6 +3807,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
                 time.sleep(delaySec)
 
         except Exception as e:
+            traceback.print_exc()
             print(f"❌ Error fetching data for {symbol}: {e}")
             continue
 
@@ -4031,12 +4070,14 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-cookies_local = getNseCookies()
-# dummyList = [{"SYMBOL":"EQUITASBNK"}]
+# cookies_local = getNseCookies()
+# # dummyList = [{"SYMBOL":"EQUITASBNK"}]
 # nseStockList = getAllNseSymbols(local=False)
-# # fetchNseFinancialResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
+# # fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
+# syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
 # syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 # modify_result_files(nseStockList)
+# modify_result_files_dates(nseStockList, resultType="standalone")
 
 # fetchNseDocuments(urlType="prefIssue",
 #                   index="inListing",

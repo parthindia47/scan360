@@ -85,8 +85,8 @@ function Results() {
   const enrichedData = data
     .filter(row => row.type === "Integrated Filing- Financials")
     .map(row => {
-      const revenueData = row.last5Revenue || {};
-      const patData = row.last5PAT || {};
+      const revenueData = row.last5revenue_consolidated || {};
+      const patData = row.last5PAT_consolidated || {};
       const dates = Object.keys(revenueData).sort((a, b) => new Date(a) - new Date(b));
       const currDate = normalizeDateString(row.qe_Date);
       const prevQ = getPrevDate(dates, currDate, 1);
@@ -150,8 +150,8 @@ function Results() {
           </thead>
           <tbody>
             {sortedData.map((row, idx) => {
-              const revenueData = row.last5Revenue || {};
-              const patData = row.last5PAT || {};
+              const revenueData = row.last5revenue_consolidated || {};
+              const patData = row.last5PAT_consolidated || {};
               const dates = Object.keys(revenueData).sort((a, b) => new Date(a) - new Date(b));
               const currDate = normalizeDateString(row.qe_Date);
 
