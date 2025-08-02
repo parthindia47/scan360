@@ -63,7 +63,7 @@ const daysPastList = {
   prefIssue: 5,
   schemeOfArrangement: 10,
 
-  integratedResults: 4
+  integratedResults: 6
 };
 
 let eventsMap = {}; // key: symbol, value: array of events

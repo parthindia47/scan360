@@ -92,7 +92,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from mcx import download_mcx_bhavcopy
 import traceback
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -625,6 +625,11 @@ https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme?index=equiti
 
 https://www.nseindia.com/api/integrated-filing-results?index=equities&from_date=12-04-2025&to_date=12-07-2025&period_ended=all&type=Integrated%20Filing-%20Financials&page=1&size=20
 
+spaces and & need to be converted
+https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=M%26M&issuer=Mahindra%20%26%20Mahindra%20Limited&period=Quarterly
+
+https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=BAJAJ-AUTO&issuer=Bajaj%20Auto%20Limited&period=Quarterly
+
 Example of Usage:
 print(getAnnouncementUrlQuery("equities"))  # JSON response for equities
 print(getAnnouncementUrlQuery("equities", fromDate="10-04-2024", toDate="11-04-2024"))  # Time-wise search
@@ -684,6 +689,7 @@ def getJsonUrlQuery(urlType,
         
     # Handling company-wise search
     if symbol:
+        symbol = symbol.replace(' ', '%20').replace('/', '%2F').replace('&', '%26')
         baseUrl += f"&symbol={symbol}"
         
     if issuer:
@@ -692,7 +698,7 @@ def getJsonUrlQuery(urlType,
     # Handling subject-wise search
     if subject:
         # Replace special characters
-        subject = subject.replace(' ', '%20').replace('/', '%2F')
+        subject = subject.replace(' ', '%20').replace('/', '%2F').replace('&', '%26')
         baseUrl += f"&subject={subject}"
     
     # Handling FnO search
@@ -817,6 +823,7 @@ def getBaseUrl(urlType,symbol=None):
     
     if urlType in symbolBaseUrl:
       if symbol:
+        symbol = symbol.replace(' ', '%20').replace('/', '%2F').replace('&', '%26')
         baseUrl = baseUrl + symbol
         
     return baseUrl
@@ -4070,10 +4077,10 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-# cookies_local = getNseCookies()
-# # dummyList = [{"SYMBOL":"EQUITASBNK"}]
-# nseStockList = getAllNseSymbols(local=False)
-# # fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
+cookies_local = getNseCookies()
+# dummyList = [{"SYMBOL":"M&M"}]
+nseStockList = getAllNseSymbols(local=False)
+# fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
 # syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
 # syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 # modify_result_files(nseStockList)

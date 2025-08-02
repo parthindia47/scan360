@@ -91,6 +91,7 @@ function UpcomingEvents() {
     const text = `${row.purpose || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap ?? 0);
 
+
     const keywordMatch = selectedKeyword
       ? text.includes(selectedKeyword.toLowerCase())
       : true;
@@ -101,9 +102,14 @@ function UpcomingEvents() {
 
     const eventDate = row.date ? new Date(row.date) : null;
     const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    
     const dateMatch =
       periodFilter === 'today'
         ? eventDate && eventDate.toDateString() === today.toDateString()
+        : periodFilter === 'yesterday'
+        ? eventDate && eventDate.toDateString() === yesterday.toDateString()
         : periodFilter === 'next3days'
         ? eventDate >= today &&
           eventDate <= new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)
@@ -206,7 +212,7 @@ function UpcomingEvents() {
 
               <div className="flex flex-wrap gap-2 mb-3">
                 <div className="text-gray-600">Filters Period : </div>
-                {["today", "next3days"].map((label) => (
+                {["yesterday", "today", "next3days"].map((label) => (
                   <button
                     key={label}
                     onClick={() =>
@@ -218,7 +224,11 @@ function UpcomingEvents() {
                         : 'bg-indigo-100 text-gray-800'
                     }`}
                   >
-                    {label === 'today' ? 'Today' : 'Next 3 Days'}
+                    {label === 'yesterday'
+                      ? 'Yesterday'
+                      : label === 'today'
+                      ? 'Today'
+                      : 'Next 3 Days'}
                   </button>
                 ))}
 

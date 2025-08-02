@@ -4,7 +4,7 @@ import axios from 'axios';
 function Results() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: 'broadcast_Date', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'creation_Date', direction: 'desc' });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/integratedResults')
@@ -125,8 +125,8 @@ function Results() {
     const { key, direction } = sortConfig;
     const dir = direction === 'asc' ? 1 : -1;
 
-    if (key === 'broadcast_Date') {
-      return dir * (new Date(a.broadcast_Date) - new Date(b.broadcast_Date));
+    if (key === 'creation_Date') {
+      return dir * (new Date(a.creation_Date) - new Date(b.creation_Date));
     }
 
     const valA = a[key] ?? -Infinity;
@@ -145,13 +145,13 @@ function Results() {
             <tr>
               <th className="p-2">Company</th>
               <th className="p-2">Quarter End</th>
-              {renderSortableHeader('Broadcast Date', 'broadcast_Date')}
+              {renderSortableHeader('Date', 'creation_Date')}
 
               <th className="p-2">Consolidated</th>
               {renderSortableHeader('Change', 'change')}
               {renderSortableHeader('Revenue Q-Q%', 'revQQ')}
-              {renderSortableHeader('PAT Q-Q%', 'patQQ')}
               {renderSortableHeader('Revenue Y-Y%', 'revYY')}
+              {renderSortableHeader('PAT Q-Q%', 'patQQ')}
               {renderSortableHeader('PAT Y-Y%', 'patYY')}
               <th className="p-2">XBRL</th>
             </tr>
@@ -196,7 +196,7 @@ function Results() {
                   </td>
 
                   <td className="p-2">{row.qe_Date}</td>
-                  <td className="p-2">{row.broadcast_Date}</td>
+                  <td className="p-2">{row.creation_Date}</td>
 
                   <td className="p-2">{row.consolidated}</td>
                   <td className="p-2">{getChange(row.currentPrice, row.previousClose)}</td>
@@ -209,18 +209,18 @@ function Results() {
                     )}
                   </td>
                   <td className="p-2">
-                    {getChange(patCurr, patPrevQ)}
-                    {patCurr && patPrevQ && (
-                      <div className="text-xs text-gray-500">
-                        {formatInCrores(patCurr)} Vs {formatInCrores(patPrevQ)}
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-2">
                     {getChange(revCurr, revPrevY)}
                     {revCurr && revPrevY && (
                       <div className="text-xs text-gray-500">
                         {formatInCrores(revCurr)} Vs {formatInCrores(revPrevY)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {getChange(patCurr, patPrevQ)}
+                    {patCurr && patPrevQ && (
+                      <div className="text-xs text-gray-500">
+                        {formatInCrores(patCurr)} Vs {formatInCrores(patPrevQ)}
                       </div>
                     )}
                   </td>
