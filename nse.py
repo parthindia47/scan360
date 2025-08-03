@@ -93,6 +93,7 @@ from selenium.webdriver.chrome.options import Options
 from mcx import download_mcx_bhavcopy
 import traceback
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote
+import xml.etree.ElementTree as ET
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -3588,6 +3589,9 @@ def nse_xbrl_to_json(xml_path):
       opm = operating_profit * 100/revenue
     else:
       opm = 0
+      
+    PaidUpShareCapital = get("PaidUpValueOfEquityShareCapital")
+    FaceValue = get("FaceValueOfEquityShareCapital")
 
     result_obj = {
       "Sales": revenue,
@@ -3602,7 +3606,9 @@ def nse_xbrl_to_json(xml_path):
       "ProfitBeforeTax": profit_before_tax,
       "TaxPercentage": tax_per,
       "NetProfit": net_profit,
-      "EPS": eps
+      "EPS": eps,
+      "PaidUpShareCapital" : PaidUpShareCapital,
+      "FaceValue" : FaceValue
     }
     
     # print(json.dumps(xbrl_data, indent=2))
@@ -3678,16 +3684,66 @@ def modify_result_files_dates(nseStockList, resultType="Consolidated"):
         if os.path.exists(csv_path):
             try:
                 df = pd.read_csv(csv_path)
-
-                if "toDate" in df.columns:
-                    df["toDate"] = df["toDate"].astype(str).str.lower()
-                    df.to_csv(csv_path, index=False)
-                    print(f"✅ Updated: {symbol}")
-                else:
-                    print(f"⚠️ 'toDate' column not found for {symbol}")
+                df.to_csv(csv_path, index=False)
 
             except Exception as e:
                 print(f"❌ Failed for {symbol}: {e}")
+                
+
+def get_xml_value(xml_path, tag_name):
+    """Safely extract a tag value from an XML file."""
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        for elem in root.iter():
+            if elem.tag.lower().endswith(tag_name.lower()):
+                return elem.text
+    except Exception as e:
+        print(f"⚠️ Error parsing {xml_path}: {e}")
+    return None
+
+def modify_result_files_share_capital(nseStockList, resultType="Consolidated"):
+    for idx, obj in enumerate(nseStockList):
+        symbol = obj["SYMBOL"]
+        print(f"🔄 Processing {idx}: {symbol}")
+
+        sub_folder = "consolidated" if resultType.lower() == "consolidated" else "standalone"
+        csv_dir = f"stock_results/{sub_folder}/{symbol}"
+        csv_path = f"{csv_dir}/{symbol}.csv"
+
+        if not os.path.exists(csv_path):
+            continue
+
+        try:
+            df = pd.read_csv(csv_path)
+
+            # Create empty columns
+            df["PaidUpShareCapital"] = None
+            df["FaceValue"] = None
+
+            for i, row in df.iterrows():
+                xbrl_url = row.get("xbrl", "")
+                if not xbrl_url:
+                    continue
+
+                xbrl_filename = os.path.basename(xbrl_url)
+                local_xbrl_path = os.path.join(csv_dir, xbrl_filename)
+
+                if os.path.exists(local_xbrl_path):
+                    paid_up = get_xml_value(local_xbrl_path, "PaidUpValueOfEquityShareCapital")
+                    face_val = get_xml_value(local_xbrl_path, "FaceValueOfEquityShareCapital")
+
+                    df.at[i, "PaidUpShareCapital"] = paid_up
+                    df.at[i, "FaceValue"] = face_val
+                else:
+                    print(f"⚠️ XBRL file not found for {symbol}: {xbrl_filename}")
+
+            df.to_csv(csv_path, index=False)
+            print(f"✅ Updated {symbol}")
+
+        except Exception as e:
+            print(f"❌ Failed for {symbol}: {e}")
+
 
                 
 '''
@@ -4152,14 +4208,15 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-# cookies_local = getNseCookies()
+cookies_local = getNseCookies()
 # dummyList = [{"SYMBOL":"M&M"}]
-# nseStockList = getAllNseSymbols(local=False)
+nseStockList = getAllNseSymbols(local=False)
 # fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
 # syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
 # syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 # modify_result_files(nseStockList)
 # modify_result_files_dates(nseStockList, resultType="standalone")
+modify_result_files_share_capital(nseStockList, resultType="consolidated")
 
 # fetchNseDocuments(urlType="prefIssue",
 #                   index="inListing",
@@ -4170,7 +4227,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 
-fetchAllNseFillings()
+# fetchAllNseFillings()
 
 # fetchAllNseFillings()
 
