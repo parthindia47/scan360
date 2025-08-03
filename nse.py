@@ -143,16 +143,23 @@ def getOutputCsvFile(urlType):
         "events":"stock_fillings/events_nse.csv",
         "upcomingIssues":"stock_fillings/upcomingIssues_nse.csv",
         "forthcomingListing":"stock_fillings/forthcomingListing_nse.csv",
+        "forthcomingOfs":"stock_fillings/forthcomingOfs_nse.csv",
+        "upcomingTender":"stock_fillings/upcomingTender_nse.csv",
+        "upcomingRights":"stock_fillings/upcomingRights_nse.csv",
+        
         #fund raise
         "rightsFilings":"stock_fillings/rightsFilings_nse.csv",
         "qipFilings":"stock_fillings/qipFilings_nse.csv",
         "prefIssue":"stock_fillings/prefIssue_nse.csv",
         "schemeOfArrangement":"stock_fillings/schemeOfArrangement_nse.csv",
+
         #results
         "integratedResults":"stock_fillings/integratedResults_nse.csv",
         "bulkDeals":"stock_fillings/bulkDeals_nse.csv",
         "blockDeals":"stock_fillings/blockDeals_nse.csv",
-        "shortDeals":"stock_fillings/shortDeals_nse.csv"
+        "shortDeals":"stock_fillings/shortDeals_nse.csv",
+        "sastDeals":"stock_fillings/sastDeals_nse.csv",
+        "insiderDeals":"stock_fillings/insiderDeals_nse.csv",
     }
     return csv_output_files[urlType]
 
@@ -633,6 +640,8 @@ https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=
 
 https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=BAJAJ-AUTO&issuer=Bajaj%20Auto%20Limited&period=Quarterly
 
+https://www.nseindia.com/api/all-upcoming-issues?category=forthcoming
+
 Example of Usage:
 print(getAnnouncementUrlQuery("equities"))  # JSON response for equities
 print(getAnnouncementUrlQuery("equities", fromDate="10-04-2024", toDate="11-04-2024"))  # Time-wise search
@@ -661,7 +670,6 @@ def getJsonUrlQuery(urlType,
         "resultsComparison":"https://www.nseindia.com/api/results-comparision?index=",
         "schemeOfArrangement":"https://www.nseindia.com/api/corporates/offerdocs/arrangementscheme?index=",
         "creditRating":"https://www.nseindia.com/api/corporate-credit-rating?index=",
-        "insiderTrading":"https://www.nseindia.com/api/corporates-pit?index=",
         "shareholdingPattern": "https://www.nseindia.com/api/corporate-share-holdings-master?index=",
         "annualReports":"https://www.nseindia.com/api/annual-reports?index=",
         "rightsFilings": "https://www.nseindia.com/api/corporates/offerdocs/rights?index=",
@@ -669,6 +677,8 @@ def getJsonUrlQuery(urlType,
         "prefIssue":"https://www.nseindia.com/api/corporate-further-issues-pref?index=",
         "commoditySpotAll":"https://www.nseindia.com/api/refrates?index=",
         "commodityIndividual":"https://www.nseindia.com/api/historical/com/derivatives?",
+        "sastDeals":"https://www.nseindia.com/api/corporate-sast-reg29?index=",
+        "insiderDeals":"https://www.nseindia.com/api/corporates-pit?index=",
     }
     
     short_date_style = ["commodityIndividual"]
@@ -731,9 +741,13 @@ def getTopicJsonQuery(urlType):
         "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo",
         "tradingHoliday":"https://www.nseindia.com/api/holiday-master?type=trading",
         "forthcomingListing": "https://www.nseindia.com/api/new-listing-today?index=ForthListing",
+        "forthcomingOfs":"https://www.nseindia.com/api/all-upcoming-issues?category=forthcoming",
+        "upcomingTender":"https://www.nseindia.com/api/all-upcoming-issues?category=tender",
+        "upcomingRights":"https://www.nseindia.com/api/all-upcoming-issues?category=forthcomingIssues",
+        
         "bulkDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
         "blockDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
-        "shortDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal"
+        "shortDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
     }
 
     baseUrl = baseUrls[urlType]
@@ -805,11 +819,11 @@ def getBaseUrl(urlType,symbol=None):
         "ipoCurrentIssues":"https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
         "publicPastIssues":"https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
         "upcomingIssues":"https://www.nseindia.com/market-data/all-upcoming-issues-ipo",
+        "forthcomingOfs":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs",
         "integratedResults":"https://www.nseindia.com/companies-listing/corporate-integrated-filing",
         "resultsComparison": "https://www.nseindia.com/companies-listing/corporate-filings-financial-results-comparision",
         "schemeOfArrangement":"https://www.nseindia.com/companies-listing/corporate-filings-scheme-document",
         "creditRating":"https://www.nseindia.com/companies-listing/debt-centralised-database/crd",
-        "insiderTrading":"https://www.nseindia.com/companies-listing/corporate-filings-insider-trading",
         "shareholdingPattern":"https://www.nseindia.com/companies-listing/corporate-filings-shareholding-pattern",
         "annualReports":"https://www.nseindia.com/companies-listing/corporate-filings-annual-reports",
         "rightsFilings":"https://www.nseindia.com/companies-listing/corporate-filings-rights",
@@ -821,7 +835,11 @@ def getBaseUrl(urlType,symbol=None):
         "forthcomingListing":"https://www.nseindia.com/market-data/new-stock-exchange-listings-forthcoming",
         "bulkDeals":"https://www.nseindia.com/market-data/large-deals",
         "blockDeals":"https://www.nseindia.com/market-data/large-deals",
-        "shortDeals":"https://www.nseindia.com/market-data/large-deals"
+        "shortDeals":"https://www.nseindia.com/market-data/large-deals",
+        "sastDeals":"https://www.nseindia.com/companies-listing/corporate-filings-regulation-29",
+        "insiderDeals":"https://www.nseindia.com/companies-listing/corporate-filings-insider-trading",
+        "upcomingTender":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-tender-offer",
+        "upcomingRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights"
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -1147,7 +1165,7 @@ def fetchNseJsonObj(urlType,
       jsonObjMaster = jsonObj   
       
     if jsonObjMaster:
-      if urlType=="forthcomingListing" or urlType=="prefIssue" or urlType=="integratedResults":
+      if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals"]:
         jsonObjMaster = jsonObjMaster["data"]
       if urlType=="bulkDeals":
         jsonObjMaster = jsonObjMaster["BULK_DEALS_DATA"]
@@ -1179,7 +1197,8 @@ def fetchNseJsonObj(urlType,
                                   toDate=end_date,
                                   period=period)
         jsonObj = fetchGetJson(jsonUrl, cookies)
-        if urlType=="forthcomingListing" or urlType=="prefIssue" or urlType=="integratedResults":
+        
+        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals"]:
           if jsonObj:
             jsonObj = jsonObj["data"]
 
@@ -1379,6 +1398,9 @@ def getDateKeyForNseDocument(urlType):
       "events":"date",
       "forthcomingListing":"effectiveDate",  #no date needed
       "upcomingIssues":"issueEndDate",       #no date needed
+      "forthcomingOfs":"endDate",
+      "upcomingTender":None,
+      "upcomingRights":None,
       
       "rightsFilings":"draftDate",   #done
       "qipFilings":"date",           #done
@@ -1387,9 +1409,12 @@ def getDateKeyForNseDocument(urlType):
       
       #results - "broadcast_Date" and "revised_Date" are combined
       "integratedResults":"creation_Date",   #done
+      
       "bulkDeals":"date",
       "blockDeals":"date",
-      "shortDeals":"date"
+      "shortDeals":"date",
+      "sastDeals":"timestamp",
+      "insiderDeals":"date"
   }
   
   return date_key_dict[urlType]
@@ -1424,6 +1449,10 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
       df['isBse'] = df['isBse'].apply(
           lambda x: int(float(x)) if str(x).strip() not in ["", "nan", "NaN", "None"] else 0
       )
+      
+  # "forthcomingOfs" clean up
+  if urlType == "forthcomingOfs" and 'sr_no' in df.columns:
+      df = df.drop(columns=['sr_no'])
      
   # "qipFilings" clean up 
   if urlType == "qipFilings" and 'sharehold' in df.columns:
@@ -1436,6 +1465,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   if urlType == "prefIssue" and 'nseSymbol' in df.columns:
       df.rename(columns={"nseSymbol": "symbol"}, inplace=True)
         
+  print(df)
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
 
@@ -2349,6 +2379,7 @@ def getIndexForNseDocuments(urlType):
         "events":"equities",
         "upcomingIssues":None,
         "forthcomingListing":None,
+        "forthcomingOfs":None,
         #fund raise
         "rightsFilings":"equities",
         "qipFilings":"qip",
@@ -2356,9 +2387,14 @@ def getIndexForNseDocuments(urlType):
         "schemeOfArrangement":"equities",
         #results
         "integratedResults":"equities",
+        
         "bulkDeals":None,
         "blockDeals":None,
-        "shortDeals":None
+        "shortDeals":None,
+        "sastDeals":"equities",
+        "insiderDeals":"equities",
+        "upcomingTender": None,
+        "upcomingRights":None
     }
     return index_type[urlType]
 
@@ -2374,6 +2410,7 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
   
   syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
   syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
@@ -2385,6 +2422,9 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="bulkDeals", cookies=cookies)
   syncUpNseDocuments(urlType="blockDeals", cookies=cookies)
   syncUpNseDocuments(urlType="shortDeals", cookies=cookies)
+  syncUpNseDocuments(urlType="sastDeals", cookies=cookies)
+  syncUpNseDocuments(urlType="insiderDeals", cookies=cookies)
+  
   pass
 
 '''
@@ -2442,9 +2482,17 @@ def fetchAllNseFillings():
   #                   end_date=datetime(2025, 7, 12),
   #                   cookies=cookies)
   
-  fetchNseDocuments("bulkDeals", cookies=cookies)
-  fetchNseDocuments("blockDeals", cookies=cookies)
-  fetchNseDocuments("shortDeals", cookies=cookies)
+  # fetchNseDocuments("bulkDeals", cookies=cookies)
+  # fetchNseDocuments("blockDeals", cookies=cookies)
+  # fetchNseDocuments("shortDeals", cookies=cookies)
+  
+  # fetchNseDocuments("forthcomingOfs", cookies=cookies)
+  # fetchNseDocuments("sastDeals", index="equities", cookies=cookies)
+  fetchNseDocuments(urlType="insiderDeals",
+                    index="equities",
+                    start_date=datetime(2025, 7, 1), 
+                    end_date=datetime(2025, 8, 3),
+                    cookies=cookies)
   pass
   
 

@@ -14,33 +14,45 @@ const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalon
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
+
 const eventsPath = path.join(__dirname, '../../stock_fillings/events_nse.csv');
 const upcomingIssuesPath = path.join(__dirname, '../../stock_fillings/upcomingIssues_nse.csv');
 const forthcomingListingPath = path.join(__dirname, '../../stock_fillings/forthcomingListing_nse.csv');
+const forthcomingOfsPath = path.join(__dirname, '../../stock_fillings/forthcomingOfs_nse.csv');
 
 const rightsFilingsPath = path.join(__dirname, '../../stock_fillings/rightsFilings_nse.csv');
 const qipFilingsPath = path.join(__dirname, '../../stock_fillings/qipFilings_nse.csv');
 const prefIssuePath = path.join(__dirname, '../../stock_fillings/prefIssue_nse.csv');
 const schemeOfArrangementPath = path.join(__dirname, '../../stock_fillings/schemeOfArrangement_nse.csv');
+
 const integratedResultsPath = path.join(__dirname, '../../stock_fillings/integratedResults_nse.csv');
 
 const bulkDealsPath = path.join(__dirname, '../../stock_fillings/bulkDeals_nse.csv');
 const blockDealsPath = path.join(__dirname, '../../stock_fillings/blockDeals_nse.csv');
 const shortDealsPath = path.join(__dirname, '../../stock_fillings/shortDeals_nse.csv');
+const sastDealsPath = path.join(__dirname, '../../stock_fillings/sastDeals_nse.csv');
+const insiderDealsPath = path.join(__dirname, '../../stock_fillings/insiderDeals_nse.csv');
 
 const csvPaths = {
   announcements: announcementPath,
+
   events: eventsPath,
   upcomingIssues: upcomingIssuesPath,
   forthcomingListing: forthcomingListingPath,
+  forthcomingOfs: forthcomingOfsPath,
+
   rightsFilings: rightsFilingsPath,
   qipFilings: qipFilingsPath,
   prefIssue: prefIssuePath,
   schemeOfArrangement: schemeOfArrangementPath,
+
   integratedResults: integratedResultsPath,
+
   bulkDeals: bulkDealsPath,
   blockDeals: blockDealsPath,
   shortDeals: shortDealsPath,
+  sastDeals: sastDealsPath,
+  insiderDeals: insiderDealsPath
 };
 
 const dateKeys = {
@@ -49,6 +61,7 @@ const dateKeys = {
   events: "date",
   upcomingIssues: "issueEndDate",
   forthcomingListing: "effectiveDate",
+  forthcomingOfs: "endDate",
 
   rightsFilings: "draftDate",
   qipFilings: "date",
@@ -56,9 +69,12 @@ const dateKeys = {
   schemeOfArrangement: "date",
 
   integratedResults: "creation_Date",
+
   bulkDeals: "date",
   blockDeals: "date",
   shortDeals: "date",
+  sastDeals: "timestamp",
+  insiderDeals: "date"
 };
 
 const daysPastList = {
@@ -67,6 +83,7 @@ const daysPastList = {
   events: 2,
   upcomingIssues: 2,
   forthcomingListing: 3,
+  forthcomingOfs: 3,
 
   rightsFilings: 10,
   qipFilings: 10,
@@ -74,9 +91,12 @@ const daysPastList = {
   schemeOfArrangement: 10,
 
   integratedResults: 6,
+
   bulkDeals: 4,
-  blockDeals: 4,
+  blockDeals: 15,
   shortDeals: 4,
+  sastDeals: 4,
+  insiderDeals: 3
 };
 
 let eventsMap = {}; // key: symbol, value: array of events

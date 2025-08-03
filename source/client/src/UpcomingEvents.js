@@ -5,6 +5,8 @@ function UpcomingEvents() {
   const [eventsData, setEventsData] = useState([]);
   const [upcomingIssuesData, setUpcomingIssuesData] = useState([]);
   const [forthcomingListingData, setForthcomingListingData] = useState([]);
+  const [forthcomingOfsData, setForthcomingOfsData] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('events'); // 🔹 tracks which tab is active
   const [marketCapFilter, setMarketCapFilter] = useState(false);
@@ -43,6 +45,16 @@ function UpcomingEvents() {
       })
       .catch(err => {
         console.error('Failed to fetch forthcomingListingData', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/api_2/forthcomingOfs')
+      .then(res => {
+        setForthcomingOfsData(res.data);
+      })
+      .catch(err => {
+        console.error('Failed to fetch forthcomingOfs', err);
       });
   }, []);
 
@@ -159,11 +171,15 @@ function UpcomingEvents() {
     (a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate)
   );
 
+  const sortedForthcomingOfsData = [...forthcomingOfsData].sort(
+    (a, b) => new Date(b.endDate) - new Date(a.endDate)
+  );
+
   return (
     <div className="p-4 mb-4">
       {/* 🔹 Navbar Tabs */}
       <div className="flex border-b mb-4 gap-x-6 ml-1">
-        {['events', 'upcomingIssues', 'forthcomingListing'].map(tab => (
+        {['events', 'upcomingIssues', 'forthcomingListing', 'forthcomingOfs'].map(tab => (
           <a
             href="#"
             key={tab}
@@ -180,7 +196,8 @@ function UpcomingEvents() {
           >
             {tab === 'events' ? 'Events' :
              tab === 'upcomingIssues' ? 'Upcoming Issues' :
-             'Upcoming Listings'}
+             tab === 'forthcomingListing' ? 'Upcoming Listings':
+             'Upcoming OFS'}
           </a>
         ))}
       </div>
@@ -392,6 +409,58 @@ function UpcomingEvents() {
                     ) : (
                       '—'
                     )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* 🔹 Forthcoming Ofs*/}
+      {activeTab === 'forthcomingOfs' && (
+        <>
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="p-2 text-left">Symbol</th>
+                <th className="p-2 text-left">Company</th>
+                <th className="p-2 text-left">Type</th>
+                <th className="p-2 text-left">Start Date</th>
+                <th className="p-2 text-left">End Date</th>
+                <th className="p-2 text-left">Floor Price</th>
+                <th className="p-2 text-left">Total Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedForthcomingOfsData.map((row, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                  <td className="p-2">
+                    <a
+                      href={`symbol/${row.symbol}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {row.symbol || '—'}
+                    </a>
+                  </td>
+                  <td className="p-2">{row.companyName || '—'}</td>
+                  <td className="p-2">{row.series || '—'}</td>
+                  <td className="p-2">{formatDate(row.startDate)}</td>
+                  <td className="p-2">{formatDate(row.endDate)}</td>
+                  <td className="p-2">{row.floorPrice}</td>
+                  <td className="p-2 font-medium">
+                    {(() => {
+                      const size = parseFloat((row.issueSize || '').toString().replace(/,/g, ''));
+                      const price = parseFloat((row.floorPrice || '').toString().replace(/,/g, ''));
+
+                      if (!isNaN(size) && !isNaN(price)) {
+                        const total = (size * price) / 1e7;
+                        return `₹${total.toFixed(2)} Cr`;
+                      }
+                      return '—';
+                    })()}
                   </td>
                 </tr>
               ))}
