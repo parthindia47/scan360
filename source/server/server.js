@@ -24,6 +24,10 @@ const prefIssuePath = path.join(__dirname, '../../stock_fillings/prefIssue_nse.c
 const schemeOfArrangementPath = path.join(__dirname, '../../stock_fillings/schemeOfArrangement_nse.csv');
 const integratedResultsPath = path.join(__dirname, '../../stock_fillings/integratedResults_nse.csv');
 
+const bulkDealsPath = path.join(__dirname, '../../stock_fillings/bulkDeals_nse.csv');
+const blockDealsPath = path.join(__dirname, '../../stock_fillings/blockDeals_nse.csv');
+const shortDealsPath = path.join(__dirname, '../../stock_fillings/shortDeals_nse.csv');
+
 const csvPaths = {
   announcements: announcementPath,
   events: eventsPath,
@@ -34,6 +38,9 @@ const csvPaths = {
   prefIssue: prefIssuePath,
   schemeOfArrangement: schemeOfArrangementPath,
   integratedResults: integratedResultsPath,
+  bulkDeals: bulkDealsPath,
+  blockDeals: blockDealsPath,
+  shortDeals: shortDealsPath,
 };
 
 const dateKeys = {
@@ -48,7 +55,10 @@ const dateKeys = {
   prefIssue: "systemDate",
   schemeOfArrangement: "date",
 
-  integratedResults: "creation_Date"
+  integratedResults: "creation_Date",
+  bulkDeals: "date",
+  blockDeals: "date",
+  shortDeals: "date",
 };
 
 const daysPastList = {
@@ -63,7 +73,10 @@ const daysPastList = {
   prefIssue: 5,
   schemeOfArrangement: 10,
 
-  integratedResults: 6
+  integratedResults: 6,
+  bulkDeals: 4,
+  blockDeals: 4,
+  shortDeals: 4,
 };
 
 let eventsMap = {}; // key: symbol, value: array of events

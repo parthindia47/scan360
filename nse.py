@@ -150,6 +150,9 @@ def getOutputCsvFile(urlType):
         "schemeOfArrangement":"stock_fillings/schemeOfArrangement_nse.csv",
         #results
         "integratedResults":"stock_fillings/integratedResults_nse.csv",
+        "bulkDeals":"stock_fillings/bulkDeals_nse.csv",
+        "blockDeals":"stock_fillings/blockDeals_nse.csv",
+        "shortDeals":"stock_fillings/shortDeals_nse.csv"
     }
     return csv_output_files[urlType]
 
@@ -728,7 +731,9 @@ def getTopicJsonQuery(urlType):
         "upcomingIssues":"https://www.nseindia.com/api/all-upcoming-issues?category=ipo",
         "tradingHoliday":"https://www.nseindia.com/api/holiday-master?type=trading",
         "forthcomingListing": "https://www.nseindia.com/api/new-listing-today?index=ForthListing",
-        "largeDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal"
+        "bulkDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
+        "blockDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
+        "shortDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal"
     }
 
     baseUrl = baseUrls[urlType]
@@ -814,7 +819,9 @@ def getBaseUrl(urlType,symbol=None):
         "commodityIndividual":"https://www.nseindia.com/commodity-getquote",
         "tradingHoliday":"https://www.nseindia.com/resources/exchange-communication-holidays",
         "forthcomingListing":"https://www.nseindia.com/market-data/new-stock-exchange-listings-forthcoming",
-        "largeDeals":"https://www.nseindia.com/market-data/large-deals"
+        "bulkDeals":"https://www.nseindia.com/market-data/large-deals",
+        "blockDeals":"https://www.nseindia.com/market-data/large-deals",
+        "shortDeals":"https://www.nseindia.com/market-data/large-deals"
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -1142,6 +1149,12 @@ def fetchNseJsonObj(urlType,
     if jsonObjMaster:
       if urlType=="forthcomingListing" or urlType=="prefIssue" or urlType=="integratedResults":
         jsonObjMaster = jsonObjMaster["data"]
+      if urlType=="bulkDeals":
+        jsonObjMaster = jsonObjMaster["BULK_DEALS_DATA"]
+      if urlType=="blockDeals":
+        jsonObjMaster = jsonObjMaster["BLOCK_DEALS_DATA"]
+      if urlType=="shortDeals":
+        jsonObjMaster = jsonObjMaster["SHORT_DEALS_DATA"]
       return get_df_from_json_list(jsonObjMaster)
       
     # Ensure step is set properly if start and end dates are the same or close together
@@ -1373,7 +1386,10 @@ def getDateKeyForNseDocument(urlType):
       "schemeOfArrangement":"date",  #done
       
       #results - "broadcast_Date" and "revised_Date" are combined
-      "integratedResults":"creation_Date"   #done
+      "integratedResults":"creation_Date",   #done
+      "bulkDeals":"date",
+      "blockDeals":"date",
+      "shortDeals":"date"
   }
   
   return date_key_dict[urlType]
@@ -2340,6 +2356,9 @@ def getIndexForNseDocuments(urlType):
         "schemeOfArrangement":"equities",
         #results
         "integratedResults":"equities",
+        "bulkDeals":None,
+        "blockDeals":None,
+        "shortDeals":None
     }
     return index_type[urlType]
 
@@ -2362,6 +2381,10 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
   syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  
+  syncUpNseDocuments(urlType="bulkDeals", cookies=cookies)
+  syncUpNseDocuments(urlType="blockDeals", cookies=cookies)
+  syncUpNseDocuments(urlType="shortDeals", cookies=cookies)
   pass
 
 '''
@@ -2385,7 +2408,7 @@ def fetchAllNseFillings():
   #                   end_date=datetime(2025, 7, 12),
   #                   cookies=cookies)
   
-  fetchNseDocuments("upcomingIssues", cookies=cookies)
+  # fetchNseDocuments("upcomingIssues", cookies=cookies)
 
   # fetchNseDocuments("forthcomingListing", cookies=cookies)
   
@@ -2395,11 +2418,11 @@ def fetchAllNseFillings():
   #                   end_date=datetime(2025, 7, 12),
   #                   cookies=cookies)
   
-  fetchNseDocuments(urlType="qipFilings",
-                    index="qip",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 7, 12),
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="qipFilings",
+  #                   index="qip",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 7, 12),
+  #                   cookies=cookies)
   
   # fetchNseDocuments(urlType="prefIssue",
   #                   index="inListing",
@@ -2418,6 +2441,10 @@ def fetchAllNseFillings():
   #                   start_date=datetime(2025, 6, 1), 
   #                   end_date=datetime(2025, 7, 12),
   #                   cookies=cookies)
+  
+  fetchNseDocuments("bulkDeals", cookies=cookies)
+  fetchNseDocuments("blockDeals", cookies=cookies)
+  fetchNseDocuments("shortDeals", cookies=cookies)
   pass
   
 
@@ -4077,9 +4104,9 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-cookies_local = getNseCookies()
+# cookies_local = getNseCookies()
 # dummyList = [{"SYMBOL":"M&M"}]
-nseStockList = getAllNseSymbols(local=False)
+# nseStockList = getAllNseSymbols(local=False)
 # fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
 # syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
 # syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
@@ -4094,9 +4121,8 @@ nseStockList = getAllNseSymbols(local=False)
 
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
-# res = fetchNseJsonObj("largeDeals",cookies=cookies_local)
-# print(res)
 
+fetchAllNseFillings()
 
 # fetchAllNseFillings()
 
@@ -4116,7 +4142,7 @@ nseStockList = getAllNseSymbols(local=False)
 
 # syncUpYahooFinOtherSymbols()
 
-recalculateYFinStockInfo(useNseBhavCopy=True)
+# recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # syncUpAllNseFillings(cookies=cookies_local)
 

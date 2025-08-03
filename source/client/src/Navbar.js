@@ -16,6 +16,7 @@ function Navbar() {
             ['/upcoming_events', 'Upcoming Events'],
             ['/fund_raise', 'Fund Raise'],
             ['/results', 'Results'],
+            ['/trades', 'Trades'],
             ['/news', 'News'],
             ['/chat', 'Chat'],
             ['/ai', 'AI'],
