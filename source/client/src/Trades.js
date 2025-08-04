@@ -10,7 +10,14 @@ function Trades() {
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bulkDeals');
-  const [sortBulkDealConfig, setSortBulkDealConfig] = useState({ key: 'date', direction: 'asc' });
+
+  const [sortConfigs, setSortConfigs] = useState({
+    bulkDeals: { key: 'date', direction: 'asc' },
+    blockDeals: { key: 'date', direction: 'asc' },
+    shortDeals: { key: 'date', direction: 'asc' },
+    sastDeals: { key: 'date', direction: 'asc' },
+    insiderDeals: { key: 'date', direction: 'asc' },
+  });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/bulkDeals')
@@ -48,58 +55,120 @@ function Trades() {
       .catch(err => console.error('Failed to fetch sastDeals', err));
   }, []);
 
-  const renderSortableHeader = (label, key) => (
-    <th
-      className="p-2 cursor-pointer select-none text-blue-600"
-      onClick={() =>
-        setSortBulkDealConfig(prev => ({
-          key,
-          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }))
-      }
-    >
-      {label}
-      {sortBulkDealConfig.key === key ? (sortBulkDealConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
+  const renderSortableHeader = (label, columnKey, tabKey) => {
+    const config = sortConfigs[tabKey];
 
-  const enrichedBulkDealsData = bulkDeals.map(row => {
-    const curr = parseFloat(row.currentPrice);
-    const prev = parseFloat(row.previousClose);
-    const change = !isNaN(curr) && !isNaN(prev) && prev !== 0
-      ? ((curr - prev) / prev) * 100
-      : null;
+    const handleSort = () => {
+      setSortConfigs((prev) => ({
+        ...prev,
+        [tabKey]: {
+          key: columnKey,
+          direction:
+            prev[tabKey].key === columnKey && prev[tabKey].direction === 'asc'
+              ? 'desc'
+              : 'asc',
+        },
+      }));
+    };
 
-    const dealValue = (!isNaN(row.qty) && !isNaN(row.watp))
-      ? (parseFloat(row.qty) * parseFloat(row.watp)) / 1e7
-      : null;
+    return (
+      <th
+        className="p-2 cursor-pointer select-none text-blue-600"
+        onClick={handleSort}
+      >
+        {label}
+        {config.key === columnKey
+          ? config.direction === 'asc'
+            ? ' ↑'
+            : ' ↓'
+          : ''}
+      </th>
+    );
+  };
 
-    return { ...row, change, dealValue };
-  });
-
-  const sortedBulkDeals = [...enrichedBulkDealsData].sort((a, b) => {
-    const { key, direction } = sortBulkDealConfig;
+  const sortByConfig = (data, config) => {
+    const { key, direction } = config;
     const dir = direction === 'asc' ? 1 : -1;
 
-    if (key === 'change' || key === 'dealValue') {
-      const valA = isNaN(a[key]) ? -Infinity : a[key];
-      const valB = isNaN(b[key]) ? -Infinity : b[key];
-      return dir * (valA - valB);
-    }
+    return [...data].sort((a, b) => {
+      let valA = a[key];
+      let valB = b[key];
 
-    if (key === 'date') {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dir * (dateA - dateB);
-    }
+      if (key === 'change' || key === 'dealValue') {
+        valA = parseFloat(valA);
+        valB = parseFloat(valB);
 
-    return 0;
+        valA = Number.isFinite(valA) ? valA : -Infinity;
+        valB = Number.isFinite(valB) ? valB : -Infinity;
+
+        return dir * (valA - valB);
+      }
+
+      if (key === 'date') {
+        return dir * (new Date(valA) - new Date(valB));
+      }
+
+      return 0;
+    });
+  };
+
+
+  const enrichedBulkDeals = bulkDeals.map(row => ({
+    ...row,
+    change: (!isNaN(row.currentPrice) && !isNaN(row.previousClose) && row.previousClose !== 0)
+      ? ((parseFloat(row.currentPrice) - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100
+      : null,
+    dealValue: (!isNaN(row.qty) && !isNaN(row.watp))
+      ? (parseFloat(row.qty) * parseFloat(row.watp)) / 1e7
+      : null
+  }));
+
+  const enrichedBlockDeals = blockDeals.map(row => ({
+    ...row,
+    change: (!isNaN(row.currentPrice) && !isNaN(row.previousClose) && row.previousClose !== 0)
+      ? ((parseFloat(row.currentPrice) - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100
+      : null,
+    dealValue: (!isNaN(row.qty) && !isNaN(row.watp))
+      ? (parseFloat(row.qty) * parseFloat(row.watp)) / 1e7
+      : null
+  }));
+
+  const enrichedShortDeals = shortDeals.map(row => ({
+    ...row,
+    change: (!isNaN(row.currentPrice) && !isNaN(row.previousClose) && row.previousClose !== 0)
+      ? ((parseFloat(row.currentPrice) - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100
+      : null,
+    dealValue: (!isNaN(row.qty) && !isNaN(row.currentPrice))
+      ? (parseFloat(row.qty) * parseFloat(row.currentPrice)) / 1e7
+      : null
+  }));
+
+  const enrichedSastDeals = sastDeals.map(row => {
+    const qty = parseFloat(row.noOfShareAcq || row.noOfShareSale);
+    const price = parseFloat(row.currentPrice);
+    return {
+      ...row,
+      change: (!isNaN(price) && !isNaN(row.previousClose) && row.previousClose !== 0)
+        ? ((price - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100
+        : null,
+      dealValue: (!isNaN(qty) && !isNaN(price)) ? (qty * price) / 1e7 : null
+    };
   });
 
-  const sortedBlockDeals = [...blockDeals].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const sortedShortDeals = [...shortDeals].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const sortedSastDeals  = [...sastDeals].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  const sortedInsiderDeals  = [...insiderDeals].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const enrichedInsiderDeals = insiderDeals.map(row => ({
+    ...row,
+    change: (!isNaN(row.currentPrice) && !isNaN(row.previousClose) && row.previousClose !== 0)
+      ? ((parseFloat(row.currentPrice) - parseFloat(row.previousClose)) / parseFloat(row.previousClose)) * 100
+      : null,
+    dealValue: (!isNaN(row.secVal)) ? parseFloat(row.secVal) / 1e7 : null
+  }));
+
+  const sortedBulkDeals = sortByConfig(enrichedBulkDeals, sortConfigs.bulkDeals);
+  const sortedBlockDeals = sortByConfig(enrichedBlockDeals, sortConfigs.blockDeals);
+  const sortedShortDeals = sortByConfig(enrichedShortDeals, sortConfigs.shortDeals);
+  const sortedSastDeals = sortByConfig(enrichedSastDeals, sortConfigs.sastDeals);
+  const sortedInsiderDeals = sortByConfig(enrichedInsiderDeals, sortConfigs.insiderDeals);
+
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -159,13 +228,13 @@ function Trades() {
                 <tr>
                   <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Company</th>
-                  {renderSortableHeader('Change', 'change')}
-                  {renderSortableHeader('Date', 'date')}
+                  {renderSortableHeader('Change', 'change', 'bulkDeals')}
+                  {renderSortableHeader('Date', 'date', 'bulkDeals')}
                   <th className="p-2 text-left">Client Name</th>
                   <th className="p-2 text-left">Buy/Sell</th>
                   <th className="p-2 text-left">Qty</th>
                   <th className="p-2 text-left">Weighted Avg Price</th>
-                  {renderSortableHeader('Deal Value', 'dealValue')}
+                  {renderSortableHeader('Deal Value', 'dealValue', 'bulkDeals')}
                 </tr>
               </thead>
               <tbody>
@@ -216,13 +285,13 @@ function Trades() {
                 <tr>
                   <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Company</th>
-                  <th className="p-2 text-left">Change</th>
-                  <th className="p-2 text-left">Date</th>
+                  {renderSortableHeader('Change', 'change', 'blockDeals')}
+                  {renderSortableHeader('Date', 'date', 'blockDeals')}
                   <th className="p-2 text-left">Client Name</th>
                   <th className="p-2 text-left">Buy/Sell</th>
                   <th className="p-2 text-left">Qty</th>
                   <th className="p-2 text-left">Weighted Avg Price</th>
-                  <th className="p-2 text-left">Deal Value</th>
+                  {renderSortableHeader('Deal Value', 'dealValue', 'blockDeals')}
                 </tr>
               </thead>
               <tbody>
@@ -271,10 +340,10 @@ function Trades() {
                 <tr>
                   <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Company</th>
-                  <th className="p-2 text-left">Change</th>
-                  <th className="p-2 text-left">Date</th>
+                  {renderSortableHeader('Change', 'change', 'shortDeals')}
+                  {renderSortableHeader('Date', 'date', 'shortDeals')}
                   <th className="p-2 text-left">Qty</th>
-                  <th className="p-2 text-left">Total Value</th>
+                  {renderSortableHeader('Total Value', 'dealValue', 'shortDeals')}
                 </tr>
               </thead>
               <tbody>
@@ -319,12 +388,12 @@ function Trades() {
                 <tr>
                   <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Company</th>
-                  <th className="p-2 text-left">Change</th>
-                  <th className="p-2 text-left">Date</th>
+                  {renderSortableHeader('Change', 'change', 'sastDeals')}
+                  {renderSortableHeader('Date', 'date', 'sastDeals')}
                   <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-left">Buyer/Seller Name</th>
                   <th className="p-2 text-left">Quantity</th>
-                  <th className="p-2 text-left">Est. Amount</th>
+                  {renderSortableHeader('Est. Amount', 'dealValue', 'sastDeals')}
                 </tr>
               </thead>
               <tbody>
@@ -344,7 +413,7 @@ function Trades() {
                     <td className="p-2">
                       {getChange(row.currentPrice, row.previousClose)}
                     </td>
-                    <td className="p-2">{formatDate(row.timestamp)}</td>
+                    <td className="p-2">{formatDate(row.date)}</td>
                     <td className="p-2">{row.acqSaleType}</td>
                     <td className="p-2">{row.acquirerName}</td>
                     <td className="p-2">{row.noOfShareAcq || row.noOfShareSale}</td>
@@ -372,13 +441,13 @@ function Trades() {
                 <tr>
                   <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Company</th>
-                  <th className="p-2 text-left">Change</th>
-                  <th className="p-2 text-left">Date</th>
+                  {renderSortableHeader('Change', 'change', 'insiderDeals')}
+                  {renderSortableHeader('Date', 'date', 'insiderDeals')}
                   <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-left">Buyer/Seller Name</th>
 
                   <th className="p-2 text-left">Quantity</th>
-                  <th className="p-2 text-left">Est. Amount</th>
+                  {renderSortableHeader('Est. Amount', 'dealValue', 'insiderDeals')}
                 </tr>
               </thead>
               <tbody>

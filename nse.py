@@ -1414,7 +1414,7 @@ def getDateKeyForNseDocument(urlType):
       "bulkDeals":"date",
       "blockDeals":"date",
       "shortDeals":"date",
-      "sastDeals":"timestamp",
+      "sastDeals":"date",
       "insiderDeals":"date"
   }
   
@@ -1465,6 +1465,10 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   # "prefIssue" clean up    
   if urlType == "prefIssue" and 'nseSymbol' in df.columns:
       df.rename(columns={"nseSymbol": "symbol"}, inplace=True)
+      
+  # "prefIssue" clean up    
+  if urlType == "sastDeals" and 'timestamp' in df.columns:
+      df.rename(columns={"timestamp": "date"}, inplace=True)
         
   print(df)
   df[date_key] = pd.to_datetime(df[date_key])
@@ -2488,12 +2492,12 @@ def fetchAllNseFillings():
   # fetchNseDocuments("shortDeals", cookies=cookies)
   
   # fetchNseDocuments("forthcomingOfs", cookies=cookies)
-  # fetchNseDocuments("sastDeals", index="equities", cookies=cookies)
-  fetchNseDocuments(urlType="insiderDeals",
-                    index="equities",
-                    start_date=datetime(2025, 7, 1), 
-                    end_date=datetime(2025, 8, 3),
-                    cookies=cookies)
+  fetchNseDocuments("sastDeals", index="equities", cookies=cookies)
+  # fetchNseDocuments(urlType="insiderDeals",
+  #                   index="equities",
+  #                   start_date=datetime(2025, 7, 1), 
+  #                   end_date=datetime(2025, 8, 3),
+  #                   cookies=cookies)
   pass
   
 
@@ -4208,15 +4212,15 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-cookies_local = getNseCookies()
-# dummyList = [{"SYMBOL":"M&M"}]
-nseStockList = getAllNseSymbols(local=False)
-# fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
-# syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
-# syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
-# modify_result_files(nseStockList)
-# modify_result_files_dates(nseStockList, resultType="standalone")
-modify_result_files_share_capital(nseStockList, resultType="consolidated")
+# cookies_local = getNseCookies()
+# # dummyList = [{"SYMBOL":"M&M"}]
+# nseStockList = getAllNseSymbols(local=False)
+# # fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)
+# # syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
+# # syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
+# # modify_result_files(nseStockList)
+# # modify_result_files_dates(nseStockList, resultType="standalone")
+# modify_result_files_share_capital(nseStockList, resultType="consolidated")
 
 # fetchNseDocuments(urlType="prefIssue",
 #                   index="inListing",
@@ -4227,14 +4231,11 @@ modify_result_files_share_capital(nseStockList, resultType="consolidated")
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 
-# fetchAllNseFillings()
+fetchAllNseFillings()
 
-# fetchAllNseFillings()
 
 # dummyList = [{"SYMBOL":"UJJIVANSFB"}]
 # syncUpNseResults(dummyList)
-
-# fetchAllNseFillings()
 
 # **************************** Daily Sync Up ********************************
 # cookies_local = getNseCookies()

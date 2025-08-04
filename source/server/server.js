@@ -73,7 +73,7 @@ const dateKeys = {
   bulkDeals: "date",
   blockDeals: "date",
   shortDeals: "date",
-  sastDeals: "timestamp",
+  sastDeals: "date",
   insiderDeals: "date"
 };
 
