@@ -8,7 +8,13 @@ function FundRaise() {
   const [schemeData, setSchemeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('prefIssue');
-  const [sortConfig, setSortConfig] = useState({ key: 'systemDate', direction: 'asc' });
+
+  const [sortConfigs, setSortConfigs] = useState({
+    prefIssue: { key: 'systemDate', direction: 'asc' },
+    qipFilings: { key: 'date', direction: 'asc' },
+    schemeOfArrangement: { key: 'date', direction: 'asc' },
+    rightsFilings: { key: 'draftDate', direction: 'asc' },
+  });
 
   useEffect(() => {
     axios.get('http://localhost:5000/api_2/rightsFilings')
@@ -58,44 +64,70 @@ function FundRaise() {
     );
   };
 
-  const renderSortableHeader = (label, key) => (
-    <th
-      className="p-2 cursor-pointer select-none text-blue-600"
-      onClick={() =>
-        setSortConfig(prev => ({
-          key,
-          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }))
-      }
-    >
-      {label}
-      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
+  const renderSortableHeader = (label, columnKey, tabKey) => {
+    const config = sortConfigs[tabKey];
 
-  const enrichedData = prefData.map(row => {
+    const handleSort = () => {
+      setSortConfigs((prev) => ({
+        ...prev,
+        [tabKey]: {
+          key: columnKey,
+          direction:
+            prev[tabKey].key === columnKey && prev[tabKey].direction === 'asc'
+              ? 'desc'
+              : 'asc',
+        },
+      }));
+    };
+
+    return (
+      <th
+        className="p-2 cursor-pointer select-none text-blue-600"
+        onClick={handleSort}
+      >
+        {label}
+        {config.key === columnKey
+          ? config.direction === 'asc'
+            ? ' ↑'
+            : ' ↓'
+          : ''}
+      </th>
+    );
+  };
+
+  const enrichedPrefData = prefData.map(row => {
     const curr = parseFloat(row.currentPrice);
     const prev = parseFloat(row.previousClose);
     const change = !isNaN(curr) && !isNaN(prev) && prev !== 0
       ? ((curr - prev) / prev) * 100
       : null;
 
-    return { ...row, change };
+    const amountRaised = parseFloat(row.amountRaised);
+    const numericAmountRaised = !isNaN(amountRaised) ? amountRaised : null;
+
+    return { ...row, change, numericAmountRaised };
   });
 
-  const sortedPrefData = [...enrichedData].sort((a, b) => {
-    const { key, direction } = sortConfig;
+  const sortedPrefData = [...enrichedPrefData].sort((a, b) => {
+    const { key, direction } = sortConfigs.prefIssue;
     const dir = direction === 'asc' ? 1 : -1;
 
     if (key === 'change') {
-      const valA = isNaN(a.change) ? -Infinity : a.change;
-      const valB = isNaN(b.change) ? -Infinity : b.change;
+        const valA = isNaN(a.change) ? -Infinity : a.change;
+        const valB = isNaN(b.change) ? -Infinity : b.change;
+        return dir * (valA - valB);
+    }
+
+    if (key === 'numericAmountRaised') {
+      const valA = typeof a.numericAmountRaised === 'number' ? a.numericAmountRaised : -Infinity;
+      const valB = typeof b.numericAmountRaised === 'number' ? b.numericAmountRaised : -Infinity;
       return dir * (valA - valB);
     }
 
+    // default to systemDate
     const dateA = new Date(a.systemDate);
     const dateB = new Date(b.systemDate);
-    return dir * (dateB - dateA);
+    return dir * (dateA - dateB);
   });
 
   const sortedRightsData = [...rightsData].sort((a, b) => {
@@ -151,11 +183,11 @@ function FundRaise() {
               <tr>
                 <th className="p-2 text-left">Symbol</th>
                 <th className="p-2 text-left">Company</th>
-                {renderSortableHeader('Change', 'change')}
+                {renderSortableHeader('Change', 'change', 'prefIssue')}
                 <th className="p-2 text-left">Allotment Date</th>
-                {renderSortableHeader('System Date', 'systemDate')}
+                {renderSortableHeader('System Date', 'systemDate', 'prefIssue')}
                 <th className="p-2 text-left">Offer Price</th>
-                <th className="p-2 text-left">Amount Raised</th>
+                {renderSortableHeader('Amount Raised', 'numericAmountRaised', 'prefIssue')}
                 <th className="p-2 text-left">Attachment</th>
               </tr>
             </thead>
