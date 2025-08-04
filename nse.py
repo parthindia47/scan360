@@ -4231,26 +4231,29 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 
-fetchAllNseFillings()
+# fetchAllNseFillings()
 
 
 # dummyList = [{"SYMBOL":"UJJIVANSFB"}]
 # syncUpNseResults(dummyList)
 
 # **************************** Daily Sync Up ********************************
-# cookies_local = getNseCookies()
+cookies_local = getNseCookies()
 
-# nseStockList = getAllNseSymbols(local=False)
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+nseStockList = getAllNseSymbols(local=False)
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# syncUpYahooFinOtherSymbols()
+syncUpYahooFinOtherSymbols()
 
-# recalculateYFinStockInfo(useNseBhavCopy=True)
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
-# syncUpAllNseFillings(cookies=cookies_local)
+syncUpAllNseFillings(cookies=cookies_local)
+
+syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
+syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 
 # *************************************************************************
 

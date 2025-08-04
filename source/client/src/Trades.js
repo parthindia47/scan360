@@ -12,11 +12,11 @@ function Trades() {
   const [activeTab, setActiveTab] = useState('bulkDeals');
 
   const [sortConfigs, setSortConfigs] = useState({
-    bulkDeals: { key: 'date', direction: 'asc' },
-    blockDeals: { key: 'date', direction: 'asc' },
-    shortDeals: { key: 'date', direction: 'asc' },
-    sastDeals: { key: 'date', direction: 'asc' },
-    insiderDeals: { key: 'date', direction: 'asc' },
+    bulkDeals: { key: 'date', direction: 'desc' },
+    blockDeals: { key: 'date', direction: 'desc' },
+    shortDeals: { key: 'date', direction: 'desc' },
+    sastDeals: { key: 'date', direction: 'desc' },
+    insiderDeals: { key: 'date', direction: 'desc' },
   });
 
   useEffect(() => {
@@ -111,6 +111,8 @@ function Trades() {
       }
 
       if (key === 'date') {
+        valA = a.date;
+        valB = b.date;
         return dir * (new Date(valA) - new Date(valB));
       }
 
@@ -396,8 +398,9 @@ function Trades() {
                   <th className="p-2 text-left">Company</th>
                   {renderSortableHeader('Change', 'change', 'sastDeals')}
                   {renderSortableHeader('Date', 'date', 'sastDeals')}
-                  <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-left">Buyer/Seller Name</th>
+                  <th className="p-2 text-left">Type</th>
+                  <th className="p-2 text-left">Mode</th>
                   <th className="p-2 text-left">Quantity</th>
                   {renderSortableHeader('Est. Amount', 'dealValue', 'sastDeals')}
                 </tr>
@@ -420,8 +423,10 @@ function Trades() {
                       {getChange(row.currentPrice, row.previousClose)}
                     </td>
                     <td className="p-2">{formatDate(row.date)}</td>
+                    <td className="p-2">{row.acquirerName || '—'}</td>
+
                     <td className="p-2">{row.acqSaleType}</td>
-                    <td className="p-2">{row.acquirerName}</td>
+                    <td className="p-2">{row.acquisitionMode}</td>
                     <td className="p-2">{row.noOfShareAcq || row.noOfShareSale}</td>
                     <td className="p-2 font-medium">
                       {(() => {
@@ -449,8 +454,9 @@ function Trades() {
                   <th className="p-2 text-left">Company</th>
                   {renderSortableHeader('Change', 'change', 'insiderDeals')}
                   {renderSortableHeader('Date', 'date', 'insiderDeals')}
-                  <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-left">Buyer/Seller Name</th>
+                  <th className="p-2 text-left">Type</th>
+                  <th className="p-2 text-left">Person Category</th>
 
                   <th className="p-2 text-left">Quantity</th>
                   {renderSortableHeader('Est. Amount', 'dealValue', 'insiderDeals')}
@@ -474,8 +480,9 @@ function Trades() {
                       {getChange(row.currentPrice, row.previousClose)}
                     </td>
                     <td className="p-2">{formatDate(row.date)}</td>
-                    <td className="p-2">{row.acqMode}</td>
                     <td className="p-2">{row.acqName}</td>
+                    <td className="p-2">{row.acqMode}</td>
+                    <td className="p-2">{row.personCategory}</td>
 
                     <td className="p-2">{row.secAcq}</td>
                     <td className="p-2 font-medium">
