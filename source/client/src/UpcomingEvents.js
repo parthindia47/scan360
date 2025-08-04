@@ -13,7 +13,12 @@ function UpcomingEvents() {
   const [selectedKeyword, setSelectedKeyword] = useState(null); // or null if nothing selected
   const [periodFilter, setPeriodFilter] = useState(null); // "today" | "next3days" | null
   const [selectedSeries, setSelectedSeries] = useState(null);
-  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [sortConfigs, setSortConfigs] = useState({
+    events: { key: 'date', direction: 'asc' },
+    upcomingIssues: { key: 'date', direction: 'asc' },
+    forthcomingListing: { key: 'date', direction: 'asc' },
+    forthcomingOfs: { key: 'date', direction: 'asc' },
+  });
   
 
   useEffect(() => {
@@ -76,30 +81,46 @@ function UpcomingEvents() {
     );
   };
 
-  const renderSortableHeader = (label, key) => (
-    <th
-      className="p-2 cursor-pointer select-none text-blue-600"
-      onClick={() =>
-        setSortConfig(prev => ({
-          key,
-          direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }))
-      }
-    >
-      {label}
-      {sortConfig.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
+  const renderSortableHeader = (label, columnKey, tabKey) => {
+    const config = sortConfigs[tabKey];
 
-  const activeSeriesOptions = [
+    const handleSort = () => {
+      setSortConfigs((prev) => ({
+        ...prev,
+        [tabKey]: {
+          key: columnKey,
+          direction:
+            prev[tabKey].key === columnKey && prev[tabKey].direction === 'asc'
+              ? 'desc'
+              : 'asc',
+        },
+      }));
+    };
+
+    return (
+      <th
+        className="p-2 cursor-pointer select-none text-blue-600"
+        onClick={handleSort}
+      >
+        {label}
+        {config.key === columnKey
+          ? config.direction === 'asc'
+            ? ' ↑'
+            : ' ↓'
+          : ''}
+      </th>
+    );
+  };
+
+  const allSeriesOptions = [
     ...new Set(
       upcomingIssuesData
-        .filter((item) => item.status === "Active" && item.series)
+        .filter((item) => item.series)
         .map((item) => item.series)
     ),
   ];
 
-  const filteredData = eventsData.filter((row) => {
+  const filteredEventsData = eventsData.filter((row) => {
     const text = `${row.purpose || ''}`.toLowerCase();
     const marketCap = parseFloat(row.marketCap ?? 0);
 
@@ -130,7 +151,7 @@ function UpcomingEvents() {
     return keywordMatch && marketCapMatch && dateMatch;
   });
 
-  const enrichedData = filteredData.map(row => {
+  const enrichedEventsData = filteredEventsData.map(row => {
     const curr = parseFloat(row.currentPrice);
     const prev = parseFloat(row.previousClose);
     const change = !isNaN(curr) && !isNaN(prev) && prev !== 0
@@ -140,16 +161,8 @@ function UpcomingEvents() {
     return { ...row, change };
   });
 
-  const filteredUpcomingIssueData = (data, selectedSeries) => {
-    return data.filter((item) => {
-      const seriesMatch = selectedSeries ? item.series === selectedSeries : true;
-
-      return seriesMatch;
-    });
-  };
-
-  const sortedEventsData = [...enrichedData].sort((a, b) => {
-    const { key, direction } = sortConfig;
+  const sortedEventsData = [...enrichedEventsData].sort((a, b) => {
+    const { key, direction } = sortConfigs.events;
     const dir = direction === 'asc' ? 1 : -1;
 
     if (key === 'change') {
@@ -163,17 +176,71 @@ function UpcomingEvents() {
     return dir * (dateA - dateB);
   });
 
-  const sortedUpcomingIssuesData = [...filteredUpcomingIssueData(upcomingIssuesData, selectedSeries)].sort(
-    (a, b) => new Date(b.issueEndDate) - new Date(a.issueEndDate)
-  );
-
   const sortedForthcomingListingData = [...forthcomingListingData].sort(
     (a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate)
   );
 
-  const sortedForthcomingOfsData = [...forthcomingOfsData].sort(
-    (a, b) => new Date(b.endDate) - new Date(a.endDate)
-  );
+  const filteredUpcomingIssueData = (data, selectedSeries) => {
+    return data.filter((item) => {
+      const seriesMatch = selectedSeries ? item.series === selectedSeries : true;
+
+      return seriesMatch;
+    });
+  };
+
+  const enrichedUpcomingIssues = filteredUpcomingIssueData(upcomingIssuesData, selectedSeries).map(row => {
+    const size = parseFloat((row.issueSize || '').toString().replace(/,/g, ''));
+    const priceMatch = (row.issuePrice || '').match(/(\d+(\.\d+)?)(?!.*\d)/); // last number
+    const price = priceMatch ? parseFloat(priceMatch[1]) : null;
+
+    const totalSize = (!isNaN(size) && !isNaN(price)) ? (size * price) / 1e7 : null;
+    return { ...row, totalSize };
+  });
+
+  const sortedUpcomingIssuesData = [...enrichedUpcomingIssues].sort((a, b) => {
+    const { key, direction } = sortConfigs.upcomingIssues;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'totalSize') {
+      const valA = isNaN(a.totalSize) ? -Infinity : a.totalSize;
+      const valB = isNaN(b.totalSize) ? -Infinity : b.totalSize;
+      return dir * (valA - valB);
+    }
+
+    if (key === 'date') {
+      const dateA = new Date(a.issueEndDate);
+      const dateB = new Date(b.issueEndDate);
+      return dir * (dateA - dateB);
+    }
+
+    return 0;
+  });
+
+  const enrichedForthcomingOfs = forthcomingOfsData.map(row => {
+    const size = parseFloat((row.issueSize || '').toString().replace(/,/g, ''));
+    const price = parseFloat((row.floorPrice || '').toString().replace(/,/g, ''));
+    const totalSize = (!isNaN(size) && !isNaN(price)) ? (size * price) / 1e7 : null;
+    return { ...row, totalSize };
+  });
+
+  const sortedForthcomingOfsData = [...enrichedForthcomingOfs].sort((a, b) => {
+    const { key, direction } = sortConfigs.forthcomingOfs;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'totalSize') {
+      const valA = isNaN(a.totalSize) ? -Infinity : a.totalSize;
+      const valB = isNaN(b.totalSize) ? -Infinity : b.totalSize;
+      return dir * (valA - valB);
+    }
+
+    if (key === 'date') {
+      const dateA = new Date(a.endDate);
+      const dateB = new Date(b.endDate);
+      return dir * (dateA - dateB);
+    }
+
+    return 0;
+  });
 
   return (
     <div className="p-4 mb-4">
@@ -267,9 +334,9 @@ function UpcomingEvents() {
             <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead>
                 <tr className="bg-gray-200">
-                  {renderSortableHeader('Date', 'date')}
+                  {renderSortableHeader('Date', 'date', 'events')}
                   <th className="p-2 text-left">Symbol</th>
-                  {renderSortableHeader('Change', 'change')}
+                  {renderSortableHeader('Change', 'change', 'events')}
                   <th className="p-2 text-left">Company</th>
                   <th className="p-2 text-left">Purpose</th>
                 </tr>
@@ -316,7 +383,7 @@ function UpcomingEvents() {
         <>
         <div className="mb-4 flex flex-wrap gap-2 items-center">
           <span className="text-gray-600 text-sm">Filter by Series:</span>
-          {activeSeriesOptions.map((seriesVal) => (
+          {allSeriesOptions.map((seriesVal) => (
             <button
               key={seriesVal}
               onClick={() =>
@@ -339,11 +406,11 @@ function UpcomingEvents() {
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Issue Type</th>
                 <th className="p-2 text-left">Opening Date</th>
-                <th className="p-2 text-left">Closing Date</th>
+                {renderSortableHeader('Closing Date', 'date', 'upcomingIssues')}
                 <th className="p-2 text-left">Status</th>
                 <th className="p-2 text-left">Issue Size</th>
                 <th className="p-2 text-left">Issue Price</th>
-                <th className="p-2 text-left">Total Size</th>
+                {renderSortableHeader('Total Size', 'totalSize', 'upcomingIssues')}
               </tr>
             </thead>
             <tbody>
@@ -427,9 +494,9 @@ function UpcomingEvents() {
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Type</th>
                 <th className="p-2 text-left">Start Date</th>
-                <th className="p-2 text-left">End Date</th>
+                {renderSortableHeader('Closing Date', 'date', 'forthcomingOfs')}
                 <th className="p-2 text-left">Floor Price</th>
-                <th className="p-2 text-left">Total Size</th>
+                {renderSortableHeader('Total Size', 'totalSize', 'forthcomingOfs')}
               </tr>
             </thead>
             <tbody>
