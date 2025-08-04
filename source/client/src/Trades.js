@@ -91,12 +91,18 @@ function Trades() {
     const dir = direction === 'asc' ? 1 : -1;
 
     return [...data].sort((a, b) => {
-      let valA = a[key];
-      let valB = b[key];
+      let valA = null;
+      let valB = null;
+
+      if (key === 'change') {
+        const valA = isNaN(a.change) ? -Infinity : a.change;
+        const valB = isNaN(b.change) ? -Infinity : b.change;
+        return dir * (valA - valB);
+      }
 
       if (key === 'change' || key === 'dealValue') {
-        valA = parseFloat(valA);
-        valB = parseFloat(valB);
+        valA = parseFloat(a[key]);
+        valB = parseFloat(b[key]);
 
         valA = Number.isFinite(valA) ? valA : -Infinity;
         valB = Number.isFinite(valB) ? valB : -Infinity;
