@@ -320,7 +320,7 @@ def setup_logger(printing=False):
 
     return logger
 
-logger1 = setup_logger()
+logger1 = setup_logger(printing=True)
 # ========================================================================
 # ========================== Helper Function =============================
 def normalize_to_date(data_or_datetime):
@@ -534,7 +534,6 @@ https://www.nseindia.com/api/equity-meta-info?symbol=RELIANCE
 def nsefetch(payload):
     try:
         output = requests.get(payload,headers=headers).json()
-        #print(output)
     except ValueError:
         s =requests.Session()
         output = s.get("http://nseindia.com",headers=headers)
@@ -1143,9 +1142,11 @@ def fetchNseJsonObj(urlType,
                     period=None,
                     cookies=None):
     jsonObjMaster = []
-    start_date = fromDate
-    final_end_date = toDate  # Rename to avoid confusion
+    start_date = fromDate.date() if fromDate else None
+    final_end_date = toDate.date() if toDate else None
+    noDateTimeFetch = False
 
+    print("BEFORE Function start_date ",start_date," end_date ",final_end_date)
     # First, get response from the main URL to fetch cookies
     if not cookies:
       response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
@@ -1153,28 +1154,37 @@ def fetchNseJsonObj(urlType,
       print(response)
     
     if not symbol and not index:
+      print("Fetching 1")
       jsonUrl = getTopicJsonQuery(urlType=urlType)
       jsonObj = fetchGetJson(jsonUrl, cookies)
       jsonObjMaster = jsonObj
+      noDateTimeFetch = True
     elif symbol and not index and not instrumentType:
+      print("Fetching 2")
       jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
       jsonObj = fetchGetJson(jsonUrl, cookies)
       jsonObjMaster = jsonObj
+      noDateTimeFetch = True
     elif not fromDate and not toDate:
+      print("Fetching 3")
       jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol, period=period)
       jsonObj = fetchGetJson(jsonUrl, cookies)
-      jsonObjMaster = jsonObj   
-      
-    if jsonObjMaster:
-      if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals"]:
-        jsonObjMaster = jsonObjMaster["data"]
-      if urlType=="bulkDeals":
-        jsonObjMaster = jsonObjMaster["BULK_DEALS_DATA"]
-      if urlType=="blockDeals":
-        jsonObjMaster = jsonObjMaster["BLOCK_DEALS_DATA"]
-      if urlType=="shortDeals":
-        jsonObjMaster = jsonObjMaster["SHORT_DEALS_DATA"]
-      return get_df_from_json_list(jsonObjMaster)
+      jsonObjMaster = jsonObj
+      noDateTimeFetch = True
+    
+    if noDateTimeFetch: 
+      if jsonObjMaster:
+        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals"]:
+          jsonObjMaster = jsonObjMaster["data"]
+        if urlType=="bulkDeals":
+          jsonObjMaster = jsonObjMaster["BULK_DEALS_DATA"]
+        if urlType=="blockDeals":
+          jsonObjMaster = jsonObjMaster["BLOCK_DEALS_DATA"]
+        if urlType=="shortDeals":
+          jsonObjMaster = jsonObjMaster["SHORT_DEALS_DATA"]
+        return get_df_from_json_list(jsonObjMaster)
+      else:
+        return pd.DataFrame()
       
     # Ensure step is set properly if start and end dates are the same or close together
     # print("start_date ", start_date, " final_end_date ", final_end_date)
@@ -1190,6 +1200,7 @@ def fetchNseJsonObj(urlType,
             end_date = final_end_date
 
         # Fetch the JSON object using the calculated start and end date
+        print("AFTER Function start_date ",start_date," end_date ",end_date)
         jsonUrl = getJsonUrlQuery(urlType=urlType, 
                                   index=index, 
                                   symbol=symbol, 
@@ -1215,6 +1226,7 @@ def fetchNseJsonObj(urlType,
 
         time.sleep(delaySec)  # Delay between API requests
 
+    print(jsonObjMaster)
     return get_df_from_json_list(jsonObjMaster)
 
 # ==========================================================================
@@ -1451,6 +1463,14 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
           lambda x: int(float(x)) if str(x).strip() not in ["", "nan", "NaN", "None"] else 0
       )
       
+  # "rightsFilings" clean up - "draftDate" | "draftAttch" | 'finalDate' | 'finalAttach'
+  if urlType == "rightsFilings" and 'finalAttach' in df.columns:
+      df = df.drop(columns=['finalAttach'])
+      
+  if urlType == "rightsFilings" and 'finalDate' in df.columns:
+      df = df.drop(columns=['finalDate'])
+      
+      
   # "forthcomingOfs" clean up
   if urlType == "forthcomingOfs" and 'sr_no' in df.columns:
       df = df.drop(columns=['sr_no'])
@@ -1470,7 +1490,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   if urlType == "sastDeals" and 'timestamp' in df.columns:
       df.rename(columns={"timestamp": "date"}, inplace=True)
         
-  print(df)
+  # print(df)
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
 
@@ -2097,7 +2117,7 @@ def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_
       df = df[~df.index.duplicated()]
       df.to_csv(file_name, encoding='utf-8')
       
-      print(df)
+      # print(df)
 
       print(">>> Data saved to " + file_name)
     else:
@@ -2223,13 +2243,13 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
   end_date = current_date + timedelta(days=offsetDays)  # Apply offset to end date
   
   # no date needed for this two
-  if urlType == "upcomingIssues" or urlType == "forthcomingListing":
+  if urlType in ["upcomingIssues", "forthcomingListing", "forthcomingOfs"]:
     start_date = None
     end_date = None
     
   # print(df)
 
-  #print("offsetDays",offsetDays,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
+  print("offsetDays",offsetDays,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
   try:
     master_json_list = fetchNseJsonObj(urlType=urlType, 
                                       index=getIndexForNseDocuments(urlType), 
@@ -2410,25 +2430,25 @@ def getNseCookies():
 
 def syncUpAllNseFillings(cookies = None):
 
-  syncUpNseDocuments(urlType="announcement", cookies=cookies)
+  # syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
-  syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
-  syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
-  syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
+  # syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  # syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
+  # syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
+  # syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
   
   syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)               
-  syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
-  syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  # syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
+  # syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
+  # syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  # syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
   
-  syncUpNseDocuments(urlType="bulkDeals", cookies=cookies)
-  syncUpNseDocuments(urlType="blockDeals", cookies=cookies)
-  syncUpNseDocuments(urlType="shortDeals", cookies=cookies)
-  syncUpNseDocuments(urlType="sastDeals", cookies=cookies)
-  syncUpNseDocuments(urlType="insiderDeals", cookies=cookies)
+  # syncUpNseDocuments(urlType="bulkDeals", cookies=cookies)
+  # syncUpNseDocuments(urlType="blockDeals", cookies=cookies)
+  # syncUpNseDocuments(urlType="shortDeals", cookies=cookies)
+  # syncUpNseDocuments(urlType="sastDeals", cookies=cookies)
+  # syncUpNseDocuments(urlType="insiderDeals", cookies=cookies)
   
   pass
 
@@ -2457,11 +2477,11 @@ def fetchAllNseFillings():
 
   # fetchNseDocuments("forthcomingListing", cookies=cookies)
   
-  # fetchNseDocuments(urlType="rightsFilings",
-  #                   index="equities",
-  #                   start_date=datetime(2025, 6, 1), 
-  #                   end_date=datetime(2025, 7, 12),
-  #                   cookies=cookies)
+  fetchNseDocuments(urlType="rightsFilings",
+                    index="equities",
+                    start_date=datetime(2025, 6, 1), 
+                    end_date=datetime(2025, 8, 5),
+                    cookies=cookies)
   
   # fetchNseDocuments(urlType="qipFilings",
   #                   index="qip",
@@ -2492,7 +2512,7 @@ def fetchAllNseFillings():
   # fetchNseDocuments("shortDeals", cookies=cookies)
   
   # fetchNseDocuments("forthcomingOfs", cookies=cookies)
-  fetchNseDocuments("sastDeals", index="equities", cookies=cookies)
+  # fetchNseDocuments("sastDeals", index="equities", cookies=cookies)
   # fetchNseDocuments(urlType="insiderDeals",
   #                   index="equities",
   #                   start_date=datetime(2025, 7, 1), 
@@ -4231,7 +4251,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # syncUpNseDocuments("upcomingIssues", cookies=cookies_local)
 
 
-# fetchAllNseFillings()
+fetchAllNseFillings()
 
 
 # dummyList = [{"SYMBOL":"UJJIVANSFB"}]
@@ -4240,20 +4260,20 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
 
-nseStockList = getAllNseSymbols(local=False)
-syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# nseStockList = getAllNseSymbols(local=False)
+# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-syncUpYahooFinOtherSymbols()
+# syncUpYahooFinOtherSymbols()
 
-recalculateYFinStockInfo(useNseBhavCopy=True)
+# recalculateYFinStockInfo(useNseBhavCopy=True)
 
-syncUpAllNseFillings(cookies=cookies_local)
+# syncUpAllNseFillings(cookies=cookies_local)
 
-syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
-syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
+# syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
+# syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 
 # *************************************************************************
 

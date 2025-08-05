@@ -10,10 +10,10 @@ function FundRaise() {
   const [activeTab, setActiveTab] = useState('prefIssue');
 
   const [sortConfigs, setSortConfigs] = useState({
-    prefIssue: { key: 'systemDate', direction: 'asc' },
-    qipFilings: { key: 'date', direction: 'asc' },
-    schemeOfArrangement: { key: 'date', direction: 'asc' },
-    rightsFilings: { key: 'draftDate', direction: 'asc' },
+    prefIssue: { key: 'systemDate', direction: 'desc' },
+    qipFilings: { key: 'date', direction: 'desc' },
+    schemeOfArrangement: { key: 'date', direction: 'desc' },
+    rightsFilings: { key: 'draftDate', direction: 'desc' },
   });
 
   useEffect(() => {

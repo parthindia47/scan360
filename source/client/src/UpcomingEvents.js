@@ -176,9 +176,18 @@ function UpcomingEvents() {
     return dir * (dateA - dateB);
   });
 
-  const sortedForthcomingListingData = [...forthcomingListingData].sort(
-    (a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate)
-  );
+  const sortedForthcomingListingData = [...forthcomingListingData].sort((a, b) => {
+    const { key, direction } = sortConfigs.forthcomingListing;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'date') {
+      const dateA = new Date(a.effectiveDate);
+      const dateB = new Date(b.effectiveDate);
+      return dir * (dateA - dateB);
+    }
+
+    return 0;
+  });
 
   const filteredUpcomingIssueData = (data, selectedSeries) => {
     return data.filter((item) => {
@@ -453,7 +462,7 @@ function UpcomingEvents() {
               <tr>
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Issue Type</th>
-                <th className="p-2 text-left">Effective Date</th>
+                {renderSortableHeader('Effective Date', 'date', 'forthcomingListing')}
                 <th className="p-2 text-left">Attachment</th>
               </tr>
             </thead>
