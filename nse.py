@@ -147,6 +147,8 @@ def getOutputCsvFile(urlType):
         "forthcomingOfs":"stock_fillings/forthcomingOfs_nse.csv",
         "upcomingTender":"stock_fillings/upcomingTender_nse.csv",
         "upcomingRights":"stock_fillings/upcomingRights_nse.csv",
+        "liveTender":"stock_fillings/liveTender_nse.csv",
+        "liveRights":"stock_fillings/liveRights_nse.csv",
         
         #fund raise
         "rightsFilings":"stock_fillings/rightsFilings_nse.csv",
@@ -744,6 +746,8 @@ def getTopicJsonQuery(urlType):
         "forthcomingOfs":"https://www.nseindia.com/api/all-upcoming-issues?category=forthcoming",
         "upcomingTender":"https://www.nseindia.com/api/all-upcoming-issues?category=tender",
         "upcomingRights":"https://www.nseindia.com/api/all-upcoming-issues?category=forthcomingIssues",
+        "liveTender":"https://www.nseindia.com/api/liveTenderActive-issues",
+        "liveRights":"https://www.nseindia.com/api/liveWatchRights-issues?index=activeIssues",
         
         "bulkDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
         "blockDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
@@ -839,7 +843,9 @@ def getBaseUrl(urlType,symbol=None):
         "sastDeals":"https://www.nseindia.com/companies-listing/corporate-filings-regulation-29",
         "insiderDeals":"https://www.nseindia.com/companies-listing/corporate-filings-insider-trading",
         "upcomingTender":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-tender-offer",
-        "upcomingRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights"
+        "upcomingRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights",
+        "liveTender":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-tender-offer",
+        "liveRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights"
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -1426,6 +1432,8 @@ def getDateKeyForNseDocument(urlType):
       "forthcomingOfs":"endDate",
       "upcomingTender":None,
       "upcomingRights":None,
+      "liveTender":None,
+      "liveRights":None,
       
       "rightsFilings":"date",   #done
       "qipFilings":"date",           #done
@@ -2465,7 +2473,9 @@ def getIndexForNseDocuments(urlType):
         "sastDeals":"equities",
         "insiderDeals":"equities",
         "upcomingTender": None,
-        "upcomingRights":None
+        "upcomingRights":None,
+        "liveTender": None,
+        "liveRights":None
     }
     return index_type[urlType]
 
@@ -3815,6 +3825,48 @@ def modify_result_files_share_capital(nseStockList, resultType="Consolidated"):
         except Exception as e:
             print(f"❌ Failed for {symbol}: {e}")
 
+def merge_symbol_lists(list1, list2):
+    # Use a set to track seen symbols
+    seen = set()
+    merged = []
+
+    for item in list1 + list2:
+        symbol = item["SYMBOL"].strip().upper()
+        if symbol not in seen:
+            seen.add(symbol)
+            merged.append({"SYMBOL": symbol})
+
+    return merged
+
+def get_financial_result_symbols(urlType, days=5):
+    # Load the CSV file
+    csv_filename = getOutputCsvFile(urlType)
+    date_key = getDateKeyForNseDocument(urlType)
+    df = pd.read_csv(csv_filename)
+
+    # Parse the date column safely
+    df[date_key] = pd.to_datetime(df[date_key], errors='coerce')
+
+    # Filter for recent entries
+    cutoff_date = datetime.now() - timedelta(days=days)
+    recent_df = df[df[date_key] >= cutoff_date]
+
+    # Filter symbols
+    if urlType == "events":
+        filtered = recent_df[recent_df['purpose'].str.split('/').apply(
+            lambda parts: any('Financial Results' in part.strip() for part in parts)
+        )]
+    elif urlType == "integratedResults":
+        filtered = recent_df
+    else:
+        return []
+
+    # Extract unique symbols
+    unique_symbols = filtered['symbol'].dropna().apply(str.strip).unique()
+
+    # Format as list of dicts
+    result = [{"SYMBOL": sym} for sym in unique_symbols]
+    return result
 
                 
 '''
@@ -4306,6 +4358,10 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
+# eventsResultsSymbolList = get_financial_result_symbols(urlType="events", days=3)
+# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=5)
+# mergedResultsList = merge_symbol_lists(eventsResultsSymbolList, integratedResultsSymbolList)
+# print(mergedResultsList)
 
 # nseStockList = getAllNseSymbols(local=False)
 # syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
@@ -4315,12 +4371,12 @@ cookies_local = getNseCookies()
 
 # syncUpYahooFinOtherSymbols()
 
-# recalculateYFinStockInfo(useNseBhavCopy=True)
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # syncUpAllNseFillings(cookies=cookies_local)
 
-# syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
-# syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
+# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
 # *************************************************************************
 

@@ -194,34 +194,37 @@ function SymbolPage() {
               </div>
 
               {/* Row 2: Market Cap, ROE, PE */}
-              {stockInfo.longBusinessSummary && (
-                <div className="text-sm text-gray-800 flex flex-wrap gap-x-6 gap-y-2 mb-2">
-                  <span>
-                    <span className="text-gray-500">NSE:</span>{' '}
-                    {symbol}
-                  </span>
-                  <span>
-                    <span className="text-gray-500">Market Cap:</span>{' '}
-                    ₹{(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr
-                  </span>
-                  <span>
-                    <span className="text-gray-500">ROE:</span>{' '}
-                    {stockInfo.returnOnEquity
-                      ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
-                      : '—'}
-                  </span>
-                  <span>
-                    <span className="text-gray-500">PE:</span>{' '}
-                    {isNaN(parseFloat(stockInfo.trailingPE))
-                      ? '—'
-                      : parseFloat(stockInfo.trailingPE).toFixed(2)}
-                  </span>
-                </div>
-              )}
+              <div className="text-sm text-gray-800 flex flex-wrap gap-x-6 gap-y-2 mb-2">
+                <span>
+                  <span className="text-gray-500">NSE:</span>{' '}
+                  {symbol}
+                </span>
+
+                <span>
+                  <span className="text-gray-500">ROE:</span>{' '}
+                  {stockInfo.returnOnEquity
+                    ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
+                    : '—'}
+                </span>
+
+                <span>
+                  <span className="text-gray-500">PE:</span>{' '}
+                  {isNaN(parseFloat(stockInfo.trailingPE))
+                    ? '—'
+                    : parseFloat(stockInfo.trailingPE).toFixed(2)}
+                </span>
+
+                <span>
+                  <span className="text-gray-500">Market Cap:</span>{' '}
+                  {isNaN(parseFloat(stockInfo.marketCap))
+                    ? '—'
+                    : `₹${(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr`}
+                </span>
+              </div>
 
               {/* Row 3: Website Link */}
-              {stockInfo.website && (
-                <div className="text-base text-gray-800 mb-1">
+              <div className="text-base text-gray-800 mb-1">
+                {stockInfo.website && (
                   <a
                     href={stockInfo.website.startsWith('http') ? stockInfo.website : `https://${stockInfo.website}`}
                     target="_blank"
@@ -230,18 +233,18 @@ function SymbolPage() {
                   >
                     {stockInfo.website.replace(/^https?:\/\//, '')}
                   </a>
+                )}
 
-                  <a
-                    href={`https://www.screener.in/company/${symbol}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline break-all mr-3"
-                  >
-                    screener.in
-                  </a>
+                <a
+                  href={`https://www.screener.in/company/${symbol}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline break-all mr-3"
+                >
+                  screener.in
+                </a>
+              </div>
 
-                </div>
-              )}
             </div>
 
             {/* Right Column — 3/4 width */}
