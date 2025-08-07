@@ -63,7 +63,7 @@ const dateKeys = {
   forthcomingListing: "effectiveDate",
   forthcomingOfs: "endDate",
 
-  rightsFilings: "draftDate",
+  rightsFilings: "date",
   qipFilings: "date",
   prefIssue: "systemDate",
   schemeOfArrangement: "date",
@@ -85,8 +85,8 @@ const daysPastList = {
   forthcomingListing: 3,
   forthcomingOfs: 3,
 
-  rightsFilings: 10,
-  qipFilings: 10,
+  rightsFilings: 15,
+  qipFilings: 15,
   prefIssue: 5,
   schemeOfArrangement: 10,
 

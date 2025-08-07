@@ -323,7 +323,8 @@ function FundRaise() {
               <thead className="bg-gray-200">
                 <tr>
                   <th className="p-2 text-left">Company</th>
-                  <th className="p-2 text-left">Draft Date</th>
+                  <th className="p-2 text-left">Date</th>
+                  <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-left">Attachment</th>
                 </tr>
               </thead>
@@ -331,16 +332,17 @@ function FundRaise() {
                 {sortedRightsData.map((row, idx) => (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                     <td className="p-2">{row.company || '—'}</td>
-                    <td className="p-2">{formatDate(row.draftDate)}</td>
+                    <td className="p-2">{formatDate(row.date)}</td>
+                    <td className="p-2">{row.type || '—'}</td>
                     <td className="p-2">
-                      {row.draftAttch ? (
+                      {row.attachment ? (
                         <a
-                          href={row.draftAttch}
+                          href={row.attachment}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 underline"
                         >
-                          View Draft
+                          View File
                         </a>
                       ) : (
                         '—'
