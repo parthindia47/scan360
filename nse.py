@@ -1192,7 +1192,7 @@ def fetchNseJsonObj(urlType,
     
     if noDateTimeFetch: 
       if jsonObjMaster:
-        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals"]:
+        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals", "commoditySpotAll"]:
           jsonObjMaster = jsonObjMaster["data"]
         if urlType=="bulkDeals":
           jsonObjMaster = jsonObjMaster["BULK_DEALS_DATA"]
@@ -1804,9 +1804,14 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
     existing_df = pd.read_csv(local_url) if os.path.exists(local_url) else pd.DataFrame()
     master_list = existing_df.to_dict(orient='records')
     
-    # if partial create list of existing symbol list
+    # if partial create list of existing symbol list, don't include stocks where there is no longBusinessSummary
     if partial:
       lookup_list = [item["symbol"] for item in master_list]
+      # lookup_list = [
+      #     item["symbol"]
+      #     for item in master_list
+      #     if item.get("longBusinessSummary") not in [None, "", "None"]
+      # ]
     
     for idx, obj in enumerate(nseStockList):
         yFinNseTicker = getYFinTickerName(obj[symbolCsvId], exchange)
@@ -1824,7 +1829,8 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
                         val = result.get(col, None)  # Use .get() to safely access missing keys
                         if ifDfNanOrEmptyString(val):
                             result[col] = existing_row.iloc[0][col]
-
+            if partial:
+              result["tjiIndustry"] = "NEW"
             master_list.append(result)
             time.sleep(delay)
         else:
@@ -2659,7 +2665,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
               #1. fetch all bhav copies for given dates - remove holidays and weekends
               #2. iterate and concat the results
               result = convert_nse_spot_commodity_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
-              #print(result)
+              # print(result)
             else:
               instrumentType = get_value_by_key(nseCommodityList, "SYMBOL", obj["SYMBOL"], "instrumentType")
               result = fetchNseJsonObj("commodityIndividual", 
@@ -3220,39 +3226,48 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
     yahoo_df.index.name = "Date"  # ✅ Match Yahoo Finance format
     return yahoo_df
   
-def convert_nse_spot_commodity_to_yahoo_style(bhavcopy_json, symbol):
+def convert_nse_spot_commodity_to_yahoo_style(df, symbol):
+
     ist = pytz.timezone("Asia/Kolkata")
-    records = bhavcopy_json.get("data", [])
 
-    for entry in records:
-        if entry.get("symbol", "").upper() == symbol.upper():
-            try:
-                date_obj = datetime.strptime(entry["updatedDate"], "%d-%b-%Y")
-            except ValueError:
-                date_obj = datetime.strptime(entry["updatedDate"], "%d-%b-%y")
+    # Filter by symbol (case-insensitive)
+    match = df[df['symbol'].str.upper() == symbol.upper()]
+    if match.empty:
+        print(f"❌ Symbol '{symbol}' not found.")
+        return pd.DataFrame()
 
-            # Localize the datetime object to IST
-            date_obj = ist.localize(date_obj)
+    entry = match.iloc[0]
 
-            price = float(entry["lastSpotPrice"].replace(",", ""))
+    # Parse the date
+    try:
+        date_obj = datetime.strptime(entry["updatedDate"], "%d-%b-%Y")
+    except ValueError:
+        date_obj = datetime.strptime(entry["updatedDate"], "%d-%b-%y")
 
-            df = pd.DataFrame([{
-                "Date": pd.to_datetime(date_obj),
-                "Open": price,
-                "High": price,
-                "Low": price,
-                "Close": price,
-                "Volume": 0,
-                "Dividends": 0.0,
-                "Stock Splits": 0.0
-            }])
+    date_obj = ist.localize(date_obj)
 
-            df.set_index("Date", inplace=True)
-            return df
+    # Parse price
+    try:
+        price = float(str(entry["lastSpotPrice"]).replace(",", ""))
+    except:
+        print(f"❌ Could not parse price for '{symbol}'")
+        return pd.DataFrame()
 
-    print(f"❌ Symbol '{symbol}' not found.")
-    return pd.DataFrame()
-  
+    # Create Yahoo-style DataFrame
+    df_yahoo = pd.DataFrame([{
+        "Date": pd.to_datetime(date_obj),
+        "Open": price,
+        "High": price,
+        "Low": price,
+        "Close": price,
+        "Volume": 0,
+        "Dividends": 0.0,
+        "Stock Splits": 0.0
+    }])
+
+    df_yahoo.set_index("Date", inplace=True)
+    return df_yahoo
+ 
 def convert_nse_commodity_to_yahoo_style(df):
     # Step 1: Convert date columns to datetime
     df['COM_TIMESTAMP'] = pd.to_datetime(df['COM_TIMESTAMP'], format="%d-%b-%Y", errors='coerce')
@@ -4359,24 +4374,27 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
 # eventsResultsSymbolList = get_financial_result_symbols(urlType="events", days=3)
-# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=5)
+
 # mergedResultsList = merge_symbol_lists(eventsResultsSymbolList, integratedResultsSymbolList)
 # print(mergedResultsList)
 
-# nseStockList = getAllNseSymbols(local=False)
+nseStockList = getAllNseSymbols(local=False)
+fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 # syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=False, cookies=cookies_local)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
 # syncUpYahooFinOtherSymbols()
 
-recalculateYFinStockInfo(useNseBhavCopy=True)
-
 # syncUpAllNseFillings(cookies=cookies_local)
-
+# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
 # syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
 # syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# *************************************************************************
+# recalculateYFinStockInfo(useNseBhavCopy=True)
+
+
+
+# **************************************************************************
 
