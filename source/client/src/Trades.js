@@ -226,7 +226,7 @@ function Trades() {
       </div>
 
       {loading ? (
-        <p>Loading data...</p>
+        <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>
       ) : (
         <>
           {activeTab === 'bulkDeals' && (

@@ -684,6 +684,7 @@ def getJsonUrlQuery(urlType,
     }
     
     short_date_style = ["commodityIndividual"]
+    pages_url = ["integratedResults"]
     
     baseUrl = baseUrls[urlType]
     
@@ -709,12 +710,15 @@ def getJsonUrlQuery(urlType,
         
     if issuer:
         baseUrl += f"&issuer={issuer}"
-    
+        
     # Handling subject-wise search
     if subject:
         # Replace special characters
         subject = subject.replace(' ', '%20').replace('/', '%2F').replace('&', '%26')
         baseUrl += f"&subject={subject}"
+        
+    if urlType in pages_url:
+      baseUrl += f"&page=0&size=800"
     
     # Handling FnO search
     if isOnlyFnO:
@@ -1876,6 +1880,7 @@ def convert_to_date(date_str, candle_type=None):
   Tries to parse date_str in common formats like %Y-%m-%d and %d-%m-%Y.
   Returns a datetime.date object.
   """
+  print("date_str",date_str)
   for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
       try:
           return datetime.strptime(date_str, fmt).date()
@@ -2282,7 +2287,7 @@ and concat the data and saves it.
 note:
 if there is no default index then pandas allot incremental numbers and index.
 '''
-def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
+def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None): 
     
   csv_filename = getOutputCsvFile(urlType)
   current_date = datetime.now()
@@ -2299,8 +2304,8 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
   df[date_key] = pd.to_datetime(df[date_key])
 
   last_row_date = df.iloc[-1][date_key]    
-  start_date = last_row_date
-  end_date = current_date + timedelta(days=offsetDays)  # Apply offset to end date
+  start_date = last_row_date - timedelta(days=startDateOffset)
+  end_date = current_date + timedelta(days=endDateOffset)  # Apply offset to end date
   
   # no date needed for this two
   if urlType in ["upcomingIssues", "forthcomingListing", "forthcomingOfs"]:
@@ -2309,7 +2314,7 @@ def syncUpNseDocuments(urlType, offsetDays=0, cookies=None):
     
   # print(df)
 
-  print("offsetDays",offsetDays,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
+  print("endDateOffset",endDateOffset,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
   try:
     master_json_list = fetchNseJsonObj(urlType=urlType, 
                                       index=getIndexForNseDocuments(urlType), 
@@ -2494,7 +2499,7 @@ def syncUpAllNseFillings(cookies = None):
 
   syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="events",offsetDays=30, cookies=cookies)
+  syncUpNseDocuments(urlType="events",startDateOffset=3,endDateOffset=30, cookies=cookies)
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
@@ -4373,14 +4378,16 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
+# syncUpNseDocuments(urlType="integratedResults",startDateOffset=3, cookies=cookies_local)
+
 # eventsResultsSymbolList = get_financial_result_symbols(urlType="events", days=3)
 
 # mergedResultsList = merge_symbol_lists(eventsResultsSymbolList, integratedResultsSymbolList)
 # print(mergedResultsList)
 
 nseStockList = getAllNseSymbols(local=False)
-fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
 # syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)

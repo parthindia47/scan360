@@ -17,14 +17,24 @@ function FundRaise() {
   });
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api_2/rightsFilings')
-      .then(res => {
-        setRightsData(res.data);
+    axios.get('http://localhost:5000/api_2/prefIssue')
+      .then(res => { 
+        setPrefData(res.data)
         setLoading(false);
       })
       .catch(err => {
-        console.error('Failed to fetch rightsFilings', err);
+        console.error('Failed to fetch prefIssue', err)
         setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/api_2/rightsFilings')
+      .then(res => {
+        setRightsData(res.data);
+      })
+      .catch(err => {
+        console.error('Failed to fetch rightsFilings', err);
       });
   }, []);
 
@@ -32,12 +42,6 @@ function FundRaise() {
     axios.get('http://localhost:5000/api_2/qipFilings')
       .then(res => setQipData(res.data))
       .catch(err => console.error('Failed to fetch qipFilings', err));
-  }, []);
-
-  useEffect(() => {
-    axios.get('http://localhost:5000/api_2/prefIssue')
-      .then(res => setPrefData(res.data))
-      .catch(err => console.error('Failed to fetch prefIssue', err));
   }, []);
 
   useEffect(() => {
@@ -178,6 +182,9 @@ function FundRaise() {
       {/* 🔹 Preferential Issue */}
       {activeTab === 'prefIssue' && (
         <>
+          {loading ? (
+            <div className="text-center text-blue-600">Loading...</div>
+          ) : (
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
@@ -234,6 +241,7 @@ function FundRaise() {
               ))}
             </tbody>
           </table>
+          )}
         </>
       )}
 
@@ -316,9 +324,6 @@ function FundRaise() {
       {/* 🔹 Rights Filings */}
       {activeTab === 'rightsFilings' && (
         <>
-          {loading ? (
-            <div className="text-center text-blue-600">Loading...</div>
-          ) : (
             <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead className="bg-gray-200">
                 <tr>
@@ -352,7 +357,6 @@ function FundRaise() {
                 ))}
               </tbody>
             </table>
-          )}
         </>
       )}
     </div>

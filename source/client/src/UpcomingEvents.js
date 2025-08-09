@@ -15,7 +15,7 @@ function UpcomingEvents() {
   const [selectedSeries, setSelectedSeries] = useState(null);
   const [sortConfigs, setSortConfigs] = useState({
     events: { key: 'date', direction: 'asc' },
-    upcomingIssues: { key: 'date', direction: 'asc' },
+    upcomingIssues: { key: 'date', direction: 'desc' },
     forthcomingListing: { key: 'date', direction: 'asc' },
     forthcomingOfs: { key: 'date', direction: 'asc' },
   });

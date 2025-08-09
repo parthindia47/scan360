@@ -134,7 +134,7 @@ function Results() {
     return dir * (valA - valB);
   });
 
-  if (loading) return <div className="p-4">Loading Financial results...</div>;
+  if (loading) return <div className="text-center text-blue-600 font-medium py-6 animate-pulse">Loading...</div>;
 
   return (
     <div className="p-4 mb-6">
@@ -202,31 +202,34 @@ function Results() {
                   <td className="p-2">{getChange(row.currentPrice, row.previousClose)}</td>
                   <td className="p-2">
                     {getChange(revCurr, revPrevQ)}
-                    {revCurr && revPrevQ && (
+                    {revCurr != null && revPrevQ != null && (
                       <div className="text-xs text-gray-500">
                         {formatInCrores(revCurr)} Vs {formatInCrores(revPrevQ)}
                       </div>
                     )}
                   </td>
+
                   <td className="p-2">
                     {getChange(revCurr, revPrevY)}
-                    {revCurr && revPrevY && (
+                    {revCurr != null && revPrevY != null && (
                       <div className="text-xs text-gray-500">
                         {formatInCrores(revCurr)} Vs {formatInCrores(revPrevY)}
                       </div>
                     )}
                   </td>
+
                   <td className="p-2">
                     {getChange(patCurr, patPrevQ)}
-                    {patCurr && patPrevQ && (
+                    {patCurr != null && patPrevQ != null && (
                       <div className="text-xs text-gray-500">
                         {formatInCrores(patCurr)} Vs {formatInCrores(patPrevQ)}
                       </div>
                     )}
                   </td>
+
                   <td className="p-2">
                     {getChange(patCurr, patPrevY)}
-                    {patCurr && patPrevY && (
+                    {patCurr != null && patPrevY != null && (
                       <div className="text-xs text-gray-500">
                         {formatInCrores(patCurr)} Vs {formatInCrores(patPrevY)}
                       </div>

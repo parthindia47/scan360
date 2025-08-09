@@ -21,23 +21,25 @@ function AboutUs() {
 
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">Our Mission</h2>
       <p className="mb-6">
-        We aim to empower users with various financial metrics, smart filtering tools, and industry-level tracking so they
-        can scan opportunities across multiple sectors — all in one place. We want to capture all the data which impact stock market. Be it how the number of new job openings affects software companies, or how the number of app downloads impacts Zomato, or how gold prices influence jewellery stocks and gold finance companies. At Scan360, we're all about data and how it impacts stocks.
+        When a high-frequency trading giant pocketed ₹30,000 crore from the Indian markets, it became clear: the playing field in the options market is anything but level for retail traders. Competing with lightning-fast algorithms is a losing game.
+        That’s why we’re building a different path — a powerful, easy-to-use tool designed for retail swing traders in the cash market. Our goal is simple: give everyday traders the data, insights, and edge they need to win.
       </p>
 
-      <h2 className="text-2xl font-semibold text-gray-900 mb-4">What Scan360 Currently Offers</h2>
+      <p className="mb-6">
+        We aim to empower users with various financial metrics, smart filtering tools, and industry-level tracking so they
+        can scan opportunities across multiple sectors — all in one place. We want to capture all the data which impact stock market. Be it how the number of new job openings affects software companies, or how the number of app downloads impacts Zomato, or how gold prices influence jewelry stocks and gold finance companies. At Scan360, we're all about data and how it impacts stocks.
+      </p>
+
+      <h2 className="text-2xl font-semibold text-gray-900 mb-4">Scan360 Release Plan</h2>
       <ul className="list-disc list-inside space-y-3 mb-6">
         <li>
-          <strong>Industry Heatmaps:</strong> Visualize how different sectors are performing.
+          <strong>Gen 1:</strong> Data Categorization, Data Capturing, Data Visualization
         </li>
         <li>
-          <strong>Stock Filtering:</strong> Filter stocks based on PE ratio, ROE, Market Cap, and custom metrics.
+          <strong>Gen 2:</strong> User Login, Chat, Artificial Intelligence
         </li>
         <li>
-          <strong>Announcements & Events:</strong> Stay updated with latest earnings, fund raises, and corporate actions.
-        </li>
-        <li>
-          <strong>AI-Powered Insights:</strong> Coming soon ...
+          <strong>Gen 3:</strong> Automated Suggestion, Automated anomaly detection, Hedging Suggestion
         </li>
       </ul>
 
