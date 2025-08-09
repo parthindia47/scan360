@@ -28,7 +28,7 @@ function Announcements() {
   const [sortConfig, setSortConfig] = useState({ key: 'an_dt', direction: 'desc' });
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api_2/announcements')
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/announcements`)
       .then(res => {
         setData(res.data);
         setLoading(false);

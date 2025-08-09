@@ -22,7 +22,7 @@ function UpcomingEvents() {
   
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api_2/events')
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/events`)
       .then(res => {
         setEventsData(res.data);
         setLoading(false);
@@ -34,7 +34,7 @@ function UpcomingEvents() {
   }, []);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api_2/upcomingIssues')
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/upcomingIssues`)
       .then(res => {
         setUpcomingIssuesData(res.data);
       })
@@ -44,7 +44,7 @@ function UpcomingEvents() {
   }, []);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api_2/forthcomingListing')
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/forthcomingListing`)
       .then(res => {
         setForthcomingListingData(res.data);
       })
@@ -54,7 +54,7 @@ function UpcomingEvents() {
   }, []);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api_2/forthcomingOfs')
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/forthcomingOfs`)
       .then(res => {
         setForthcomingOfsData(res.data);
       })

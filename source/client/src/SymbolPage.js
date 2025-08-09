@@ -40,7 +40,7 @@ function SymbolPage() {
   }
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api_2/candles/${symbol}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/candles/${symbol}`)
       .then(res => {
         setCandles(res.data);
         setLoading(false);
@@ -59,7 +59,7 @@ function SymbolPage() {
   }, [symbol]);
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api_2/info/${symbol}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/info/${symbol}`)
       .then(res => {
         setStockInfo(res.data)
         const quoteType = res.data.quoteType;
@@ -79,7 +79,7 @@ function SymbolPage() {
   }, [symbol]);
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api_2/results/consolidated/${symbol}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/results/consolidated/${symbol}`)
       .then(res => {
         const sortedData = res.data.sort((a, b) => new Date(a.toDate) - new Date(b.toDate));
         setConsolidatedData(sortedData);
@@ -91,7 +91,7 @@ function SymbolPage() {
   }, [symbol]);
 
   useEffect(() => {
-    axios.get(`http://localhost:5000/api_2/results/standalone/${symbol}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/results/standalone/${symbol}`)
       .then(res => {
         const sortedData = res.data.sort((a, b) => new Date(a.toDate) - new Date(b.toDate));
         setStandaloneData(sortedData);
