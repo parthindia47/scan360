@@ -82,6 +82,7 @@ import re
 import PyPDF2
 import pytesseract
 import shutil
+import sys
 from pdf2image import convert_from_path
 from curl_cffi import requests
 from dataclasses import dataclass
@@ -386,7 +387,7 @@ def getAllBseSymbol(local=False):
     if local:
         # Get the absolute path of the local CSV file
         abs_path = os.path.abspath(local_url)
-        print("Fetching locally " + abs_path)
+        logger1.info("Fetching locally " + abs_path)
         
         # Read the CSV data into a DataFrame
         df = pd.read_csv(abs_path)
@@ -411,18 +412,18 @@ def detect_symbol_changes(old_df, new_df):
     changed = merged[merged["SYMBOL_old"] != merged["SYMBOL_new"]].copy()
 
     if not changed.empty:
-        # ✅ Add a column with the current date
+        # Add a column with the current date
         changed["ChangeDate"] = datetime.today().strftime("%Y-%m-%d")
 
         output_path = "stock_info/input/name_changes.csv"
 
-        # ✅ Append mode; include header only if file doesn't exist
+        # Append mode; include header only if file doesn't exist
         file_exists = os.path.exists(output_path)
         changed.to_csv(output_path, mode='a', header=not file_exists, index=False)
 
-        print(f"✅ Appended {len(changed)} symbol change(s) to: {output_path}")
+        logger1.info(f"Appended {len(changed)} symbol change(s) to: {output_path}")
     else:
-        print("ℹ️ No symbol changes detected.")
+        logger1.info("* No symbol changes detected.")
   
 '''
 EQ (Equity): EQ represents the Equity segment
@@ -440,7 +441,7 @@ def getAllNseSymbols(local=False):
     if local:
         # Get the absolute path of the local CSV file
         abs_path = os.path.abspath(local_url)
-        print("Fetching locally " + abs_path)
+        logger1.info("Fetching locally " + abs_path)
         
         # Read the CSV data into a DataFrame
         if os.path.exists(abs_path):
@@ -451,7 +452,7 @@ def getAllNseSymbols(local=False):
         
         return json_data
     else:
-        print("Fetching remotely " + remote_url)
+        logger1.info("Fetching remotely " + remote_url)
         response = requests.get(remote_url,headers=headers)
         
         # Read the local CSV data into a DataFrame
@@ -470,7 +471,7 @@ def getAllNseSymbols(local=False):
         # Convert the DataFrame to a dictionary
         json_data = new_df.to_dict(orient='records')
         
-        print("Saved " + local_url)
+        logger1.info("Saved " + local_url)
         
         return json_data
 
@@ -478,12 +479,12 @@ def getJsonFromCsvForSymbols(symbolType,local=True):
     
     if local:
         if csv_list[symbolType].local_url == "":
-          print("No local URL for type " + symbolType)
+          logger1.info("No local URL for type " + symbolType)
           return
 
         # Get the absolute path of the local CSV file
         abs_path = os.path.abspath(csv_list[symbolType].local_url)
-        print("Fetching locally " + abs_path)
+        logger1.info("Fetching locally " + abs_path)
         
         # Read the CSV data into a DataFrame
         df = pd.read_csv(abs_path)
@@ -494,10 +495,10 @@ def getJsonFromCsvForSymbols(symbolType,local=True):
         return json_data
     else:
         if csv_list[symbolType].remote_url == "":
-          print("No Remote URL for type " + symbolType)
+          logger1.info("No Remote URL for type " + symbolType)
           return
 
-        print("Fetching remotely " + csv_list[symbolType].remote_url)
+        logger1.info("Fetching remotely " + csv_list[symbolType].remote_url)
         response = requests.get(csv_list[symbolType].remote_url,headers=headers)
         
         # Save the CSV data to the local file path
@@ -645,11 +646,11 @@ https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=
 https://www.nseindia.com/api/all-upcoming-issues?category=forthcoming
 
 Example of Usage:
-print(getAnnouncementUrlQuery("equities"))  # JSON response for equities
-print(getAnnouncementUrlQuery("equities", fromDate="10-04-2024", toDate="11-04-2024"))  # Time-wise search
-print(getAnnouncementUrlQuery("equities", fromDate="9-04-2024", toDate="11-04-2024", isOnlyFnO=True))  # FnO search
-print(getAnnouncementUrlQuery("equities", symbol="SUBEX", issuer="Subex Limited"))  # Company-wise search
-print(getAnnouncementUrlQuery("equities", subject="Amalgamation / Merger"))  # Subject-wise search
+logger1.info(getAnnouncementUrlQuery("equities"))  # JSON response for equities
+logger1.info(getAnnouncementUrlQuery("equities", fromDate="10-04-2024", toDate="11-04-2024"))  # Time-wise search
+logger1.info(getAnnouncementUrlQuery("equities", fromDate="9-04-2024", toDate="11-04-2024", isOnlyFnO=True))  # FnO search
+logger1.info(getAnnouncementUrlQuery("equities", symbol="SUBEX", issuer="Subex Limited"))  # Company-wise search
+logger1.info(getAnnouncementUrlQuery("equities", subject="Amalgamation / Merger"))  # Subject-wise search
 '''
 def getJsonUrlQuery(urlType,
                 index=None,
@@ -897,12 +898,12 @@ def getCompaniesListUrl(urlType,index):
 Fetch any Json from URL
 '''
 def fetchGetJson(url,cookies=None):
-    print("Fetching JSON Object : " + url)
+    logger1.info("Fetching JSON Object : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
-        #print("Cookies Type:", type(cookies))
+        #logger1.info("Cookies Type:", type(cookies))
         # for i, cookie in enumerate(cookies):
-        #     print(f"Cookie {i}: type={type(cookie)}, value={cookie}")
+        #     logger1.info(f"Cookie {i}: type={type(cookie)}, value={cookie}")
 
         if cookies:
           headers["Cookie"] = '; '.join([f"{k}={v}" for k, v in cookies.items()])
@@ -914,16 +915,16 @@ def fetchGetJson(url,cookies=None):
             jsonData = response.json()
             return jsonData
         else:
-            print("Failed to download JSON. Status code:", response.status_code)
+            logger1.info("Failed to download JSON. Status code:", response.status_code)
     except Exception as e:
-        print("An error occurred:", e)
+        logger1.info("An error occurred:", e)
 
 '''
 returns the response of given url
 should pass base/first urls which "do not need cookies" to access.
 '''
 def fetchUrl(url):
-    print("Fetching Base URL : " + url)
+    logger1.info("Fetching Base URL : " + url)
     try:
         # Send a GET request to the URL to download the JSON content
         response = requests.get(url,headers=headers)
@@ -932,9 +933,9 @@ def fetchUrl(url):
         if response.status_code == 200:
           return response
         else:
-            print("Failed to fetch. Status code:", response.status_code)
+            logger1.info("Failed to fetch. Status code:", response.status_code)
     except Exception as e:
-        print("An error occurred:", e)
+        logger1.info("An error occurred:", e)
 
 # ==========================================================================
 # ============================  File Download ==============================
@@ -996,19 +997,19 @@ def search_keywords_in_pdf(pdf_file_path, keywords, jpg_pdf = True):
   try:
     text = extract_text_from_pdf(pdf_file_path)
   except Exception as e:
-    print("Exception while opening pdf !!")
-    print(e)
+    logger1.info("Exception while opening pdf !!")
+    logger1.info(e)
 
   # if text is None then return
   if not text:
     return
 
-  #print("Length of text " + str(len(text)))
+  #logger1.info("Length of text " + str(len(text)))
 
   #if length of text is less, it is possible that it is image.
   #we will extract text from image using ocr
   if len(text) < 50 and jpg_pdf :
-      print("converting image to text ...")
+      logger1.info("converting image to text ...")
       text = ocr_pdf_to_text(pdf_file_path)
 
   #this will return line number and line containing keywords
@@ -1019,10 +1020,10 @@ def search_keywords_in_pdf(pdf_file_path, keywords, jpg_pdf = True):
 def print_keyword_search_results(results):
   # Print the results
   for keyword, occurrences in results.items():
-      print(f"Keyword: {keyword}")
+      logger1.info(f"Keyword: {keyword}")
       for line_number, line in occurrences:
-          print(f"Line {line_number}: {line}")
-      print("\n")
+          logger1.info(f"Line {line_number}: {line}")
+      logger1.info("\n")
 
 '''
 # Path to the zip file
@@ -1052,7 +1053,7 @@ def downloadFileFromUrl(url, outputDir="."):
             raise FileNotFoundError(f"The directory '{outputDir}' does not exist.")
         
         if not url or len(url) < 10:
-            print("URL is None")
+            logger1.info("URL is None")
             return
         
         # Get the file name from the URL
@@ -1066,7 +1067,7 @@ def downloadFileFromUrl(url, outputDir="."):
         # Determine the output path
         fileOutputPath = os.path.join(outputDir, fileName)
 
-        #print("Downloading " + url + " Saving to " + fileOutputPath)
+        #logger1.info("Downloading " + url + " Saving to " + fileOutputPath)
         
         # Send a GET request to the URL
         response = requests.get(url,headers=headers)
@@ -1078,12 +1079,12 @@ def downloadFileFromUrl(url, outputDir="."):
 
         # this is zip file
         if fileExtension == "zip":
-            print("This is zip file, extracting")
+            logger1.info("This is zip file, extracting")
             extractZipFile(fileOutputPath, outputDir)
         
-        print(f"File downloaded successfully as '{fileOutputPath}'")
+        logger1.info(f"File downloaded successfully as '{fileOutputPath}'")
     except (requests.exceptions.RequestException, FileNotFoundError) as e:
-        print("Error:", e)
+        logger1.info("Error:", e)
 
 def ifStockFilterPass(ticker):
     result = False
@@ -1098,7 +1099,7 @@ def ifStockFilterPass(ticker):
       if rupees_to_crores(stockInfoObj['marketCap']) > market_cap_limit_cr:
         result = True
     else:
-        print("** NO YAHOO FIN OBJ **")
+        logger1.info("** NO YAHOO FIN OBJ **")
 
     return result
 
@@ -1118,9 +1119,9 @@ def downloadFilesFromCsvList(csv_filename, downloadDir=".", delay=5):
         if not ifStockFilterPass(row['symbol']):
           continue
 
-        print("Downloading " + str(index) + " of " + str(total_rows) + " ...")
+        logger1.info("Downloading " + str(index) + " of " + str(total_rows) + " ...")
         if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
-            print(row[attachmentKey])  # Access row by column name
+            logger1.info(row[attachmentKey])  # Access row by column name
             downloadFileFromUrl(row[attachmentKey],downloadDir)
             time.sleep(delay)  # Pause execution for 2 seconds
 
@@ -1168,27 +1169,27 @@ def fetchNseJsonObj(urlType,
     else:
       final_end_date = toDate
 
-    print("BEFORE Function start_date ",start_date," end_date ",final_end_date)
+    logger1.info("BEFORE Function start_date ",start_date," end_date ",final_end_date)
     # First, get response from the main URL to fetch cookies
     if not cookies:
       response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
       cookies = response.cookies
-      print(response)
+      logger1.info(response)
     
     if not symbol and not index:
-      print("Fetching 1")
+      logger1.info("Fetching 1")
       jsonUrl = getTopicJsonQuery(urlType=urlType)
       jsonObj = fetchGetJson(jsonUrl, cookies)
       jsonObjMaster = jsonObj
       noDateTimeFetch = True
     elif symbol and not index and not instrumentType:
-      print("Fetching 2")
+      logger1.info("Fetching 2")
       jsonUrl = getSymbolJsonUrlQuery(urlType=urlType, symbol=symbol)
       jsonObj = fetchGetJson(jsonUrl, cookies)
       jsonObjMaster = jsonObj
       noDateTimeFetch = True
     elif not fromDate and not toDate:
-      print("Fetching 3")
+      logger1.info("Fetching 3")
       jsonUrl = getJsonUrlQuery(urlType=urlType, index=index, symbol=symbol, period=period)
       jsonObj = fetchGetJson(jsonUrl, cookies)
       jsonObjMaster = jsonObj
@@ -1209,7 +1210,7 @@ def fetchNseJsonObj(urlType,
         return pd.DataFrame()
       
     # Ensure step is set properly if start and end dates are the same or close together
-    # print("start_date ", start_date, " final_end_date ", final_end_date)
+    # logger1.info("start_date ", start_date, " final_end_date ", final_end_date)
     if start_date == final_end_date:
         step = 0  # If dates are the same, no step needed
     elif (final_end_date - start_date).days < step:
@@ -1222,7 +1223,7 @@ def fetchNseJsonObj(urlType,
             end_date = final_end_date
 
         # Fetch the JSON object using the calculated start and end date
-        print("AFTER Function start_date ",start_date," end_date ",end_date)
+        logger1.info("AFTER Function start_date ",start_date," end_date ",end_date)
         jsonUrl = getJsonUrlQuery(urlType=urlType, 
                                   index=index, 
                                   symbol=symbol, 
@@ -1248,7 +1249,7 @@ def fetchNseJsonObj(urlType,
 
         time.sleep(delaySec)  # Delay between API requests
 
-    print(jsonObjMaster)
+    logger1.info(jsonObjMaster)
     return get_df_from_json_list(jsonObjMaster)
 
 # ==========================================================================
@@ -1290,10 +1291,10 @@ end_date 2024-04-13 00:00:00+05:30
 
 Example usage
 result = fetchPercentageChange1Day("BRIGADE.NS", datetime(2024, 4, 12))
-print("1d % change " + str(result))
+logger1.info("1d % change " + str(result))
 
 result = calculatePercentageDifference("BRIGADE.NS", datetime(2024, 4, 3))
-print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
+logger1.info("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
 
 '''
 def fetchPercentageChange1Day(yFinTicker, date, nextDay=False):
@@ -1305,32 +1306,32 @@ def fetchPercentageChange1Day(yFinTicker, date, nextDay=False):
     date_ist = date.astimezone(ist_timezone)
 
     dayNum = date_ist.weekday()
-    print("inputDate " + str(date_ist))
-    print("dayNum " + str(dayNum))
+    logger1.info("inputDate " + str(date_ist))
+    logger1.info("dayNum " + str(dayNum))
 
     if date_ist >= datetime.now(ist_timezone):
-        print("Date cannot be higher or equal to today's date")
+        logger1.info("Date cannot be higher or equal to today's date")
         return None
 
     # calculate start_date and end_date
     start_date = date_ist
     end_date = start_date + datetime.timedelta(days=1)
 
-    print("start_date " + str(start_date))
-    print("end_date " + str(end_date))
+    logger1.info("start_date " + str(start_date))
+    logger1.info("end_date " + str(end_date))
 
     # Fetch historical data for the specified date range
     tickerInformation = yf.Ticker(yFinTicker)
     tickerHistory = tickerInformation.history(start=start_date, end=end_date)
 
     if not tickerHistory.empty:
-      print(tickerHistory)
+      logger1.info(tickerHistory)
       if len(tickerHistory) == 1:
           day1Percentage = (tickerHistory.iloc[0]['Close'] - tickerHistory.iloc[0]['Open'])*100/\
             tickerHistory.iloc[0]['Open']
           return day1Percentage
     else:
-      print("tickerHistory is empty ...")
+      logger1.info("tickerHistory is empty ...")
       # If nextDay is True, fetch data for the next trading day
       if nextDay:
           # Find the next trading day
@@ -1344,13 +1345,13 @@ def fetchPercentageChange1Day(yFinTicker, date, nextDay=False):
           # Fetch historical data for the next trading day
           tickerHistory = tickerInformation.history(start=start_date, end=end_date)
           if not tickerHistory.empty:
-              print("Next trading day data: ", tickerHistory)
+              logger1.info("Next trading day data: ", tickerHistory)
               if len(tickerHistory) == 1:
                   day1Percentage = (tickerHistory.iloc[0]['Close'] - tickerHistory.iloc[0]['Open'])*100/\
                     tickerHistory.iloc[0]['Open']
                   return day1Percentage
           else:
-              print("No data available for the next trading day.")
+              logger1.info("No data available for the next trading day.")
               return None
 
 '''
@@ -1358,7 +1359,7 @@ This is a custom function, it will calculate % change from next day
 
 example
 result = calculatePercentageDifference("BRIGADE.NS", datetime(2024, 4, 3))
-print("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
+logger1.info("1d " + str(result["1d"]) + " 3d " + str(result["3d"]) + " 5d " + str(result["5d"]))
 
 start_date:  2024-04-04 00:00:00+05:30
 end_date:  2024-04-11 00:00:00+05:30
@@ -1388,17 +1389,17 @@ def calculatePercentageDifference(yFinTicker, date):
 
     if start_date >= datetime.now(ist_timezone) or \
       end_date >= datetime.now(ist_timezone):
-        print("Date cannot be higher or equal to today's date")
+        logger1.info("Date cannot be higher or equal to today's date")
         return None
 
-    print("start_date: ", start_date)
-    print("end_date: ", end_date)
+    logger1.info("start_date: ", start_date)
+    logger1.info("end_date: ", end_date)
 
     try:
       # Fetch historical data for the specified date range
       tickerInformation = yf.Ticker(yFinTicker)
       tickerHistory = tickerInformation.history(start=start_date, end=end_date)
-      print(tickerHistory)
+      logger1.info(tickerHistory)
 
       if not tickerHistory.empty:
           # Calculate the percentage difference between close price of (start_date + num_days) and open price of start_date
@@ -1420,10 +1421,10 @@ def calculatePercentageDifference(yFinTicker, date):
 
           return {'1d':percentageDiff1d,'3d':percentageDiff3d,'5d':percentageDiff5d}
       else:
-          print("No historical data available for the specified date range.")
+          logger1.info("No historical data available for the specified date range.")
           return None
     except Exception as e:
-        print(e)
+        logger1.info(e)
         return None
 
 def getDateKeyForNseDocument(urlType):
@@ -1540,7 +1541,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   if urlType == "sastDeals" and 'timestamp' in df.columns:
       df.rename(columns={"timestamp": "date"}, inplace=True)
         
-  # print(df)
+  # logger1.info(df)
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
 
@@ -1561,16 +1562,16 @@ def getyFinTickerInfo(yFinTicker, sub="INFO"):
     })
     
     try:
-      print("fetching " + yFinTicker)
+      logger1.info("fetching " + yFinTicker)
       tickerInformation = yf.Ticker(yFinTicker)
-      #print(tickerInformation)
-      #print(dir(tickerInformation))
+      #logger1.info(tickerInformation)
+      #logger1.info(dir(tickerInformation))
 
       if sub == "INFO":
         return tickerInformation.info
       
     except Exception as e:
-        print(e)
+        logger1.info(e)
         return None
 
 '''
@@ -1593,7 +1594,7 @@ def getyFinTickerCandles(yFinTicker,start_date,end_date):
       else:
           return None
     except Exception as e:
-        print(e)
+        logger1.info(e)
         return None
 
 '''
@@ -1629,13 +1630,13 @@ def getPercentageChange(symbol,annDate,hash):
       next_day_row = df[df['Date'] == next_available_date]
       
       # Print the index of the row(s) in next_day_row
-      # print("Index of the row(s) in next_day_row:")
+      # logger1.info("Index of the row(s) in next_day_row:")
       total_entries = len(df)
       curr_row_index = next_day_row.index[0]
       
       # Print the candle data for the next day if found
       if not next_day_row.empty:
-          #print("Candle data for the next day:")
+          #logger1.info("Candle data for the next day:")
           curr_open = df.iloc[curr_row_index]['Open']
           curr_close = df.iloc[curr_row_index]['Close']
 
@@ -1646,8 +1647,8 @@ def getPercentageChange(symbol,annDate,hash):
           if curr_row_index + 9 < total_entries:
               resp["10D"] = calculatePercentage(curr_open,df.iloc[curr_row_index + 9]["Close"])
 
-          #print(next_day_row)
-          #print(resp)
+          #logger1.info(next_day_row)
+          #logger1.info(resp)
       else:
           logger1.error("No data found for the next day ... " + symbol + " " + str(annDate) + " " + hash)
     except Exception as e:
@@ -1704,7 +1705,7 @@ totalCashPerShare
 
 example:
 stockInfo = readYFinStockInfo()
-print(stockInfo)
+logger1.info(stockInfo)
 
 return:
 return list of objects [{},{},{}]
@@ -1720,7 +1721,7 @@ def readYFinStockInfo():
       # Convert the DataFrame to a dictionary
       json_data = df.to_dict(orient='records')
     else:
-      print("csv path do not exists")
+      logger1.info("csv path do not exists")
     
     return json_data
 
@@ -1753,7 +1754,7 @@ def getBhavCopyNameForTicker(NseTicker):
     
     new_name = ticker_map.get(NseTicker.upper(), NseTicker.upper())
     if new_name != NseTicker:
-      print("** Using " + new_name + " instead of " + NseTicker)
+      logger1.info("** Using " + new_name + " instead of " + NseTicker)
     
     return new_name
 
@@ -1822,9 +1823,9 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
         if partial and (yFinNseTicker in lookup_list):
             continue
             
-        print("fetching " + str(idx) + " " + obj[symbolCsvId] )
+        logger1.info("fetching " + str(idx) + " " + obj[symbolCsvId] )
         result = getyFinTickerInfo(yFinNseTicker)
-        print(result)
+        logger1.info(result)
         if result and 'symbol' in result:
             if not existing_df.empty:
                 existing_row = existing_df[existing_df['symbol'] == result['symbol']]
@@ -1838,19 +1839,19 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
             master_list.append(result)
             time.sleep(delay)
         else:
-           print("UNSUPPORTED " + str(idx) + " " + obj[symbolCsvId] )
+           logger1.info("UNSUPPORTED " + str(idx) + " " + obj[symbolCsvId] )
            unsupported_tickers.append(obj[symbolCsvId])
 
     df = pd.DataFrame(master_list)
     df.drop_duplicates(subset="symbol", keep="last", inplace=True)
     df.to_csv(local_url, index=False, encoding='utf-8')
-    print("saved " + local_url)
+    logger1.info("saved " + local_url)
 
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
       csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinStockInfo_" + exchange + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
 
 '''
 yahoo candles:
@@ -1880,7 +1881,7 @@ def convert_to_date(date_str, candle_type=None):
   Tries to parse date_str in common formats like %Y-%m-%d and %d-%m-%Y.
   Returns a datetime.date object.
   """
-  print("date_str",date_str)
+  logger1.info("date_str",date_str)
   for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
       try:
           return datetime.strptime(date_str, fmt).date()
@@ -1901,21 +1902,21 @@ def recalculate_financials(row, current_price, volume, candle_date, candle_type)
           if pd.notna(row.get('bookValue')) and row['bookValue'] != 0:
               updated_row['priceToBook'] = current_price / row['bookValue']
       except Exception as e:
-          print(f"⚠️ Error recalculating for {row.get('symbol')}: {e}")
+          logger1.warning(f"Error recalculating for {row.get('symbol')}: {e}")
 
     candle_date = convert_date_to_panda_date(candle_date)
     candle_date = candle_date.date()
     
     # this will be python date object, so we should not use pandas date
     lastUpdateDate = convert_to_date(updated_row['lastUpdateDate'], candle_type)
-    #print("candle date ", candle_date, " csv date ", lastUpdateDate," symbol ", updated_row['symbol'])
+    #logger1.info("candle date ", candle_date, " csv date ", lastUpdateDate," symbol ", updated_row['symbol'])
 
     if lastUpdateDate != candle_date:
       updated_row['previousClose'] = updated_row['currentPrice']
       updated_row['currentPrice'] = current_price
       updated_row['lastUpdateDate'] = candle_date
     else:
-      print("Not updating price, same date ", candle_date)
+      logger1.info("Not updating price, same date ", candle_date)
       pass
       
     updated_row['volume'] = volume
@@ -1924,13 +1925,13 @@ def recalculate_financials(row, current_price, volume, candle_date, candle_type)
 def get_last5_financials(symbol):
     def load_last5(path):
         if not os.path.exists(path):
-            print(f"⚠️ File not found: {path}")
+            logger1.warning(f"File not found: {path}")
             return None, None
         try:
             df = pd.read_csv(path)
 
             if 'toDate' not in df.columns or 'Sales' not in df.columns or 'NetProfit' not in df.columns:
-                print(f"⚠️ Missing required columns in {path}")
+                logger1.warning(f"Missing required columns in {path}")
                 return None, None
 
             df['toDate'] = pd.to_datetime(df['toDate'], format="%d-%b-%Y", errors='coerce')
@@ -1948,7 +1949,7 @@ def get_last5_financials(symbol):
             return json.dumps(last5revenue), json.dumps(last5PAT)
 
         except Exception as e:
-            print(f"❌ Error reading {path}: {e}")
+            logger1.info(f"Error reading {path}: {e}")
             return None, None
 
     consolidated_path = f"stock_results/consolidated/{symbol}/{symbol}.csv"
@@ -1990,7 +1991,7 @@ def recalculateYFinStockInfo(useNseBhavCopy=True):
       df["last5revenue_standalone"] = df["last5revenue_standalone"].astype("object")
       df["last5PAT_standalone"] = df["last5PAT_standalone"].astype("object")
     else:
-      print("No stock info file exists")
+      logger1.info("No stock info file exists")
       return
 
     for idx, row in df.iterrows():
@@ -2034,17 +2035,17 @@ def recalculateYFinStockInfo(useNseBhavCopy=True):
           df.at[idx, "last5PAT_standalone"] = last5_financials["last5PAT_standalone"]       
       except Exception as e:
         traceback.print_exc()  # <-- this prints the full stack trace with line number
-        print("SYMBOL NAME " + symbol_clean)
+        logger1.info("SYMBOL NAME " + symbol_clean)
         bhavcopy_not_found_tickers.append(symbol_clean)
           
     df.to_csv(local_url, index=False)
-    print(f"✅ Saved updated file to: {local_url}")
+    logger1.info(f"Saved updated file to: {local_url}")
     
     if bhavcopy_not_found_tickers:
       df = pd.DataFrame(bhavcopy_not_found_tickers)
       csv_filename = "stock_info\\temp\\bhavcopy_not_found_tickers_recalculateYFinStockInfo_NSE.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
 
 '''
 Fetch candle data of list of given symbol. it will store candles in the file
@@ -2073,7 +2074,7 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, 
     end_date = datetime.now(ist_timezone)
 
     for idx, obj in enumerate(nseStockList):
-        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
         csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
 
         if partial and os.path.exists(csv_filename):
@@ -2087,23 +2088,23 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, 
                                         start_date=start_date, \
                                         end_date=end_date)
         
-        print(result)
+        logger1.info(result)
         if result is not None and not result.empty:
             # Assuming df is your DataFrame containing historical data
             # Reset the index to include 'Date' as a regular column
             result.reset_index(inplace=True)
             result.to_csv(csv_filename, index=False, encoding='utf-8')
-            print("saved " + csv_filename)
+            logger1.info("saved " + csv_filename)
             time.sleep(delaySec)
         else:
            unsupported_tickers.append(obj["SYMBOL"])
-           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+           logger1.info("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
       csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinTickerCandles.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
 
 '''
 Fetch all NSE announcements between start date and end date and store it in a
@@ -2168,9 +2169,9 @@ def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_
                                        fromDate=start_date, 
                                        toDate=end_date, 
                                        cookies=cookies)
-    #print(master_json_list)
+    #logger1.info(master_json_list)
     total_entries = len(master_json_list)
-    print("total entries " + str(total_entries))
+    logger1.info("total entries " + str(total_entries))
 
     # Convert the list of dictionaries to a DataFrame
     if total_entries:
@@ -2182,14 +2183,14 @@ def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_
       df = df[~df.index.duplicated()]
       df.to_csv(file_name, encoding='utf-8')
       
-      # print(df)
+      # logger1.info(df)
 
-      print(">>> Data saved to " + file_name)
+      logger1.info(">>> Data saved to " + file_name)
     else:
-      print("Empty data in JSON")
+      logger1.info("Empty data in JSON")
       
   except Exception as e:
-      print(urlType, " - An error occurred:", e)
+      logger1.info(urlType, " - An error occurred:", e)
       traceback.print_exc()  # <-- this prints the full stack trace with line number
 
 '''
@@ -2210,20 +2211,20 @@ def updatePercentageForAnnouncements():
     # Convert the DataFrame to a dictionary
     json_data = df.to_dict(orient='records')
     
-    print(type(json_data))
-    print("total entries to process " + str(len(json_data)))
+    logger1.info(type(json_data))
+    logger1.info("total entries to process " + str(len(json_data)))
 
     json_data, unsupported_symbols = getPercentageChangeList(json_data)
     
     df = pd.DataFrame(json_data)
     df.to_csv(output_url, index=False, encoding='utf-8')
-    print("saved " + output_url)
+    logger1.info("saved " + output_url)
 
     if unsupported_symbols:
       df = pd.DataFrame(unsupported_symbols)
       csv_filename = "output\\unsupportedSymbols.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
 
 def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
     unsupported_commodity = []
@@ -2236,7 +2237,7 @@ def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
     cookies = response.cookies
 
     for idx, obj in enumerate(nseCommodityList):
-        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
         csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
 
         if partial and os.path.exists(csv_filename):
@@ -2261,20 +2262,20 @@ def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
             if result is not None and not result.empty:
                 result.reset_index(inplace=True)
                 result.to_csv(csv_filename, index=False, encoding='utf-8')
-                print("✅ Saved:", csv_filename)
+                logger1.info("Saved:", csv_filename)
                 time.sleep(delaySec)
             else:
-                print("❌ Empty result for", obj["SYMBOL"])
+                logger1.warning("Empty result for", obj["SYMBOL"])
                 unsupported_commodity.append(obj["SYMBOL"])
         
         except Exception as e:
-            print(f"❌ Exception while fetching {obj['SYMBOL']}: {e}")
+            logger1.warning(f"Exception while fetching {obj['SYMBOL']}: {e}")
             unsupported_commodity.append(obj["SYMBOL"])
   
     if unsupported_commodity:
         df = pd.DataFrame(unsupported_commodity, columns=["SYMBOL"])
         df.to_csv("stock_info\\temp\\unsupported_commodities.csv", index=False, encoding='utf-8')
-        print("🚫 Unsupported commodities saved.")        
+        logger1.info("Unsupported commodities saved.")        
 # ==========================================================================
 # ============================  Sync Up API ================================
 # sync up function are used so that only delta difference get downloaded not 
@@ -2296,7 +2297,7 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
   df = pd.read_csv(csv_filename)
 
   # Print the length of the DataFrame
-  print(f"Current Entries : {len(df)}")
+  logger1.info(f"Current Entries : {len(df)}")
 
   date_key = getDateKeyForNseDocument(urlType)
   
@@ -2312,43 +2313,43 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
     start_date = None
     end_date = None
     
-  # print(df)
+  # logger1.info(df)
 
-  print("endDateOffset",endDateOffset,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
+  logger1.info("endDateOffset",endDateOffset,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
   try:
     master_json_list = fetchNseJsonObj(urlType=urlType, 
                                       index=getIndexForNseDocuments(urlType), 
                                       fromDate=start_date, 
                                       toDate=end_date,
                                       cookies=cookies)
-    print(f"New Entries : {len(master_json_list)}")
+    logger1.info(f"New Entries : {len(master_json_list)}")
     if master_json_list.empty:
-        print("⚠️ No new entries for ", urlType, ", Exiting.")
+        logger1.warning("No new entries for ", urlType, ", Exiting.")
         return
     
     df_new = processJsonToDfForNseDocument(master_json_list, urlType)
             
     df.reset_index(drop=True)
     df.set_index('hash', inplace=True)
-    # print("df")
-    # print(df)
+    # logger1.info("df")
+    # logger1.info(df)
 
     df_new.reset_index(drop=True)
     df_new.set_index('hash', inplace=True)
-    # print("df_new")
-    # print(df_new)
+    # logger1.info("df_new")
+    # logger1.info(df_new)
 
     concatenated_df = pd.concat([df, df_new])
     concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
     concatenated_df.reset_index(inplace=True)
-    # print("concatenated_df")
-    # print(concatenated_df)
+    # logger1.info("concatenated_df")
+    # logger1.info(concatenated_df)
 
     concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
-    print(">>> saved " + csv_filename)
+    logger1.info(">>> saved " + csv_filename)
 
   except Exception as e:
-      print(urlType, " - An error occurred:", e)
+      logger1.info(urlType, " - An error occurred:", e)
       traceback.print_exc()  # <-- this prints the full stack trace with line number
       
       
@@ -2373,7 +2374,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
       bhavCopy = get_bhavcopy()
 
     for idx, obj in enumerate(nseStockList):
-        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
         csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
 
         # Read the CSV data into a DataFrame
@@ -2390,14 +2391,14 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             start_date = last_row_date + timedelta(days=1) # next day
             end_date = current_date + timedelta(days=1)
         except Exception as e:
-            print("An error occurred:", e)
+            logger1.info("An error occurred:", e)
             traceback.print_exc()  # <-- this prints the full stack trace with line number
             unsupported_tickers.append(obj["SYMBOL"])
             continue
 
         if last_row_date.date() >= current_date:
         #if last_row_date.date() >= date(2025, 4, 25):
-            print("All Synced up, skipping ...")
+            logger1.info("All Synced up, skipping ...")
             continue
         
         if useNseBhavCopy:
@@ -2406,7 +2407,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
           result = getyFinTickerCandles(getYFinTickerName(obj["SYMBOL"],symbolType), \
                                         start_date=start_date, \
                                         end_date=end_date)
-          print(result)
+          logger1.info(result)
         
         if result is not None and not result.empty:
             df.reset_index(drop=True)
@@ -2434,32 +2435,32 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             else:
               try:
                   concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
-                  print("Saved " + csv_filename)
+                  logger1.info("Saved " + csv_filename)
                   if not useNseBhavCopy:
                       time.sleep(delaySec)
               except Exception as e:
-                  print("An error occurred:", e)
+                  logger1.info("An error occurred:", e)
         else:
-           print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+           logger1.info("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
            unsupported_tickers.append(obj["SYMBOL"])
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
       csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpYFinTickerCandles_" + symbolType + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
       
     if split_tickers:
       df = pd.DataFrame(split_tickers)
       csv_filename = "stock_info\\temp\\yFinSplitTickers_syncUpYFinTickerCandles" + symbolType + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
       
 def syncUpYahooFinOtherSymbols():
   symbolTypeList = ["GLOBAL_INDEX","CURRENCY","COMMODITY_ETF","CRYPTO"]
   for symbolType in symbolTypeList:
     symbolList = getJsonFromCsvForSymbols(symbolType)
-    print(symbolList)
+    logger1.info(symbolList)
     syncUpYFinTickerCandles(symbolList,symbolType,delaySec=5)
 
 def getIndexForNseDocuments(urlType):
@@ -2599,7 +2600,7 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
 
     processed = getLastProcessedHashForPercentage(output_csv)
 
-    print("processed_len " +str(processed["processed_len"]) + \
+    logger1.info("processed_len " +str(processed["processed_len"]) + \
           " processed_hash " + str(processed["processed_hash"]))
     
     df_input = pd.read_csv(os.path.abspath(input_announcement_csv))
@@ -2609,8 +2610,8 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
 
     df_subset = df_input.iloc[(row_number+1):input_len]
     json_data = df_subset.to_dict(orient='records')
-    print("New data set size " + str(diff))
-    print(df_subset)
+    logger1.info("New data set size " + str(diff))
+    logger1.info(df_subset)
 
     json_data, unsupported_symbols = getPercentageChangeList(json_data)
     
@@ -2620,13 +2621,13 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
       df.to_csv(output_csv, index=False, encoding='utf-8')
     else:
       df.to_csv(output_csv, index=False, header=False, mode='a', encoding='utf-8')
-    print("saved " + output_csv)
+    logger1.info("saved " + output_csv)
 
     if unsupported_symbols:
       df = pd.DataFrame(unsupported_symbols)
       csv_filename = "output\\unsupportedSymbols" + "_" + str(processed["processed_hash"]) + ".csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
 
 def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, cookies = None):
     ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -2642,7 +2643,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
         cookies = response.cookies
 
     for idx, obj in enumerate(nseCommodityList):
-        print("fetching " + str(idx) + " " + obj["SYMBOL"] )
+        logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
         csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
 
         # Read the CSV data into a DataFrame
@@ -2658,7 +2659,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
 
             if last_row_date >= current_date:
             #if last_row_date.date() >= date(2025, 4, 25):
-                print("All Synced up, skipping ...")
+                logger1.info("All Synced up, skipping ...")
                 continue
                           
             # if isinstance(start_date, datetime):
@@ -2670,7 +2671,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
               #1. fetch all bhav copies for given dates - remove holidays and weekends
               #2. iterate and concat the results
               result = convert_nse_spot_commodity_to_yahoo_style(bhavCopy, getBhavCopyNameForTicker(obj["SYMBOL"]))
-              # print(result)
+              # logger1.info(result)
             else:
               instrumentType = get_value_by_key(nseCommodityList, "SYMBOL", obj["SYMBOL"], "instrumentType")
               result = fetchNseJsonObj("commodityIndividual", 
@@ -2696,16 +2697,16 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
 
                 try:
                     concatenated_df.to_csv(csv_filename, index=False, encoding='utf-8')
-                    print("Saved " + csv_filename)
+                    logger1.info("Saved " + csv_filename)
                     if not useNseBhavCopy:
                         time.sleep(delaySec)
                 except Exception as e:
-                    print("An error occurred:", e)
+                    logger1.info("An error occurred:", e)
             else:
-              print("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
+              logger1.info("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
               unsupported_tickers.append(obj["SYMBOL"])
         except Exception as e:
-            print(f"❌ Exception while fetching {obj['SYMBOL']}: {e}")
+            logger1.warning(f"Exception while fetching {obj['SYMBOL']}: {e}")
             traceback.print_exc()  # <-- this prints the full stack trace with line number
             unsupported_tickers.append(obj["SYMBOL"])
            
@@ -2713,7 +2714,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
       df = pd.DataFrame(unsupported_tickers)
       csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpNseCommodity.csv"
       df.to_csv(csv_filename, index=False, encoding='utf-8')
-      print("saved " + csv_filename)
+      logger1.info("saved " + csv_filename)
 
 
 '''
@@ -2735,34 +2736,34 @@ def yahooFinTesting(yFinTicker, full=None, date=None):
     
     if date:
         tickerHistory = tickerInformation.history(start=start_date, end=end_date) 
-        print(tickerHistory)
+        logger1.info(tickerHistory)
 
-    print("information")
-    #print(tickerInformation.info)
+    logger1.info("information")
+    #logger1.info(tickerInformation.info)
 
     if full:
-        print("history_metadata")
-        #print(tickerInformation.history_metadata)
+        logger1.info("history_metadata")
+        #logger1.info(tickerInformation.history_metadata)
 
-        print("actions")
-        #print(tickerInformation.actions)
+        logger1.info("actions")
+        #logger1.info(tickerInformation.actions)
 
-        print("news")
-        #print(tickerInformation.news)
+        logger1.info("news")
+        #logger1.info(tickerInformation.news)
         
-        print("analyst_price_targets")
-        #print(tickerInformation.analyst_price_targets)
+        logger1.info("analyst_price_targets")
+        #logger1.info(tickerInformation.analyst_price_targets)
         
-        print("quarterly_income_stmt")
+        logger1.info("quarterly_income_stmt")
         statement_df = tickerInformation.quarterly_income_stmt
         
     return statement_df[['2025-03-31']] 
     
 def yahooFinMulti():
   tickers = yf.Tickers('MSFT AAPL GOOG')
-  print(tickers.tickers['MSFT'].info)
-  print(tickers.tickers['AAPL'].info)
-  print(tickers.tickers['GOOG'].info)
+  logger1.info(tickers.tickers['MSFT'].info)
+  logger1.info(tickers.tickers['AAPL'].info)
+  logger1.info(tickers.tickers['GOOG'].info)
   # yf.download(['MSFT', 'AAPL', 'GOOG'], period='1mo')
 
 '''
@@ -2770,8 +2771,8 @@ def yahooFinMulti():
 '''    
 def yahooSingleTicker(yFinTicker):
     tickerInformation = yf.Ticker(yFinTicker)
-    print("information")
-    print(tickerInformation.info)
+    logger1.info("information")
+    logger1.info(tickerInformation.info)
 
 def objList_to_dict(objects_list, key):
     lookup_dict = {}
@@ -2803,7 +2804,7 @@ def getStockInfoObj(stockInfoList, stockNseName):
 def nseStockFilterTest():
     count = 0
     nseStockList = getAllNseSymbols(local=False)
-    #print(nseStockList)
+    #logger1.info(nseStockList)
 
     # get stock info
     stockInfoList = readYFinStockInfo()
@@ -2815,7 +2816,7 @@ def nseStockFilterTest():
             if rupees_to_crores(stockInfoObj['marketCap']) > 1000:
                 count = count + 1
 
-    print("Total counts : " + str(count))
+    logger1.info("Total counts : " + str(count))
 
 def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     attachmentKey = "attchmntFile"
@@ -2840,7 +2841,7 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
     for index, row in df.iterrows():
         # Check if the attachment key exists and is not NaN
         if pd.notna(row[attachmentKey]) and len(row[attachmentKey]) > 10:
-            print(str(index) + " " + row[attachmentKey])  # Access row by column name
+            logger1.info(str(index) + " " + row[attachmentKey])  # Access row by column name
             url = row[attachmentKey]
             if url or len(url) < 10:
                 # Get the file name from the URL
@@ -2860,8 +2861,8 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
                         #details from yahoo fin
                         if stockInfoObj:
                               if rupees_to_crores(stockInfoObj['marketCap']) > market_cap_limit_cr:
-                                  print("==============================================================")
-                                  print("Name: " + row[companyNameKey] + "\n" +
+                                  logger1.info("==============================================================")
+                                  logger1.info("Name: " + row[companyNameKey] + "\n" +
                                         "Title: " + row[titleKey] + "\n" +
                                         "Desc: " + row[descriptionKey] + "\n" + 
                                         "Link: " + row[attachmentKey] + "\n" +
@@ -2869,11 +2870,11 @@ def searchKeywordsFromCsvList(csv_filename, keywords, downloadDir="."):
 
                                   print_keyword_search_results(results)
                                   entryWithKeywords = entryWithKeywords + 1
-                                  print("==============================================================")
+                                  logger1.info("==============================================================")
                         else:
-                            print("** NO YAHOO FIN OBJ **")
+                            logger1.info("** NO YAHOO FIN OBJ **")
 
-    print("Out of " + str(len(df)) + " entry matches " + str(entryWithKeywords))
+    logger1.info("Out of " + str(len(df)) + " entry matches " + str(entryWithKeywords))
 
 '''
 '''
@@ -2900,7 +2901,7 @@ def fetch_public_holidays(local=True):
         if os.path.exists(file_path):
             df = pd.read_csv(file_path)
         else:
-            print(f"Local file not found at {file_path}. Fetching from source...")
+            logger1.info(f"Local file not found at {file_path}. Fetching from source...")
             local = False  # Fall back to fetch if file doesn't exist
 
     if not local:
@@ -2911,7 +2912,7 @@ def fetch_public_holidays(local=True):
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             df.to_csv(file_path, index=False)
         except Exception as e:
-            print(f"Failed to fetch data from source: {e}")
+            logger1.info(f"Failed to fetch data from source: {e}")
             df = pd.DataFrame()  # Return empty DataFrame on failure
 
     return df
@@ -2935,13 +2936,13 @@ def get_last_trading_day():
   
 '''
 date2 = datetime.strptime("14-Mar-2025", "%d-%b-%Y")
-print(is_trading_day(date2))  # Output: False (Republic Day, Sunday)
+logger1.info(is_trading_day(date2))  # Output: False (Republic Day, Sunday)
 
 date2 = datetime.strptime("18-Jan-2025", "%d-%b-%Y")
-print(is_trading_day(date2))  # Output: True (Tuesday, not a holiday)
+logger1.info(is_trading_day(date2))  # Output: True (Tuesday, not a holiday)
 
 date2 = datetime.strptime("22-Jan-2025", "%d-%b-%Y")
-print(is_trading_day(date2))  # Output: True (Tuesday, not a holiday)
+logger1.info(is_trading_day(date2))  # Output: True (Tuesday, not a holiday)
 '''  
 def is_trading_day(date_to_check):
 
@@ -2958,20 +2959,20 @@ def is_trading_day(date_to_check):
     input_date = date_to_check.date()
 
     # 🐞 Debugging Print
-    # print("Checking date:", input_date)
-    # print("Holiday list sample:", holiday_dates.head(10).tolist())
+    # logger1.info("Checking date:", input_date)
+    # logger1.info("Holiday list sample:", holiday_dates.head(10).tolist())
 
     # Weekend check
     if date_to_check.weekday() >= 5:
-        #print("❌ It's a weekend.")
+        #logger1.info("It's a weekend.")
         return False
 
     # Holiday check
     if input_date in holiday_dates.values:
-        #print("❌ It's a holiday.")
+        #logger1.info("It's a holiday.")
         return False
 
-    #print("✅ It's a trading day.")
+    #logger1.info("It's a trading day.")
     return True
 
 '''
@@ -3059,7 +3060,7 @@ def get_nse_chart_data(symbol="RELIANCE", interval=1, period="D", fromDate=None,
 
     # Actual POST request
     response = session.post(url, data=json.dumps(payload), timeout=10)
-    #print(response.text)
+    #logger1.info(response.text)
 
     if response.status_code == 200:
         data = response.json()
@@ -3072,8 +3073,8 @@ def get_nse_chart_data(symbol="RELIANCE", interval=1, period="D", fromDate=None,
           closes = data["c"]
           volumes = data["v"]
 
-          print("Date       | Open  | High  | Low   | Close | Volume")
-          print("-----------|-------|-------|-------|-------|--------")
+          logger1.info("Date       | Open  | High  | Low   | Close | Volume")
+          logger1.info("-----------|-------|-------|-------|-------|--------")
 
           for i in range(len(timestamps)):
               dt = datetime.fromtimestamp(timestamps[i], tz=timezone.utc)
@@ -3085,17 +3086,17 @@ def get_nse_chart_data(symbol="RELIANCE", interval=1, period="D", fromDate=None,
               l = lows[i] if i < len(lows) else "-"
               c = closes[i] if i < len(closes) else "-"
               v = volumes[i] if i < len(volumes) else "-"
-              print(f"{ts} | {o:<5} | {h:<5} | {l:<5} | {c:<5} | {v}")
+              logger1.info(f"{ts} | {o:<5} | {h:<5} | {l:<5} | {c:<5} | {v}")
         
         df = convert_nse_chart_data_to_yahoo_df(data)
         return df
     else:
-        print(f"❌ Request failed: {response.status_code}")
-        print(response.text)
+        logger1.warning(f"Request failed: {response.status_code}")
+        logger1.info(response.text)
         return None
 
 '''
-print(get_bhavcopy(date(2025, 6, 14)))
+logger1.info(get_bhavcopy(date(2025, 6, 14)))
 '''
 def get_bhavcopy(date=None, saveCSV=False):
     if date is None:
@@ -3106,21 +3107,21 @@ def get_bhavcopy(date=None, saveCSV=False):
 
     date_str = date.replace("-", "")
     url = f"https://archives.nseindia.com/products/content/sec_bhavdata_full_{date_str}.csv"
-    print("fetching " + url)
+    logger1.info("fetching " + url)
 
     try:
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip().str.upper()  # Normalize column names
-        print(f"✅ Bhavcopy loaded for {date}")
+        logger1.info(f"Bhavcopy loaded for {date}")
 
         if saveCSV:
             filename = f"output/bhavcopy_{date_str}.csv"
             df.to_csv(filename, index=False)
-            print(f"📁 Saved to {filename}")
+            logger1.info(f"📁 Saved to {filename}")
 
         return df
     except Exception as e:
-        print(f"❌ Failed to load Bhavcopy for {date}: {e}")
+        logger1.warning(f"Failed to load Bhavcopy for {date}: {e}")
         return pd.DataFrame()
 
 
@@ -3170,7 +3171,7 @@ def convert_nse_chart_data_to_yahoo_df(data):
             }
             records.append(record)
         except Exception as e:
-            print(f"⚠️ Error processing index {i}: {e}")
+            logger1.warning(f"Error processing index {i}: {e}")
 
     df = pd.DataFrame(records)
     df.set_index("Date", inplace=True)
@@ -3208,7 +3209,7 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
     ]
 
     if row.empty:
-        print(f"❌ Symbol '{symbol}' not found.")
+        logger1.warning(f"Symbol '{symbol}' not found.")
         return pd.DataFrame()
 
     row = row.iloc[0]
@@ -3228,7 +3229,7 @@ def convert_to_yahoo_style(bhavcopy_df, symbol):
     }
 
     yahoo_df = pd.DataFrame([yahoo_row], index=[date])
-    yahoo_df.index.name = "Date"  # ✅ Match Yahoo Finance format
+    yahoo_df.index.name = "Date"  # Match Yahoo Finance format
     return yahoo_df
   
 def convert_nse_spot_commodity_to_yahoo_style(df, symbol):
@@ -3238,7 +3239,7 @@ def convert_nse_spot_commodity_to_yahoo_style(df, symbol):
     # Filter by symbol (case-insensitive)
     match = df[df['symbol'].str.upper() == symbol.upper()]
     if match.empty:
-        print(f"❌ Symbol '{symbol}' not found.")
+        logger1.warning(f"Symbol '{symbol}' not found.")
         return pd.DataFrame()
 
     entry = match.iloc[0]
@@ -3255,7 +3256,7 @@ def convert_nse_spot_commodity_to_yahoo_style(df, symbol):
     try:
         price = float(str(entry["lastSpotPrice"]).replace(",", ""))
     except:
-        print(f"❌ Could not parse price for '{symbol}'")
+        logger1.warning(f"Could not parse price for '{symbol}'")
         return pd.DataFrame()
 
     # Create Yahoo-style DataFrame
@@ -3329,7 +3330,7 @@ def nse_html_to_json_results(url, period='period_short'):
   # Convert to DataFrame
   df = pd.DataFrame(input_data)
   df['label'] = df['label'].apply(clean_label)
-  # print(df)
+  # logger1.info(df)
 
   # Validate period column
   if period not in ['period_short', 'period_ytd']:
@@ -3353,7 +3354,7 @@ def nse_html_to_json_results(url, period='period_short'):
   title = df.loc[df['label'] == 'title', 'period_short'].values[0]
   start_date = df.loc[df['label'] == 'date of start of reporting period', 'period_short'].values[0]
   end_date = df.loc[df['label'] == 'date of end of reporting period', 'period_short'].values[0]
-  # print(title)
+  # logger1.info(title)
   
   # calculate top level revenue
   revenue = get('revenue from operations')
@@ -3440,7 +3441,7 @@ def nse_html_to_json_results(url, period='period_short'):
   else:
     opm = 0
     
-  # print(json.dumps(xbrl_data, indent=2))
+  # logger1.info(json.dumps(xbrl_data, indent=2))
   
   result_obj = {
     "Sales": revenue,
@@ -3486,7 +3487,7 @@ def scrape_financial_results_to_json(url):
                       
                     cols = row.find_all(["td", "th"])
                     texts = [col.get_text(strip=True) for col in cols]
-                    #print(texts)
+                    #logger1.info(texts)
 
                     # Skip rows that are clearly not data rows
                     if len(texts) < 3:
@@ -3536,11 +3537,11 @@ def scrape_financial_results_to_json(url):
 
                 return table_data
 
-        print("❌ No 'Financial Results' table found.")
+        logger1.warning("No 'Financial Results' table found.")
         return []
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        logger1.warning(f"Error: {e}")
         return []
      
 def compare_dfs(nse_df, yahoo_df):
@@ -3571,11 +3572,11 @@ def compare_dfs(nse_df, yahoo_df):
 
   # Print mismatched entries
   if mismatches:
-      print("\n❌ Mismatched entries:")
+      logger1.warning("\nMismatched entries:")
       for label, nse_val, yahoo_val in mismatches:
-          print(f"{label:50} | NSE: {nse_val:>15,.2f} | Yahoo: {yahoo_val:>15,.2f}")
+          logger1.info(f"{label:50} | NSE: {nse_val:>15,.2f} | Yahoo: {yahoo_val:>15,.2f}")
   else:
-      print("\n✅ All values matched between NSE and Yahoo.")
+      logger1.info("\nAll values matched between NSE and Yahoo.")
       
 def nse_xbrl_to_json(xml_path):
 
@@ -3712,7 +3713,7 @@ def nse_xbrl_to_json(xml_path):
       "FaceValue" : FaceValue
     }
     
-    # print(json.dumps(xbrl_data, indent=2))
+    # logger1.info(json.dumps(xbrl_data, indent=2))
     
     return result_obj
   
@@ -3726,7 +3727,7 @@ def save_xml_from_url(url, save_dir="."):
         filename = os.path.basename(parsed_url.path)
 
         if not filename.lower().endswith(".xml"):
-            print("❌ URL does not point to an XML file.")
+            logger1.warning("URL does not point to an XML file.")
             return None
 
         # Ensure save directory exists
@@ -3736,18 +3737,18 @@ def save_xml_from_url(url, save_dir="."):
         with open(file_path, "wb") as f:
             f.write(response.content)
 
-        print(f"✅ XML saved to {file_path}")
+        logger1.info(f"XML saved to {file_path}")
         return file_path
 
     except Exception as e:
-        print(f"❌ Error downloading or saving XML from {url}")
-        print("Error:", e)
+        logger1.warning(f"Error downloading or saving XML from {url}")
+        logger1.info("Error:", e)
         return None
 
 def modify_result_files(nseStockList, resultType="Consolidated"):
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
-        print(f"🔄 Processing {idx}: {symbol}")
+        logger1.info(f"Processing {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType == "Consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
@@ -3769,14 +3770,14 @@ def modify_result_files(nseStockList, resultType="Consolidated"):
 
                 # Save CSV back
                 df.to_csv(csv_path, index=False)
-                print(f"✅ Updated: {symbol}")
+                logger1.info(f"Updated: {symbol}")
             except Exception as e:
-                print(f"❌ Failed for {symbol}: {e}")
+                logger1.warning(f"Failed for {symbol}: {e}")
                 
 def modify_result_files_dates(nseStockList, resultType="Consolidated"):
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
-        print(f"🔄 Processing {idx}: {symbol}")
+        logger1.info(f"Processing {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType.lower() == "consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
@@ -3788,7 +3789,7 @@ def modify_result_files_dates(nseStockList, resultType="Consolidated"):
                 df.to_csv(csv_path, index=False)
 
             except Exception as e:
-                print(f"❌ Failed for {symbol}: {e}")
+                logger1.warning(f"Failed for {symbol}: {e}")
                 
 
 def get_xml_value(xml_path, tag_name):
@@ -3800,13 +3801,13 @@ def get_xml_value(xml_path, tag_name):
             if elem.tag.lower().endswith(tag_name.lower()):
                 return elem.text
     except Exception as e:
-        print(f"⚠️ Error parsing {xml_path}: {e}")
+        logger1.warning(f"Error parsing {xml_path}: {e}")
     return None
 
 def modify_result_files_share_capital(nseStockList, resultType="Consolidated"):
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
-        print(f"🔄 Processing {idx}: {symbol}")
+        logger1.info(f"Processing {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType.lower() == "consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
@@ -3837,13 +3838,13 @@ def modify_result_files_share_capital(nseStockList, resultType="Consolidated"):
                     df.at[i, "PaidUpShareCapital"] = paid_up
                     df.at[i, "FaceValue"] = face_val
                 else:
-                    print(f"⚠️ XBRL file not found for {symbol}: {xbrl_filename}")
+                    logger1.warning(f"XBRL file not found for {symbol}: {xbrl_filename}")
 
             df.to_csv(csv_path, index=False)
-            print(f"✅ Updated {symbol}")
+            logger1.info(f"Updated {symbol}")
 
         except Exception as e:
-            print(f"❌ Failed for {symbol}: {e}")
+            logger1.warning(f"Failed for {symbol}: {e}")
 
 def merge_symbol_lists(list1, list2):
     # Use a set to track seen symbols
@@ -3903,14 +3904,14 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
 
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
-        print(f"🔄 Fetching {idx}: {symbol}")
+        logger1.info(f"Fetching {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType == "consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
         csv_path = f"{csv_dir}/{symbol}.csv"
 
         if partial and os.path.exists(csv_path):
-            print(f"⏩ Skipping (already exists): {csv_path}")
+            logger1.info(f">> Skipping (already exists): {csv_path}")
             continue
 
         latest_by_date = {}
@@ -3926,7 +3927,7 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
 
             # Ensure data is valid DataFrame
             if not isinstance(data, pd.DataFrame) or data.empty:
-                print(f"⚠️ No data for {symbol}")
+                logger1.warning(f"No data for {symbol}")
                 continue
 
             # Clean and normalize columns
@@ -3942,7 +3943,7 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
                 ].copy()
 
                 if filtered_df.empty:
-                    print(f"⚠️ No matching entries for {symbol} on {result_date}")
+                    logger1.warning(f"No matching entries for {symbol} on {result_date}")
                     continue
 
                 # Parse broadCastDate safely
@@ -3960,7 +3961,7 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
                 to_date = latest_entry.get("toDate")
                 broad_cast_date = latest_entry.get("broadCastDate")
 
-                print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
+                logger1.info(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
 
                 local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
                 json_obj = nse_xbrl_to_json(local_xml_path)
@@ -3977,7 +3978,7 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
                 time.sleep(delaySec)
 
         except Exception as e:
-            print(f"❌ Error fetching {symbol}: {e}")
+            logger1.warning(f"Error fetching {symbol}: {e}")
             continue
 
         # Save output
@@ -3986,9 +3987,9 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
             df = pd.DataFrame(output_rows)
             os.makedirs(os.path.dirname(csv_path), exist_ok=True)
             df.to_csv(csv_path, index=False)
-            print(f"✅ Saved to {csv_path}")
+            logger1.info(f"Saved to {csv_path}")
         else:
-            print(f"⚠️ No data found for {symbol}")
+            logger1.warning(f"No data found for {symbol}")
 
 '''
 integarated filings always show quaterly results
@@ -4000,7 +4001,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
-        print(f"🔄 Fetching {idx}: {symbol}")
+        logger1.info(f"Fetching {idx}: {symbol}")
 
         sub_folder = "consolidated" if resultType == "consolidated" else "standalone"
         csv_dir = f"stock_results/{sub_folder}/{symbol}"
@@ -4015,7 +4016,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
         if not df.empty:
             existing_dates = set(df['toDate'].astype(str).str.strip().str.lower())
             if all(date.lower() in existing_dates for date in result_date_list):
-                print(f"⏩ Skipping {symbol}: All result dates already present.")
+                logger1.info(f">> Skipping {symbol}: All result dates already present.")
                 continue
 
         try:
@@ -4028,7 +4029,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
             # 🛡 Ensure data is a DataFrame
             if not isinstance(data, pd.DataFrame) or data.empty:
-                print(f"⚠️ No valid data returned for {symbol}. Skipping.")
+                logger1.warning(f"No valid data returned for {symbol}. Skipping.")
                 continue
 
             # Normalize relevant columns
@@ -4038,7 +4039,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
             for result_date in result_date_list:
                 if not df.empty and result_date.lower() in existing_dates:
-                    print(f"⏭️ Skipping {symbol} for {result_date}: Already exists.")
+                    logger1.info(f">> Skipping {symbol} for {result_date}: Already exists.")
                     continue
 
                 filtered_df = data[
@@ -4067,7 +4068,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
                 to_date = matching_entry.get("qe_Date")
                 broad_cast_date = matching_entry.get("creation_Date")
 
-                print(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
+                logger1.info(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
                 local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
                 json_obj = nse_xbrl_to_json(local_xml_path)
 
@@ -4089,15 +4090,15 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
         except Exception as e:
             traceback.print_exc()
-            print(f"❌ Error fetching data for {symbol}: {e}")
+            logger1.warning(f"Error fetching data for {symbol}: {e}")
             continue
 
         if not df.empty:
             os.makedirs(os.path.dirname(csv_path), exist_ok=True)
             df.to_csv(csv_path, index=False)
-            print(f"✅ Saved to {csv_path}")
+            logger1.info(f"Saved to {csv_path}")
         else:
-            print(f"⚠️ No data to save for {symbol}")
+            logger1.warning(f"No data to save for {symbol}")
 
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
@@ -4107,17 +4108,17 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # ============================  SCRIPT RUN =================================
 # resp = fetchNseJsonObj("stockQuote", symbol="RELIANCE")
 # resp = fetchNseJsonObj("stockInfo", symbol="RELIANCE")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj("upcomingIssues")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj("forthcomingListing")
-# print(resp)
+# logger1.info(resp)
 
 # yahooFinTesting("BALAJITELE.NS",full=True)
 # resp = fetchNseJsonObj(urlType="integratedResults", index="equities")
-# print(resp)
+# logger1.info(resp)
 
 # symbol = "GENCON"
 # url = "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_101676_04072025113823_iXBRL_WEB.html"
@@ -4167,21 +4168,21 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # resp = scrape_financial_results_to_json(url)
 # nse_df = convert_financial_results_to_yFin_style(resp)
-# print(nse_df)
+# logger1.info(nse_df)
 
 # yahoo_df = yahooFinTesting(getYFinTickerName(symbol,"NSE"),full=True)
-# # print(yahoo_df)
+# # logger1.info(yahoo_df)
 
 # compare_dfs(nse_df,yahoo_df)
 
 # ---------------------------------------------------------------------------------------------------------------
 # data = fetchNseJsonObj(urlType="financialResults", index="equities", symbol="RELIANCE", period="Quarterly")
-# print(data)
+# logger1.info(data)
 # matching_entry = next(
 #     (item for item in data if item.get("toDate") == "31-Dec-2024" and item.get("consolidated") == "Consolidated"),
 #     None
 # )
-# print(matching_entry)
+# logger1.info(matching_entry)
 
 # matching_entry = next(
 #     (item for item in data if item.get("toDate") == "31-Dec-2024"),
@@ -4225,31 +4226,31 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # nse_xbrl_to_json(url)
   
 # resp = fetchNseJsonObj(urlType="resultsComparison", index="equities", symbol="RELIANCE")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="schemeOfArrangement", index="equities")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="creditRating", index="equities")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="insiderTrading", index="equities")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="shareholdingPattern", index="equities")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="annualReports", index="equities", symbol="RELIANCE")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="rightsFilings", index="equities")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="qipFilings", index="qip")
-# print(resp)
+# logger1.info(resp)
 
 # resp = fetchNseJsonObj(urlType="prefIssue", index="inListing")
-# print(resp)
+# logger1.info(resp)
 
 # fetchNseEvents(start_date=datetime(2025, 6, 15), 
 #                   end_date=datetime(2025, 6, 30),
@@ -4258,12 +4259,12 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # result = get_bhavcopy(date(2025, 6, 13))
 # # # result2 = convert_to_yahoo_style(result, "RELIANCE")
-# print(result)
+# logger1.info(result)
 
 # result = getyFinTickerCandles(getYFinTickerName("ZYDUSWELL"), \
 #                               start_date=datetime(2025, 6, 4), \
 #                               end_date=datetime(2025, 6, 5))
-# print(result)
+# logger1.info(result)
 
 # nseStockList = getAllNseSymbols(local=False)
 # dummyList = [{"SYMBOL":"ISEC"}]
@@ -4274,15 +4275,15 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # symbolType = "GLOBAL_INDEX"
 # currencyList = getJsonFromCsvForSymbols(symbolType)
-# print(currencyList)
+# logger1.info(currencyList)
 # fetchYFinTickerCandles(currencyList,symbolType,delaySec=15,partial=True)
 
 # resp = getJsonFromCsvForSymbols(symbolType="NSE",local=False)
-# print(resp)
+# logger1.info(resp)
 
 # dummyList = [{"SYMBOL":"BAJFINANCE"}]
 # fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
-# print(result)
+# logger1.info(result)
 
 # nseStockList = getAllNseSymbols(local=True)
 # dummyList = [{"SYMBOL":"KROSS"}]
@@ -4303,7 +4304,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # fetchYFinStockInfo(nseStockList,delay=3,partial=False)
 
 # stockInfo = readYFinStockInfo()
-# print(stockInfo)
+# logger1.info(stockInfo)
 
 # nseStockFilterTest()
 
@@ -4311,7 +4312,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # fetchYFinStockInfo(bseStockList,delay=3,partial=True,exchange="BSE")
 
 # resp = fetchNseJsonObj("commoditySpotAll", index="commodityspotrates")
-# print(resp)
+# logger1.info(resp)
 
 
 # commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
@@ -4323,7 +4324,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 #                        toDate=datetime(2025, 6, 13),
 #                        delaySec=2,
 #                        listExtractKey="data")
-# print(resp)
+# logger1.info(resp)
 
 
 # nseCommodityList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
@@ -4336,12 +4337,12 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 #     download_dir=r"C:\temp"
 # )
 
-# print(resp)
+# logger1.info(resp)
 
 # syncUpYahooFinOtherSymbols()
 
 # resp = get_nse_chart_data(symbol="ITC")
-# print(resp)
+# logger1.info(resp)
 
 # yahooFinMulti()
 
@@ -4383,7 +4384,7 @@ cookies_local = getNseCookies()
 # eventsResultsSymbolList = get_financial_result_symbols(urlType="events", days=3)
 
 # mergedResultsList = merge_symbol_lists(eventsResultsSymbolList, integratedResultsSymbolList)
-# print(mergedResultsList)
+# logger1.info(mergedResultsList)
 
 nseStockList = getAllNseSymbols(local=False)
 # fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
