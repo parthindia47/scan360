@@ -345,8 +345,15 @@ app.get('/api/:type', (req, res) => {
   const filterDate = new Date();
   filterDate.setDate(filterDate.getDate() - dayPast);
 
-  if (!filePath) {
-    return res.status(400).json({ error: `Unknown type '${type}'` });
+  // ✅ Check if CSV file exists — if not, return empty array
+  if (!fs.existsSync(filePath)) {
+    console.warn(`CSV file for '${type}' not found at ${filePath}`);
+    return res.json([]); // return empty list instead of throwing
+  }
+
+  if (!fs.existsSync(stockInfoFilePath)) {
+    console.warn(`Stock info CSV not found at ${stockInfoFilePath}`);
+    return res.json([]); // same safeguard for stock info
   }
 
   // Step 1: Read stock info first
