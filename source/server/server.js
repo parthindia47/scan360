@@ -7,13 +7,12 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
-if (process.env.NODE_ENV === 'production') {
-  // Serve React build files
-  app.use(express.static(path.join(__dirname, '../client/build')));
-
-  // Fallback for React Router (SPA)
+// Always serve client build if it exists
+const buildPath = path.join(__dirname, '../client/build');
+if (require('fs').existsSync(buildPath)) {
+  app.use(express.static(buildPath));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+    res.sendFile(path.join(buildPath, 'index.html'));
   });
 }
 
