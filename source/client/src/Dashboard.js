@@ -175,16 +175,16 @@ function Dashboard() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[80vh]">
             <table className="table-auto w-full border-collapse text-sm text-gray-800">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="sticky left-0 bg-gray-100 z-20 p-2">#</th>
-                  <th className="sticky left-[2.5rem] bg-gray-100 z-20 p-2 text-left">Industry</th>
+                  <th className="sticky top-0 left-0 bg-gray-100 z-30 p-2">#</th>
+                  <th className="sticky top-0 left-[2.5rem] bg-gray-100 z-30 p-2 text-left">Industry</th>
                   {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                     <th
                       key={field}
-                      className="p-2 cursor-pointer"
+                      className="sticky top-0 bg-gray-100 z-20 p-2 cursor-pointer"
                       onClick={() => toggleSort(activeType, field)}
                     >
                       {field}
