@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './Navbar';
 import Dashboard from './Dashboard';
@@ -16,24 +16,37 @@ import News from './News';
 import Footer from './Footer';
 
 function App() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   return (
     <Router>
       <Navbar />
-      <div style={{ padding: '20px 20px 20px' }}>  {/* extra bottom padding to prevent overlap */}
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/announcements" element={<Announcements />} />
-          <Route path="/upcoming_events" element={<UpcomingEvents />} />
-          <Route path="/fund_raise" element={<FundRaise />} />
-          <Route path="/trades" element={<Trades />} />
-          <Route path="symbol/:symbol" element={<SymbolPage />} /> {/* Dynamic symbol route */}
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/results" element={<Results />} />
-          <Route path="/news" element={<News />} />
-        </Routes>
-      </div>
+        <div
+          style={{
+            padding: isMobile ? "0 0 20px" : "1px 20px 20px"
+          }}
+        >
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/announcements" element={<Announcements />} />
+            <Route path="/upcoming_events" element={<UpcomingEvents />} />
+            <Route path="/fund_raise" element={<FundRaise />} />
+            <Route path="/trades" element={<Trades />} />
+            <Route path="symbol/:symbol" element={<SymbolPage />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/results" element={<Results />} />
+            <Route path="/news" element={<News />} />
+          </Routes>
+        </div>
       <Footer />
     </Router>
   );

@@ -108,7 +108,7 @@ function Dashboard() {
       ) : (
         <>
           {/* Top Tabs */}
-          <div className="flex flex-wrap gap-2 border-b mb-6 pb-1">
+          <div className="flex flex-wrap gap-2 border-b mb-2 pb-1">
             {Object.keys(groupedByType).map((type) => (
               <a
                 key={type}
