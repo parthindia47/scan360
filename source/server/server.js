@@ -7,6 +7,16 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
+if (process.env.NODE_ENV === 'production') {
+  // Serve React build files
+  app.use(express.static(path.join(__dirname, '../client/build')));
+
+  // Fallback for React Router (SPA)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
+
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
