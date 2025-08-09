@@ -17,7 +17,7 @@ function FundRaise() {
   });
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/prefIssue`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/prefIssue`)
       .then(res => { 
         setPrefData(res.data)
         setLoading(false);
@@ -29,7 +29,7 @@ function FundRaise() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/rightsFilings`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/rightsFilings`)
       .then(res => {
         setRightsData(res.data);
       })
@@ -39,13 +39,13 @@ function FundRaise() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/qipFilings`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/qipFilings`)
       .then(res => setQipData(res.data))
       .catch(err => console.error('Failed to fetch qipFilings', err));
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/schemeOfArrangement`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/schemeOfArrangement`)
       .then(res => setSchemeData(res.data))
       .catch(err => console.error('Failed to fetch schemeOfArrangement', err));
   }, []);

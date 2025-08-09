@@ -20,7 +20,7 @@ function Trades() {
   });
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/bulkDeals`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/bulkDeals`)
       .then(res => {
         setBulkDealsData(res.data);
         setLoading(false);
@@ -32,25 +32,25 @@ function Trades() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/blockDeals`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/blockDeals`)
       .then(res => setBlockDealsData(res.data))
       .catch(err => console.error('Failed to fetch blockDeals', err));
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/shortDeals`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/shortDeals`)
       .then(res => setShortDealsData(res.data))
       .catch(err => console.error('Failed to fetch shortDeals', err));
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/sastDeals`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/sastDeals`)
       .then(res => setSastDealsData(res.data))
       .catch(err => console.error('Failed to fetch sastDeals', err));
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/insiderDeals`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/insiderDeals`)
       .then(res => setInsiderDealsData(res.data))
       .catch(err => console.error('Failed to fetch sastDeals', err));
   }, []);

@@ -7,7 +7,7 @@ function Results() {
   const [sortConfig, setSortConfig] = useState({ key: 'creation_Date', direction: 'desc' });
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api_2/integratedResults`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/integratedResults`)
       .then(res => {
         setData(res.data);
         setLoading(false);

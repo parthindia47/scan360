@@ -326,7 +326,7 @@ const loadIndustries = async () => {
 };
 
 // ==================== Main DashBoard API ===============================
-app.get('/industries', async (req, res) => {
+app.get('/api/industries', async (req, res) => {
   if (Object.keys(industryData).length === 0) {
     await loadIndustries();
   }
@@ -335,7 +335,7 @@ app.get('/industries', async (req, res) => {
 });
 
 // ===================== Document APIS ===================================
-app.get('/api_2/:type', (req, res) => {
+app.get('/api/:type', (req, res) => {
   const { type } = req.params;
 
   const filePath = csvPaths[type];
@@ -412,7 +412,7 @@ app.get('/api_2/:type', (req, res) => {
   "volume": [<oldest>, ..., <latest>]
 }
 */
-app.get('/api_2/candles/:symbol', (req, res) => {
+app.get('/api/candles/:symbol', (req, res) => {
   const { symbol } = req.params;
   const filePath = path.join(candleDataFolder, `${symbol}.csv`);
 
@@ -454,7 +454,7 @@ app.get('/api_2/candles/:symbol', (req, res) => {
 
 });
 
-app.get('/api_2/info/:symbol', (req, res) => {
+app.get('/api/info/:symbol', (req, res) => {
   const { symbol } = req.params;
   yFinSymbol = symbol + ".NS"
   let found = false;
@@ -483,7 +483,7 @@ app.get('/api_2/info/:symbol', (req, res) => {
     });
 });
 
-app.get('/api_2/results/:type/:symbol', (req, res) => {
+app.get('/api/results/:type/:symbol', (req, res) => {
   const { type, symbol } = req.params;
   const baseType = type.toLowerCase();
 
@@ -533,10 +533,13 @@ app.get('/api_2/results/:type/:symbol', (req, res) => {
 });
 
 // Always serve client build if it exists
+// Serve React build files for non-API requests
 const buildPath = path.join(__dirname, '../client/build');
-if (require('fs').existsSync(buildPath)) {
+if (fs.existsSync(buildPath)) {
   app.use(express.static(buildPath));
-  app.get('*', (req, res) => {
+  
+  // Catch-all for frontend routes
+  app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
   });
 }

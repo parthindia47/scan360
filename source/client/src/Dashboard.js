@@ -11,7 +11,7 @@ function Dashboard() {
   const [weighted, setWeighted] = useState(true); // 🔹 active tab
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/industries`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/industries`)
       .then(res => {
         setIndustries(res.data);
         const types = Object.values(res.data).map(i => i.type || 'Other');
