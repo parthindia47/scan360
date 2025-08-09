@@ -30,7 +30,7 @@ function App() {
       <Navbar />
         <div
           style={{
-            padding: isMobile ? "0 0 20px" : "1px 20px 20px"
+            padding: isMobile ? "5px 5px 20px" : "20px 20px 20px"
           }}
         >
           <Routes>
