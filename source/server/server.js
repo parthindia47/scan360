@@ -7,14 +7,6 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
-// Always serve client build if it exists
-const buildPath = path.join(__dirname, '../client/build');
-if (require('fs').existsSync(buildPath)) {
-  app.use(express.static(buildPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(buildPath, 'index.html'));
-  });
-}
 
 const industryData = {};
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
@@ -540,6 +532,14 @@ app.get('/api_2/results/:type/:symbol', (req, res) => {
     });
 });
 
+// Always serve client build if it exists
+const buildPath = path.join(__dirname, '../client/build');
+if (require('fs').existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+}
 
 app.listen(5000, () => {
   console.log('Server running on port 5000');
