@@ -12,6 +12,8 @@ import Terms from './Terms';
 import Contact from './Contact';
 import Results from './Results';
 import News from './News';
+import Ai from './Ai';
+import Chat from './Chat'
 
 import Footer from './Footer';
 
@@ -45,6 +47,8 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/results" element={<Results />} />
             <Route path="/news" element={<News />} />
+            <Route path="/ai" element={<Ai />} />
+            <Route path="/chat" element={<Chat />} />
           </Routes>
         </div>
       <Footer />

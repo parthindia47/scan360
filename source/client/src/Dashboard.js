@@ -143,32 +143,37 @@ function Dashboard() {
                 onClick={expandAllIndustries}
                 className="px-2 py-1 text-xs border border-green-600 text-green-700 rounded hover:bg-green-50"
               >
-                Expand All
+                <b>+</b> All
               </button>
               <button
                 onClick={collapseAllIndustries}
                 className="px-2 py-1 text-xs border border-red-600 text-red-700 rounded hover:bg-red-50"
               >
-                Collapse All
+                <b>-</b> All
               </button>
               {activeType === 'EQUITY' && (
                 <>
-                  <button
-                    className={`px-3 py-1 text-xs border rounded-full ${
-                      weighted ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-100'
-                    }`}
-                    onClick={() => setWeighted(true)}
-                  >
-                    Weighted
-                  </button>
-                  <button
-                    className={`px-3 py-1 text-xs border rounded-full ${
-                      !weighted ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-blue-100'
-                    }`}
-                    onClick={() => setWeighted(false)}
-                  >
-                    Equal Weight
-                  </button>
+                <button
+                  className={`px-3 py-1 text-xs border rounded-full transition-colors ${
+                    weighted
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                  }`}
+                  onClick={() => setWeighted(true)}
+                >
+                  Weighted
+                </button>
+
+                <button
+                  className={`px-3 py-1 text-xs border rounded-full transition-colors ${
+                    !weighted
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                  }`}
+                  onClick={() => setWeighted(false)}
+                >
+                  Equal Weight
+                </button>
                 </>
               )}
             </div>

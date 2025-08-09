@@ -1,27 +1,54 @@
-import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState, useRef, useEffect } from "react";
+import { NavLink } from "react-router-dom";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+  const buttonRef = useRef(null);
 
   const navLinks = [
-    ['/', 'Dashboard'],
-    ['/announcements', 'Announcements'],
-    ['/upcoming_events', 'Upcoming Events'],
-    ['/fund_raise', 'Fund Raise'],
-    ['/results', 'Results'],
-    ['/trades', 'Trades'],
-    ['/news', 'News'],
-    ['/chat', 'Chat'],
-    ['/ai', 'AI'],
+    ["/", "Dashboard"],
+    ["/announcements", "Announcements"],
+    ["/upcoming_events", "Upcoming Events"],
+    ["/fund_raise", "Fund Raise"],
+    ["/results", "Results"],
+    ["/trades", "Trades"],
+    ["/news", "News"],
+    ["/chat", "Chat"],
+    ["/ai", "AI"],
   ];
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   return (
     <nav className="sticky top-0 z-50 bg-gray-100 border-b border-gray-300 shadow-sm">
       <div className="px-6 py-2 flex items-center space-x-4">
         {/* Hamburger button (mobile only) */}
         <button
+          ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
           className="md:hidden focus:outline-none"
         >
@@ -44,8 +71,8 @@ function Navbar() {
                 className={({ isActive }) =>
                   `px-4 py-2 rounded transition duration-150 ease-in-out ${
                     isActive
-                      ? 'text-blue-600 font-semibold'
-                      : 'hover:text-blue-500'
+                      ? "text-blue-600 font-semibold"
+                      : "hover:text-blue-500"
                   }`
                 }
               >
@@ -58,7 +85,10 @@ function Navbar() {
 
       {/* Mobile Menu Dropdown */}
       {isOpen && (
-        <div className="md:hidden bg-gray-100 border-t border-gray-300">
+        <div
+          ref={menuRef}
+          className="md:hidden bg-gray-100 border-t border-gray-300"
+        >
           <ul className="flex flex-col space-y-1 py-2 text-base font-medium text-gray-700">
             {navLinks.map(([to, label]) => (
               <li key={to}>
@@ -68,8 +98,8 @@ function Navbar() {
                   className={({ isActive }) =>
                     `block px-4 py-2 transition duration-150 ease-in-out ${
                       isActive
-                        ? 'text-blue-600 font-semibold'
-                        : 'hover:text-blue-500'
+                        ? "text-blue-600 font-semibold"
+                        : "hover:text-blue-500"
                     }`
                   }
                 >

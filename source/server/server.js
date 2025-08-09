@@ -551,6 +551,11 @@ if (fs.existsSync(buildPath)) {
   });
 }
 
+// Catch-all for any other undefined route
+app.use((req, res) => {
+  res.status(404).send('404 - The requested resource does not exist.');
+});
+
 app.listen(5000, () => {
   console.log('Server running on port 5000');
 });
