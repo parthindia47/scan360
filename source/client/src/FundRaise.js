@@ -155,29 +155,29 @@ function FundRaise() {
   return (
     <div className="p-4 mb-4">
       {/* 🔹 Tabs */}
-      <div className="flex border-b mb-4 gap-x-6 ml-1">
+      <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
         {['prefIssue', 'qipFilings', 'schemeOfArrangement', 'rightsFilings'].map(tab => (
           <a
             key={tab}
             href="#"
-            style={{ marginRight: '1rem' }}  // 👈 1rem = 16px
             onClick={(e) => {
               e.preventDefault();
               setActiveTab(tab);
             }}
-            className={`inline-block mr-4 pb-2 px-2 text-sm font-medium transition duration-150 ease-in-out border-b-2 ${
+            className={`pb-2 px-2 text-sm font-medium transition duration-150 ease-in-out border-b-2 ${
               activeTab === tab
                 ? 'border-blue-600 text-blue-600 font-semibold'
                 : 'border-transparent text-gray-500 hover:text-blue-500 hover:border-blue-300'
             }`}
           >
             {tab === 'rightsFilings' ? 'Rights Filings' :
-             tab === 'qipFilings' ? 'QIP Filings' :
-             tab === 'prefIssue' ? 'Preferential Issues' :
-             'Scheme of Arrangement'}
+            tab === 'qipFilings' ? 'QIP Filings' :
+            tab === 'prefIssue' ? 'Preferential Issues' :
+            'Scheme of Arrangement'}
           </a>
         ))}
       </div>
+
 
       {/* 🔹 Preferential Issue */}
       {activeTab === 'prefIssue' && (
@@ -185,6 +185,7 @@ function FundRaise() {
           {loading ? (
             <div className="text-center text-blue-600">Loading...</div>
           ) : (
+        <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
@@ -241,6 +242,7 @@ function FundRaise() {
               ))}
             </tbody>
           </table>
+          </div>
           )}
         </>
       )}
@@ -248,6 +250,7 @@ function FundRaise() {
       {/* 🔹 QIP Filings */}
       {activeTab === 'qipFilings' && (
         <>
+        <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
@@ -279,12 +282,14 @@ function FundRaise() {
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
 
       {/* 🔹 Scheme of Arrangement */}
       {activeTab === 'schemeOfArrangement' && (
         <>
+        <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200">
               <tr>
@@ -318,13 +323,15 @@ function FundRaise() {
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
 
       {/* 🔹 Rights Filings */}
       {activeTab === 'rightsFilings' && (
         <>
-            <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
               <thead className="bg-gray-200">
                 <tr>
                   <th className="p-2 text-left">Company</th>
@@ -357,6 +364,7 @@ function FundRaise() {
                 ))}
               </tbody>
             </table>
+            </div>
         </>
       )}
     </div>

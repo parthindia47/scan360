@@ -31,6 +31,8 @@ function SymbolPage() {
   const [consolidatedData, setConsolidatedData] = useState([]);
   const [standaloneData, setStandaloneData] = useState([]);
   const [activeResultsTab, setActiveResultsTab] = useState('consolidated');
+  const [isMobile, setIsMobile] = useState(false);
+
   const { symbol } = useParams();
   let decimalPoints = 2;
 
@@ -38,6 +40,13 @@ function SymbolPage() {
   {
     decimalPoints = 4;
   }
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/api/candles/${symbol}`)
@@ -223,26 +232,36 @@ function SymbolPage() {
               </div>
 
               {/* Row 3: Website Link */}
-              <div className="text-base text-gray-800 mb-1">
+              <div className="text-base text-gray-800 mb-1 flex flex-wrap gap-3">
                 {stockInfo.website && (
-                  <a
-                    href={stockInfo.website.startsWith('http') ? stockInfo.website : `https://${stockInfo.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline break-all mr-3"
-                  >
-                    {stockInfo.website.replace(/^https?:\/\//, '')}
-                  </a>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-600">🔗</span>
+                    <a
+                      href={
+                        stockInfo.website.startsWith('http')
+                          ? stockInfo.website
+                          : `https://${stockInfo.website}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline break-all"
+                    >
+                      {stockInfo.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  </div>
                 )}
 
-                <a
-                  href={`https://www.screener.in/company/${symbol}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline break-all mr-3"
-                >
-                  screener.in
-                </a>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-600">🔗</span>
+                  <a
+                    href={`https://www.screener.in/company/${symbol}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline break-all"
+                  >
+                    screener.in
+                  </a>
+                </div>
               </div>
 
             </div>
@@ -294,111 +313,139 @@ function SymbolPage() {
         })}
       </div>
 
-      {/* Combined Price + Volume Chart */}
-      <ResponsiveContainer width="100%" height={400}>
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 20, right: 50, left: 50, bottom: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="date"
-            ticks={xTicks}
-            tick={{ fontSize: 10 }}
-            textAnchor="middle"
-          />
-
-          {/* Volume Axis (left) */}
-          <YAxis
-            yAxisId="left"
-            orientation="left"
-            ticks={volumeTicks}
-            tick={{ fontSize: 10 }}
-            label={{ value: "Volume", angle: -90, position: "insideLeft" }}
-            tickFormatter={(value) => {
-              if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
-              if (value >= 1_000) return (value / 1_000).toFixed(0) + 'K';
-              return value;
+      <div className="-mx-4 sm:mx-0">
+        <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
+          <ComposedChart
+            data={chartData}
+            margin={{
+              top: 20,
+              right: isMobile ? 10 : 50, // slightly smaller margin on mobile
+              left: isMobile ? 10 : 50,
+              bottom: 0
             }}
-          />
+          >
+            <CartesianGrid 
+              stroke="#e5e7eb" // light gray
+              strokeDasharray="3 3" 
+              vertical={false} // disable vertical lines
+            />
+            <XAxis
+              dataKey="date"
+              ticks={isMobile ? xTicks.filter((_, i) => i % 2 === 0) : xTicks}
+              tick={{ fontSize: isMobile ? 8 : 10, fill: "#9ca3af" }} // lighter tick color
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
+            />
 
-          {/* Price Axis (right) */}
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            domain={[yMin * 0.98, yMax * 1.02]}
-            ticks={priceTicks}
-            tick={{ fontSize: 12 }}
-            label={{ value: "Price", angle: -90, position: "insideRight" }}
-            tickFormatter={(value) => value.toFixed(decimalPoints)}
-          />
+            <YAxis
+              yAxisId="left"
+              orientation="left"
+              ticks={volumeTicks}
+              tick={{ fontSize: isMobile ? 8 : 10, fill: "#9ca3af" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
+              vertical={false}
+              label={
+                !isMobile
+                  ? { value: "Volume", angle: -90, position: "insideLeft", fill: "#9ca3af" }
+                  : undefined
+              }
+              tickFormatter={(value) => {
+                if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+                if (value >= 1_000) return (value / 1_000).toFixed(0) + 'K';
+                return value;
+              }}
+            />
 
-        <Tooltip
-          content={({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-              const { date, close, volume } = payload[0].payload;
-              return (
-                <div className="bg-white p-2 border rounded shadow text-sm">
-                  <div>{date}</div>
-                  <div>{tickPrefix}{close.toFixed(decimalPoints)}</div>
-                  <div><strong>Vol:</strong> {volume.toLocaleString()}</div>
-                </div>
-              );
-            }
-            return null;
-          }}
-        />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              domain={[yMin * 0.98, yMax * 1.02]}
+              ticks={priceTicks}
+              tick={{ fontSize: isMobile ? 10 : 12, fill: "#9ca3af" }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={{ stroke: "#e5e7eb" }}
+              label={
+                !isMobile
+                  ? { value: "Price", angle: -90, position: "insideRight", fill: "#9ca3af" }
+                  : undefined
+              }
+              tickFormatter={(value) => value.toFixed(decimalPoints)}
+            />
 
-          {/* Volume Bars */}
-          <Bar
-            yAxisId="left"
-            dataKey="volume"
-            barSize={20}
-            fill="#14eba3"
-          />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const { date, close, volume } = payload[0].payload;
+                  return (
+                    <div className="bg-white p-2 border rounded shadow text-sm">
+                      <div>{date}</div>
+                      <div>{tickPrefix}{close.toFixed(decimalPoints)}</div>
+                      <div><strong>Vol:</strong> {volume.toLocaleString()}</div>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
 
-          {/* Price Line */}
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="close"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+            {/* Volume Bars */}
+            <Bar
+              yAxisId="left"
+              dataKey="volume"
+              barSize={isMobile ? 10 : 20}
+              fill="#14eba3"
+            />
+
+            {/* Price Line */}
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="close"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div>
+        <h4 className="text-lg font-semibold">
+          Financial Results
+          <span className="text-sm text-gray-400 font-normal ml-2">(Rs. Crores)</span>
+        </h4>
+        {/* Tab buttons */}
+        {consolidatedData.length > 0 && standaloneData.length > 0 && (
+          <div className="my-2 flex gap-2">
+            <button
+              onClick={() => setActiveResultsTab('consolidated')}
+              className={`px-3 py-1 text-sm rounded border ${activeResultsTab === 'consolidated' ? 'bg-blue-200 font-semibold' : 'bg-gray-100'}`}
+            >
+              Consolidated
+            </button>
+            <button
+              onClick={() => setActiveResultsTab('standalone')}
+              className={`px-3 py-1 text-sm rounded border ${activeResultsTab === 'standalone' ? 'bg-blue-200 font-semibold' : 'bg-gray-100'}`}
+            >
+              Standalone
+            </button>
+          </div>
+        )}
+      </div>
 
       {(consolidatedData.length > 0 || standaloneData.length > 0) ? (
-        <div className="mt-8 overflow-x-auto rounded-lg border border-gray-300">
-          <h4 className="text-lg font-semibold">Financial Results</h4>
-          <span className="text-gray-400">Figures in Rs. Crores</span>
-
-          {/* Tab buttons */}
-          {consolidatedData.length > 0 && standaloneData.length > 0 && (
-            <div className="my-2 flex gap-2">
-              <button
-                onClick={() => setActiveResultsTab('consolidated')}
-                className={`px-3 py-1 text-sm rounded border ${activeResultsTab === 'consolidated' ? 'bg-blue-200 font-semibold' : 'bg-gray-100'}`}
-              >
-                Consolidated
-              </button>
-              <button
-                onClick={() => setActiveResultsTab('standalone')}
-                className={`px-3 py-1 text-sm rounded border ${activeResultsTab === 'standalone' ? 'bg-blue-200 font-semibold' : 'bg-gray-100'}`}
-              >
-                Standalone
-              </button>
-            </div>
-          )}
-
+        <div className="mt-2 overflow-x-auto rounded-lg border border-gray-300">
           {/* Table */}
           <table className="min-w-full border text-sm text-left">
             <thead className="bg-gray-100">
               <tr>
-                <th className="border px-2 py-1"></th>
+                <th className="border px-2 py-1 sticky left-0 bg-gray-100 z-10"></th>
                 {(activeResultsTab === 'consolidated' ? consolidatedData : standaloneData).map((row, idx) => (
-                  <th key={idx} className="border px-2 py-1 whitespace-nowrap text-right">
+                  <th
+                    key={idx}
+                    className="border px-2 py-1 whitespace-nowrap text-right"
+                  >
                     {row.toDate}
                   </th>
                 ))}
@@ -409,35 +456,44 @@ function SymbolPage() {
                 "Sales", "OperatingProfit", "OPM", "OtherIncome",
                 "Interest", "Depreciation", "ProfitBeforeTax",
                 "NetProfit", "EPS"
-              ].map((metric, rowIdx) => (
-                <tr
-                  key={metric}
-                  className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-200'}
-                >
-                  <td className="border px-2 py-1 font-medium">{metric}</td>
-                  {(activeResultsTab === 'consolidated' ? consolidatedData : standaloneData).map((row, idx) => {
-                    const value = row[metric];
-                    const formattedValue =
-                      value !== undefined
-                        ? metric === "OPM"
-                          ? `${parseFloat(value).toFixed(1)}%`
-                          : parseFloat(value).toLocaleString()
-                        : '—';
+              ].map((metric, rowIdx) => {
+                const isEven = rowIdx % 2 === 0;
+                const rowBg = isEven ? 'bg-white' : 'bg-gray-200';
 
-                    return (
-                      <td key={idx} className="border px-2 py-1 text-right">
-                        {formattedValue}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                return (
+                  <tr key={metric} className={rowBg}>
+                    <td
+                      className={`border px-2 py-1 font-medium sticky left-0 z-10 ${rowBg}`}
+                    >
+                      {metric}
+                    </td>
+                    {(activeResultsTab === 'consolidated' ? consolidatedData : standaloneData).map((row, idx) => {
+                      const value = row[metric];
+                      const formattedValue =
+                        value !== undefined
+                          ? metric === "OPM"
+                            ? `${parseFloat(value).toFixed(1)}%`
+                            : parseFloat(value).toLocaleString()
+                          : '—';
+
+                      return (
+                        <td key={idx} className="border px-2 py-1 text-right">
+                          {formattedValue}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
-        <div className="mt-6 text-gray-500 italic text-sm">No financial data available</div>
+        <div className="mt-6 text-gray-500 italic text-sm">
+          No financial data available
+        </div>
       )}
+
 
     </div>
   );

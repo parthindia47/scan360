@@ -70,9 +70,11 @@ const linksData = [
 
 function News() {
   return (
-    <div className="p-4">
+    <div className="p-4 mb-6">
       <h2 className="text-2xl font-bold mb-4">News & Resources</h2>
-      <div className="overflow-x-auto">
+
+      {/* Desktop table view */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="table-auto border-collapse w-full text-sm">
           <thead className="bg-gray-100">
             <tr>
@@ -97,15 +99,36 @@ function News() {
                       >
                         {section.links[rowIdx].name}
                       </a>
-                    ) : (
-                      ''
-                    )}
+                    ) : null}
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card/list view */}
+      <div className="md:hidden space-y-6">
+        {linksData.map((section, idx) => (
+          <div key={idx} className="border rounded-lg shadow-sm p-4 bg-white">
+            <h3 className="text-lg font-semibold mb-3">{section.category}</h3>
+            <ul className="space-y-2">
+              {section.links.map((link, linkIdx) => (
+                <li key={linkIdx}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
