@@ -1162,7 +1162,7 @@ def fetchNseJsonObj(urlType,
     else:
       final_end_date = toDate
 
-    logger1.info("BEFORE Function start_date ",start_date," end_date ",final_end_date)
+    #logger1.info("BEFORE Function start_date ",start_date," end_date ",final_end_date)
     # First, get response from the main URL to fetch cookies
     if not cookies:
       response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
@@ -1216,7 +1216,7 @@ def fetchNseJsonObj(urlType,
             end_date = final_end_date
 
         # Fetch the JSON object using the calculated start and end date
-        logger1.info("AFTER Function start_date ",start_date," end_date ",end_date)
+        #logger1.info("AFTER Function start_date ",start_date," end_date ",end_date)
         jsonUrl = getJsonUrlQuery(urlType=urlType, 
                                   index=index, 
                                   symbol=symbol, 
@@ -1242,7 +1242,7 @@ def fetchNseJsonObj(urlType,
 
         time.sleep(delaySec)  # Delay between API requests
 
-    logger1.info(jsonObjMaster)
+    #logger1.info(jsonObjMaster)
     return get_df_from_json_list(jsonObjMaster)
 
 # ==========================================================================
