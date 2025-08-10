@@ -27,6 +27,10 @@ function App() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+// First value → top = 5px
+// Second value → right and left = 5px
+// Third value → bottom = 20px
+
   return (
     <Router>
       <Navbar />

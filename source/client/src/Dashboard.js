@@ -132,7 +132,6 @@ function Dashboard() {
             ))}
           </div>
 
-
           {/* Info + Buttons */}
           <div className="text-sm text-gray-500 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
             <div className="text-gray-400">
@@ -180,16 +179,16 @@ function Dashboard() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto max-h-[80vh]">
+          <div className="overflow-x-auto">
             <table className="table-auto w-full border-collapse text-sm text-gray-800">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="sticky top-0 left-0 bg-gray-100 z-30 p-2">#</th>
-                  <th className="sticky top-0 left-[2.5rem] bg-gray-100 z-30 p-2 text-left">Industry</th>
+                  <th className="sticky left-0 bg-gray-100 z-20 p-2">#</th>
+                  <th className="sticky left-[2.5rem] bg-gray-100 z-20 p-2 text-left">Industry</th>
                   {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                     <th
                       key={field}
-                      className="sticky top-0 bg-gray-100 z-20 p-2 cursor-pointer"
+                      className="p-2 cursor-pointer"
                       onClick={() => toggleSort(activeType, field)}
                     >
                       {field}
@@ -236,7 +235,7 @@ function Dashboard() {
                         })
                         .map((stock) => (
                           <tr key={stock.symbol} className="bg-blue-50 border-t">
-                            <td className="sticky left-0 bg-blue-50 z-10 p-2 min-w-[50px] w-[70px]">
+                            <td className="sticky left-0 bg-blue-50 z-10 p-2">
                               <Sparklines data={stock.sparklineData} height={20} width={100}>
                                 <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
