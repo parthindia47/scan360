@@ -1,0 +1,6 @@
+requests
+yfinance
+pytz
+pandas
+PyPDF2
+pytesseract

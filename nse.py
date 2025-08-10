@@ -83,6 +83,11 @@ import PyPDF2
 import pytesseract
 import shutil
 import sys
+import traceback
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote
+import xml.etree.ElementTree as ET
+
+
 from pdf2image import convert_from_path
 from curl_cffi import requests
 from dataclasses import dataclass
@@ -92,9 +97,6 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from mcx import download_mcx_bhavcopy
-import traceback
-from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote
-import xml.etree.ElementTree as ET
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -2500,7 +2502,7 @@ def syncUpAllNseFillings(cookies = None):
 
   syncUpNseDocuments(urlType="announcement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="events",startDateOffset=3,endDateOffset=30, cookies=cookies)
+  syncUpNseDocuments(urlType="events",endDateOffset=30, cookies=cookies)
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
@@ -2511,7 +2513,7 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
   syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
   
-  syncUpNseDocuments(urlType="integratedResults", cookies=cookies)
+  syncUpNseDocuments(urlType="integratedResults", startDateOffset=3, cookies=cookies)
   
   syncUpNseDocuments(urlType="bulkDeals", cookies=cookies)
   syncUpNseDocuments(urlType="blockDeals", cookies=cookies)
@@ -4379,30 +4381,23 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
-# syncUpNseDocuments(urlType="integratedResults",startDateOffset=3, cookies=cookies_local)
 
-# eventsResultsSymbolList = get_financial_result_symbols(urlType="events", days=3)
-
-# mergedResultsList = merge_symbol_lists(eventsResultsSymbolList, integratedResultsSymbolList)
-# logger1.info(mergedResultsList)
 
 nseStockList = getAllNseSymbols(local=False)
-# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# syncUpYahooFinOtherSymbols()
+syncUpYahooFinOtherSymbols()
 
-# syncUpAllNseFillings(cookies=cookies_local)
-# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
-# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+syncUpAllNseFillings(cookies=cookies_local)
+integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# recalculateYFinStockInfo(useNseBhavCopy=True)
-
-
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # **************************************************************************
 
