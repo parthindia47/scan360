@@ -1877,7 +1877,7 @@ def convert_to_date(date_str, candle_type=None):
   Tries to parse date_str in common formats like %Y-%m-%d and %d-%m-%Y.
   Returns a datetime.date object.
   """
-  logger1.info("date_str",date_str)
+  logger1.info(f"date_str: {date_str}")
   for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
       try:
           return datetime.strptime(date_str, fmt).date()
@@ -3720,7 +3720,7 @@ def save_xml_from_url(url, save_dir="."):
         response.raise_for_status()
 
         # Extract filename from URL
-        parsed_url = urlparse(url)
+        parsed_url = urlparse(url, headers=headers, timeout=60)
         filename = os.path.basename(parsed_url.path)
 
         if not filename.lower().endswith(".xml"):

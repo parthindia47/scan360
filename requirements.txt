@@ -5,3 +5,4 @@ pandas
 PyPDF2
 pytesseract
 beautifulsoup4
+lxml
