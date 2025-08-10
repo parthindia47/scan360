@@ -180,7 +180,7 @@ function Dashboard() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto max-h-[80vh]">
+          <div className="overflow-x-auto max-h-[80vh] touch-pan-y">
             <table className="table-auto w-full border-collapse text-sm text-gray-800">
               <thead>
                 <tr className="bg-gray-100">
