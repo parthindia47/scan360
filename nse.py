@@ -1873,16 +1873,30 @@ and in our csv it is getting stored, as python date object
 
 '''
 def convert_to_date(date_str, candle_type=None):
-  """
-  Tries to parse date_str in common formats like %Y-%m-%d and %d-%m-%Y.
-  Returns a datetime.date object.
-  """
-  logger1.info(f"date_str: {date_str}")
-  for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
-      try:
-          return datetime.strptime(date_str, fmt).date()
-      except ValueError:
-          continue
+    logger1.info(f"date_str: {date_str}")
+
+    # Handle NaN or None
+    if pd.isna(date_str) or date_str is None:
+        return None
+
+    # If already a date/datetime, return as date
+    if isinstance(date_str, (datetime, date)):
+        return date_str if isinstance(date_str, date) else date_str.date()
+
+    # Convert non-strings to string
+    if not isinstance(date_str, str):
+        date_str = str(date_str)
+
+    # Try parsing in multiple formats
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+
+    # Could not parse
+    logger1.warning(f"Could not parse date: {date_str}")
+    return None
 
 def recalculate_financials(row, current_price, volume, candle_date, candle_type):
     updated_row = row.copy()
