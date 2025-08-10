@@ -236,7 +236,7 @@ function Dashboard() {
                         })
                         .map((stock) => (
                           <tr key={stock.symbol} className="bg-blue-50 border-t">
-                            <td className="sticky left-0 bg-blue-50 z-10 p-2">
+                            <td className="sticky left-0 bg-blue-50 z-10 p-2 min-w-[50px] w-[70px]">
                               <Sparklines data={stock.sparklineData} height={20} width={100}>
                                 <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
