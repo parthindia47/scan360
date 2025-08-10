@@ -86,17 +86,8 @@ import sys
 import traceback
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse, quote
 import xml.etree.ElementTree as ET
-
-
-from pdf2image import convert_from_path
-from curl_cffi import requests
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.options import Options
-from mcx import download_mcx_bhavcopy
 
 # =======================================================================
 # ========================== Classes ==================================
