@@ -99,14 +99,31 @@ function Trades() {
 
   const DealsTable = ({ rows, tabKey }) => {
     const sorted = sortData(rows, sortConfigs[tabKey]);
+    const scrollRef = React.useRef();
+
+    // Restore scroll position after sort
+    useEffect(() => {
+      if (scrollRef.current && scrollRef.current.savedScrollLeft != null) {
+        scrollRef.current.scrollLeft = scrollRef.current.savedScrollLeft;
+      }
+    }, [sortConfigs[tabKey]]);
+
+    const saveScrollPosition = () => {
+      if (scrollRef.current) {
+        scrollRef.current.savedScrollLeft = scrollRef.current.scrollLeft;
+      }
+    };
 
     return (
-      <div className="overflow-x-auto mb-6">
+        <div
+          ref={scrollRef}
+          onScroll={saveScrollPosition}
+          className="overflow-x-auto mb-6"
+        >
         <table className="table-auto border-collapse w-full text-sm text-gray-800">
           <thead className="bg-gray-200">
             <tr>
-              <th className="p-2 text-left sticky left-0 bg-gray-200 z-10">Symbol</th>
-              <th className="p-2 text-left">Company</th>
+              <th className="p-2 text-left sticky left-0 bg-gray-200 z-10">Company</th>
               {renderSortableHeader('Change', 'change', tabKey)}
               {renderSortableHeader('Date', 'date', tabKey)}
               <th className="p-2 text-left">Buyer/Seller</th>
@@ -126,10 +143,9 @@ function Trades() {
                     rel="noopener noreferrer"
                     className="text-blue-600 underline"
                   >
-                    {row.symbol || '—'}
+                    {row.name || row.company || '—'}
                   </a>
                 </td>
-                <td className="p-2">{row.name || row.company || '—'}</td>
                 <td className={`p-2 ${row.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {row.change != null ? `${row.change.toFixed(2)}%` : '—'}
                 </td>
