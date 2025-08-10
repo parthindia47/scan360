@@ -101,7 +101,7 @@ function Trades() {
     const sorted = sortData(rows, sortConfigs[tabKey]);
 
     return (
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto mb-6">
         <table className="table-auto border-collapse w-full text-sm text-gray-800">
           <thead className="bg-gray-200">
             <tr>
@@ -109,6 +109,9 @@ function Trades() {
               <th className="p-2 text-left">Company</th>
               {renderSortableHeader('Change', 'change', tabKey)}
               {renderSortableHeader('Date', 'date', tabKey)}
+              <th className="p-2 text-left">Buyer/Seller</th>
+              <th className="p-2 text-left">Type</th>
+              <th className="p-2 text-left">Mode</th>
               <th className="p-2">Qty</th>
               {renderSortableHeader('Deal Value', 'dealValue', tabKey)}
             </tr>
@@ -131,6 +134,9 @@ function Trades() {
                   {row.change != null ? `${row.change.toFixed(2)}%` : '—'}
                 </td>
                 <td className="p-2">{new Date(row.date).toLocaleDateString('en-IN')}</td>
+                <td className="p-2">{row.clientName || row.acquirerName || row.acqName || '—'}</td>
+                <td className="p-2">{row.buySell || row.acqSaleType || row.acqMode || '—'}</td>
+                <td className="p-2">{row.acquisitionMode || row.personCategory || '—'}</td>
                 <td className="p-2">{row.qty || row.noOfShareAcq || row.noOfShareSale || row.secAcq || '—'}</td>
                 <td className="p-2 font-medium">
                   {row.dealValue != null ? `₹${row.dealValue.toFixed(2)} Cr` : '—'}
