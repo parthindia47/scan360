@@ -1163,6 +1163,7 @@ def fetchNseJsonObj(urlType,
       final_end_date = toDate
 
     #logger1.info("BEFORE Function start_date ",start_date," end_date ",final_end_date)
+    logger1.info(f"BEFORE start_date={start_date} end_date={final_end_date}")
     # First, get response from the main URL to fetch cookies
     if not cookies:
       response = fetchUrl(getBaseUrl(urlType=urlType,symbol=symbol))
@@ -1217,6 +1218,8 @@ def fetchNseJsonObj(urlType,
 
         # Fetch the JSON object using the calculated start and end date
         #logger1.info("AFTER Function start_date ",start_date," end_date ",end_date)
+        logger1.info(f"AFTER start_date={start_date} end_date={end_date}")
+    
         jsonUrl = getJsonUrlQuery(urlType=urlType, 
                                   index=index, 
                                   symbol=symbol, 
@@ -2308,7 +2311,8 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
     
   # logger1.info(df)
 
-  logger1.info("endDateOffset",endDateOffset,"last_row_date ",last_row_date," start_date ",start_date," end_date ",end_date)
+  logger1.info(f"endDateOffset={endDateOffset} last_row_date={last_row_date} start_date={start_date} end_date={end_date}")
+
   try:
     master_json_list = fetchNseJsonObj(urlType=urlType, 
                                       index=getIndexForNseDocuments(urlType), 
