@@ -1912,7 +1912,7 @@ def recalculate_financials(row, current_price, volume, candle_date, candle_type)
       updated_row['currentPrice'] = current_price
       updated_row['lastUpdateDate'] = candle_date
     else:
-      logger1.info("Not updating price, same date ", candle_date)
+      logger1.info(f"Not updating price, same date {candle_date}")
       pass
       
     updated_row['volume'] = volume
