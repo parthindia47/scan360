@@ -150,7 +150,7 @@ function Results() {
           <tbody>
             {sortedData.map((row, idx) => (
               <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="p-2 sticky left-0 bg-white z-10 font-medium">
+                <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">
                   <a
                     href={`symbol/${row.symbol}`}
                     target="_blank"

@@ -1,7 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const announcementKeywords = [ /* same list as your original */ ];
+const announcementKeywords = [
+  "Acquisition", "Acquire", "Amalgamation", "Arrangement", "Merger", "Demerge", "De merge", "Demerger", "disinvestment",
+  "Re-structuring", "Restructuring", "Offer For Sale", "Bonus", "split", "Buy back", "Buyback", "Rights issue",
+  "Right issue", "Public offer", "public offering", "fund raise", "fund raising", "raise fund", "New Project",
+  "new contract", "new order", "order received", "Awarding of order", "Bagging", "beg", "begs", "winning", "Expansion",
+  "to invest", "settlement", "Raising of funds", "Rating", "clarification", "Partnership", "Joint venture",
+  "Collaboration", "Capital expenditure", "capacity addition", "Strategic alliance", "Revenue growth", "Profit increase",
+  "Earnings beat", "Record earnings", "Cost reduction", "Debt reduction", "Product launch", "New technology",
+  "Innovation", "License", "Patent granted", "FDA approval", "Contract extension", "Market expansion", "Upgraded",
+  "downgraded", "Buy recommendation", "Positive outlook", "Guidance raised", "Milestone achieved", "Supply agreement",
+  "Exclusive agreement", "Patent filing", "Product approval", "Regulatory approval", "Secondary offering",
+  "Share repurchase", "Equity infusion", "Capital raise", "Increase in volume", "Spurt in Volume",
+  "Movement in price", "name change", "Demand Notice", "Incorporation"
+];
 
 function Announcements() {
   const [data, setData] = useState([]);
@@ -128,7 +141,7 @@ function Announcements() {
               <span className="text-gray-600">Filters:</span>
               {[
                 { label: 'Important Keywords', state: filtered, set: setFiltered },
-                { label: 'Market Cap > 800 Cr', state: marketCapFilter, set: setMarketCapFilter },
+                // { label: 'Market Cap > 800 Cr', state: marketCapFilter, set: setMarketCapFilter },
                 { label: 'Price Move > 3%', state: priceChangeFilter, set: setPriceChangeFilter }
               ].map((btn, i) => (
                 <button
