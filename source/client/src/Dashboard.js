@@ -183,8 +183,8 @@ function Dashboard() {
             <table className="table-auto w-full border-collapse text-sm text-gray-800">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="sticky left-0 bg-gray-100 z-20 p-2">#</th>
-                  <th className="sticky left-[2.5rem] bg-gray-100 z-20 p-2 text-left">Industry</th>
+                  <th className="sticky left-0 top-0 bg-gray-100 z-30 p-2 w-[70px] min-w-[70px] max-w-[70px]">#</th>
+                  <th className="sticky left-[70px] top-0 bg-gray-100 z-30 p-2 text-left min-w-[200px] max-w-[200px]">Industry</th>
                   {/* Header */}
                   {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                     <th
@@ -215,9 +215,9 @@ function Dashboard() {
                   .map(([industry, data], index) => (
                     <React.Fragment key={`${activeType}-${industry}`}>
                       <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="sticky left-0 bg-inherit z-10 p-2">{index + 1}</td>
+                        <td className="sticky left-0 bg-inherit z-10 p-2 w-[70px] min-w-[70px] max-w-[70px]">{index + 1}</td>
                         <td
-                          className="sticky left-[2.5rem] bg-inherit z-10 p-2 cursor-pointer text-blue-600"
+                          className="sticky left-[70px] bg-inherit z-10 p-2 cursor-pointer text-blue-600 min-w-[200px] max-w-[200px]"
                           onClick={() => toggleExpand(industry)}
                         >
                           {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} ({data.stocks.length})
@@ -245,12 +245,12 @@ function Dashboard() {
                         })
                         .map((stock) => (
                           <tr key={stock.symbol} className="bg-blue-50 border-t">
-                            <td className="sticky left-0 bg-blue-50 z-10 p-2 min-w-[50px] w-[70px]">
+                            <td className="sticky left-0 bg-blue-50 z-10 p-2 w-[70px] min-w-[70px] max-w-[70px]">
                               <Sparklines data={stock.sparklineData} height={20} width={100}>
                                 <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
                             </td>
-                            <td className="sticky left-[2.5rem] bg-blue-50 z-10 p-2">
+                            <td className="sticky left-[70px] bg-blue-50 z-10 p-2 min-w-[200px] max-w-[200px]">
                               <a
                                 href={`symbol/${stock.symbol}`}
                                 target="_blank"
