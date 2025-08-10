@@ -908,9 +908,9 @@ def fetchGetJson(url,cookies=None):
             jsonData = response.json()
             return jsonData
         else:
-            logger1.info("Failed to download JSON. Status code:", response.status_code)
+            logger1.info(f"Failed to download JSON. Status code: {response.status_code}")
     except Exception as e:
-        logger1.info("An error occurred:", e)
+        logger1.info(f"An error occurred: {e}")
 
 '''
 returns the response of given url
@@ -926,9 +926,9 @@ def fetchUrl(url):
         if response.status_code == 200:
           return response
         else:
-            logger1.info("Failed to fetch. Status code:", response.status_code)
+            logger1.info(f"Failed to fetch. Status code: {response.status_code}")
     except Exception as e:
-        logger1.info("An error occurred:", e)
+        logger1.info(f"An error occurred: {e}")
 
 # ==========================================================================
 # ============================  File Download ==============================
@@ -1077,7 +1077,7 @@ def downloadFileFromUrl(url, outputDir="."):
         
         logger1.info(f"File downloaded successfully as '{fileOutputPath}'")
     except (requests.exceptions.RequestException, FileNotFoundError) as e:
-        logger1.info("Error:", e)
+        logger1.info(f"An error occurred: {e}")
 
 def ifStockFilterPass(ticker):
     result = False
@@ -1388,8 +1388,8 @@ def calculatePercentageDifference(yFinTicker, date):
         logger1.info("Date cannot be higher or equal to today's date")
         return None
 
-    logger1.info("start_date: ", start_date)
-    logger1.info("end_date: ", end_date)
+    logger1.info(f"start_date: {start_date}")
+    logger1.info(f"end_date: {end_date}")
 
     try:
       # Fetch historical data for the specified date range
@@ -2258,7 +2258,7 @@ def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
             if result is not None and not result.empty:
                 result.reset_index(inplace=True)
                 result.to_csv(csv_filename, index=False, encoding='utf-8')
-                logger1.info("Saved:", csv_filename)
+                logger1.info(f"Saved: {csv_filename}")
                 time.sleep(delaySec)
             else:
                 logger1.warning("Empty result for", obj["SYMBOL"])
@@ -2321,7 +2321,7 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
                                       cookies=cookies)
     logger1.info(f"New Entries : {len(master_json_list)}")
     if master_json_list.empty:
-        logger1.warning("No new entries for ", urlType, ", Exiting.")
+        logger1.warning(f"No new entries for {urlType}, Exiting.")
         return
     
     df_new = processJsonToDfForNseDocument(master_json_list, urlType)
@@ -2346,7 +2346,7 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
     logger1.info(">>> saved " + csv_filename)
 
   except Exception as e:
-      logger1.info(urlType, " - An error occurred:", e)
+      logger1.info(f"{urlType} - An error occurred: {e}")
       traceback.print_exc()  # <-- this prints the full stack trace with line number
       
       
@@ -2388,7 +2388,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
             start_date = last_row_date + timedelta(days=1) # next day
             end_date = current_date + timedelta(days=1)
         except Exception as e:
-            logger1.info("An error occurred:", e)
+            logger1.info(f"An error occurred: {e}")
             traceback.print_exc()  # <-- this prints the full stack trace with line number
             unsupported_tickers.append(obj["SYMBOL"])
             continue
@@ -2436,7 +2436,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
                   if not useNseBhavCopy:
                       time.sleep(delaySec)
               except Exception as e:
-                  logger1.info("An error occurred:", e)
+                  logger1.info(f"An error occurred: {e}")
         else:
            logger1.info("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
            unsupported_tickers.append(obj["SYMBOL"])
@@ -2698,7 +2698,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
                     if not useNseBhavCopy:
                         time.sleep(delaySec)
                 except Exception as e:
-                    logger1.info("An error occurred:", e)
+                    logger1.info(f"An error occurred: {e}")
             else:
               logger1.info("UNSUPPORTED " + str(idx) + " " + obj["SYMBOL"] )
               unsupported_tickers.append(obj["SYMBOL"])
@@ -3114,7 +3114,7 @@ def get_bhavcopy(date=None, saveCSV=False):
         if saveCSV:
             filename = f"output/bhavcopy_{date_str}.csv"
             df.to_csv(filename, index=False)
-            logger1.info(f"📁 Saved to {filename}")
+            logger1.info(f"Saved to {filename}")
 
         return df
     except Exception as e:
@@ -3739,7 +3739,7 @@ def save_xml_from_url(url, save_dir="."):
 
     except Exception as e:
         logger1.warning(f"Error downloading or saving XML from {url}")
-        logger1.info("Error:", e)
+        logger1.info(f"Error: {e}")
         return None
 
 def modify_result_files(nseStockList, resultType="Consolidated"):
