@@ -200,7 +200,7 @@ function Trades() {
     <div className="p-4">
 
       {/* 🔹 Tabs */}
-      <div className="flex border-b mb-4 gap-x-6 ml-1">
+      <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
         {['bulkDeals', 'blockDeals', 'shortDeals', 'sastDeals', 'insiderDeals'].map(tab => (
           <a
             key={tab}
