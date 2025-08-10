@@ -203,6 +203,7 @@ function SymbolPage() {
               </div>
 
               {/* Row 2: Market Cap, ROE, PE */}
+              {stockInfo.quoteType == "EQUITY" && (
               <div className="text-sm text-gray-800 flex flex-wrap gap-x-6 gap-y-2 mb-2">
                 <span>
                   <span className="text-gray-500">NSE:</span>{' '}
@@ -210,10 +211,10 @@ function SymbolPage() {
                 </span>
 
                 <span>
-                  <span className="text-gray-500">ROE:</span>{' '}
-                  {stockInfo.returnOnEquity
-                    ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
-                    : '—'}
+                  <span className="text-gray-500">Market Cap:</span>{' '}
+                  {isNaN(parseFloat(stockInfo.marketCap))
+                    ? '—'
+                    : `₹${(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr`}
                 </span>
 
                 <span>
@@ -224,14 +225,16 @@ function SymbolPage() {
                 </span>
 
                 <span>
-                  <span className="text-gray-500">Market Cap:</span>{' '}
-                  {isNaN(parseFloat(stockInfo.marketCap))
-                    ? '—'
-                    : `₹${(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr`}
+                  <span className="text-gray-500">ROE:</span>{' '}
+                  {stockInfo.returnOnEquity
+                    ? `${(stockInfo.returnOnEquity * 100).toFixed(2)}%`
+                    : '—'}
                 </span>
               </div>
+              )}
 
               {/* Row 3: Website Link */}
+              {stockInfo.quoteType == "EQUITY" && (
               <div className="text-base text-gray-800 mb-1 flex flex-wrap gap-3">
                 {stockInfo.website && (
                   <div className="flex items-center gap-1">
@@ -263,6 +266,7 @@ function SymbolPage() {
                   </a>
                 </div>
               </div>
+              )}
 
             </div>
 
@@ -332,7 +336,7 @@ function SymbolPage() {
             <XAxis
               dataKey="date"
               ticks={isMobile ? xTicks.filter((_, i) => i % 2 === 0) : xTicks}
-              tick={{ fontSize: isMobile ? 8 : 10, fill: "#9ca3af" }} // lighter tick color
+              tick={{ fontSize: isMobile ? 8 : 10, fill: "#4f5763" }} // lighter tick color
               axisLine={{ stroke: "#e5e7eb" }}
               tickLine={{ stroke: "#e5e7eb" }}
             />
@@ -341,13 +345,13 @@ function SymbolPage() {
               yAxisId="left"
               orientation="left"
               ticks={volumeTicks}
-              tick={{ fontSize: isMobile ? 8 : 10, fill: "#9ca3af" }}
+              tick={{ fontSize: isMobile ? 8 : 10, fill: "#4f5763" }}
               axisLine={{ stroke: "#e5e7eb" }}
               tickLine={{ stroke: "#e5e7eb" }}
               vertical={false}
               label={
                 !isMobile
-                  ? { value: "Volume", angle: -90, position: "insideLeft", fill: "#9ca3af" }
+                  ? { value: "Volume", angle: -90, position: "insideLeft", fill: "#4f5763" }
                   : undefined
               }
               tickFormatter={(value) => {
@@ -362,12 +366,12 @@ function SymbolPage() {
               orientation="right"
               domain={[yMin * 0.98, yMax * 1.02]}
               ticks={priceTicks}
-              tick={{ fontSize: isMobile ? 10 : 12, fill: "#9ca3af" }}
+              tick={{ fontSize: isMobile ? 10 : 12, fill: "#4f5763" }}
               axisLine={{ stroke: "#e5e7eb" }}
               tickLine={{ stroke: "#e5e7eb" }}
               label={
                 !isMobile
-                  ? { value: "Price", angle: -90, position: "insideRight", fill: "#9ca3af" }
+                  ? { value: "Price", angle: -90, position: "insideRight", fill: "#4f5763" }
                   : undefined
               }
               tickFormatter={(value) => value.toFixed(decimalPoints)}
@@ -435,7 +439,7 @@ function SymbolPage() {
       </div>
 
       {(consolidatedData.length > 0 || standaloneData.length > 0) ? (
-        <div className="mt-2 overflow-x-auto rounded-lg border border-gray-300">
+        <div className="mt-2 overflow-x-auto rounded-lg border border-gray-300 mb-4">
           {/* Table */}
           <table className="min-w-full border text-sm text-left">
             <thead className="bg-gray-100">
@@ -489,11 +493,10 @@ function SymbolPage() {
           </table>
         </div>
       ) : (
-        <div className="mt-6 text-gray-500 italic text-sm">
+        <div className="mt-6 text-gray-500 italic text-sm mb-4">
           No financial data available
         </div>
       )}
-
 
     </div>
   );
