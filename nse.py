@@ -1601,7 +1601,7 @@ candles are in descending order i.e oldest are first.
 '''
 def getPercentageChange(symbol,annDate,hash):
     resp = {"Open":None,"1D":None,"5D":None,"10D":None}
-    local_url = f"stock_charts\\{symbol}.csv"
+    local_url = os.path.join("stock_charts", f"{symbol}.csv")
     
     # Get the absolute path of the local CSV file
     abs_path = os.path.abspath(local_url)
@@ -1705,7 +1705,7 @@ return list of objects [{},{},{}]
 '''
 
 def readYFinStockInfo():
-    local_url = "stock_info\\csv\\yFinStockInfo_NSE.csv"
+    local_url = os.path.join("stock_info", "csv", "yFinStockInfo_NSE.csv")
     json_data = None
 
     if os.path.exists(local_url):
@@ -1795,7 +1795,7 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
     master_list = []
     unsupported_tickers = []
     lookup_list = []
-    local_url = "stock_info\\yFinStockInfo_" + exchange + ".csv"
+    local_url = os.path.join("stock_info", f"yFinStockInfo_{exchange}.csv")
     # NSE = "SYMBOL" , BSE = "Security Id"
     symbolCsvId = "SYMBOL" if exchange == "NSE" else "Security Id" 
     # Load existing CSV
@@ -1842,7 +1842,7 @@ def fetchYFinStockInfo(nseStockList, delay=5, partial=False, exchange="NSE"):
 
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinStockInfo_" + exchange + ".csv"
+      csv_filename = os.path.join("stock_info", "temp", f"yFinUnsupportedTickers_fetchYFinStockInfo_{exchange}.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
 
@@ -1970,7 +1970,7 @@ quoteType = EQUITY
 def recalculateYFinStockInfo(useNseBhavCopy=True):
     bhavcopy_not_found_tickers = []
     exchange_clean = None
-    local_url = "stock_info\\yFinStockInfo_NSE.csv"
+    local_url = os.path.join("stock_info", "yFinStockInfo_NSE.csv")
 
     if useNseBhavCopy:
       #bhavCopy = get_bhavcopy(date(2025, 7, 2))
@@ -2012,7 +2012,7 @@ def recalculateYFinStockInfo(useNseBhavCopy=True):
             df.loc[idx] = recalculate_financials(row, current_price=close_price, volume=volume, candle_date=date1, candle_type=exchange_clean)
         else:
           # Other Tickers
-          symbol_csv_filename = "stock_charts\\" + symbol_clean + ".csv"
+          symbol_csv_filename = os.path.join("stock_charts", f"{symbol_clean}.csv")
           df_symbol = pd.read_csv(symbol_csv_filename)
 
           close_price = df_symbol.iloc[-1]['Close']
@@ -2036,7 +2036,7 @@ def recalculateYFinStockInfo(useNseBhavCopy=True):
     
     if bhavcopy_not_found_tickers:
       df = pd.DataFrame(bhavcopy_not_found_tickers)
-      csv_filename = "stock_info\\temp\\bhavcopy_not_found_tickers_recalculateYFinStockInfo_NSE.csv"
+      csv_filename = os.path.join("stock_info", "temp", "bhavcopy_not_found_tickers_recalculateYFinStockInfo_NSE.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
 
@@ -2068,7 +2068,7 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, 
 
     for idx, obj in enumerate(nseStockList):
         logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
-        csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
+        csv_filename = os.path.join("stock_charts", f"{obj['SYMBOL']}.csv")
 
         if partial and os.path.exists(csv_filename):
             continue
@@ -2095,7 +2095,7 @@ def fetchYFinTickerCandles(nseStockList, symbolType, delaySec=6, partial=False, 
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_fetchYFinTickerCandles.csv"
+      csv_filename = os.path.join("stock_info", "temp", "yFinUnsupportedTickers_fetchYFinTickerCandles.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
 
@@ -2194,8 +2194,8 @@ Note:
 df.to_dict(orient='records') will return <class 'list'>
 '''
 def updatePercentageForAnnouncements():
-    local_url = "stock_fillings\\announcements.csv"
-    output_url = "output\\announcements_with_percentage.csv"
+    local_url = os.path.join("stock_fillings", "announcements.csv")
+    output_url = os.path.join("output", "announcements_with_percentage.csv")
     unsupported_symbols = []
     
     # Read the CSV data into a DataFrame
@@ -2215,7 +2215,7 @@ def updatePercentageForAnnouncements():
 
     if unsupported_symbols:
       df = pd.DataFrame(unsupported_symbols)
-      csv_filename = "output\\unsupportedSymbols.csv"
+      csv_filename = os.path.join("output", "unsupportedSymbols.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
 
@@ -2231,7 +2231,7 @@ def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
 
     for idx, obj in enumerate(nseCommodityList):
         logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
-        csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
+        csv_filename = os.path.join("stock_charts", f"{obj['SYMBOL']}.csv")
 
         if partial and os.path.exists(csv_filename):
             continue
@@ -2267,7 +2267,7 @@ def fetchNseCommodity(nseCommodityList, delaySec=6, partial=False):
   
     if unsupported_commodity:
         df = pd.DataFrame(unsupported_commodity, columns=["SYMBOL"])
-        df.to_csv("stock_info\\temp\\unsupported_commodities.csv", index=False, encoding='utf-8')
+        df.to_csv(os.path.join("stock_info", "temp", "unsupported_commodities.csv"), index=False, encoding='utf-8')
         logger1.info("Unsupported commodities saved.")        
 # ==========================================================================
 # ============================  Sync Up API ================================
@@ -2368,7 +2368,7 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
 
     for idx, obj in enumerate(nseStockList):
         logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
-        csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
+        csv_filename = os.path.join("stock_charts", f"{obj['SYMBOL']}.csv")
 
         # Read the CSV data into a DataFrame
         try:
@@ -2439,13 +2439,13 @@ def syncUpYFinTickerCandles(nseStockList, symbolType, delaySec=6, useNseBhavCopy
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpYFinTickerCandles_" + symbolType + ".csv"
+      csv_filename = os.path.join("stock_info", "temp", f"yFinUnsupportedTickers_syncUpYFinTickerCandles_{symbolType}.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
       
     if split_tickers:
       df = pd.DataFrame(split_tickers)
-      csv_filename = "stock_info\\temp\\yFinSplitTickers_syncUpYFinTickerCandles" + symbolType + ".csv"
+      csv_filename = os.path.join("stock_info", "temp", f"yFinSplitTickers_syncUpYFinTickerCandles{symbolType}.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
       
@@ -2588,8 +2588,8 @@ use separate = True if you want to store current delta in a separate file, it
 will be stored with suffix of last hash.
 '''
 def syncUpCalculatePercentageForAnnouncement(separate=False):
-    input_announcement_csv = "stock_fillings\\announcements.csv"
-    output_csv = "output\\announcements_with_percentage.csv"
+    input_announcement_csv = os.path.join("stock_fillings", "announcements.csv")
+    output_csv = os.path.join("output", "announcements_with_percentage.csv")
 
     processed = getLastProcessedHashForPercentage(output_csv)
 
@@ -2610,7 +2610,7 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
     
     df = pd.DataFrame(json_data)
     if separate:
-      output_csv = "output\\announcements_with_percentage" + "_" + str(processed["processed_hash"]) + ".csv"
+      output_csv = os.path.join("output", f"announcements_with_percentage_{processed['processed_hash']}.csv")
       df.to_csv(output_csv, index=False, encoding='utf-8')
     else:
       df.to_csv(output_csv, index=False, header=False, mode='a', encoding='utf-8')
@@ -2618,7 +2618,7 @@ def syncUpCalculatePercentageForAnnouncement(separate=False):
 
     if unsupported_symbols:
       df = pd.DataFrame(unsupported_symbols)
-      csv_filename = "output\\unsupportedSymbols" + "_" + str(processed["processed_hash"]) + ".csv"
+      csv_filename = os.path.join("output", f"unsupportedSymbols_{processed['processed_hash']}.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
 
@@ -2637,7 +2637,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
 
     for idx, obj in enumerate(nseCommodityList):
         logger1.info("fetching " + str(idx) + " " + obj["SYMBOL"] )
-        csv_filename = "stock_charts\\" + obj["SYMBOL"] + ".csv"
+        csv_filename = os.path.join("stock_charts", f"{obj['SYMBOL']}.csv")
 
         # Read the CSV data into a DataFrame
         try:
@@ -2705,7 +2705,7 @@ def syncUpNseCommodity(nseCommodityList, delaySec=6, useNseBhavCopy = False, coo
            
     if unsupported_tickers:
       df = pd.DataFrame(unsupported_tickers)
-      csv_filename = "stock_info\\temp\\yFinUnsupportedTickers_syncUpNseCommodity.csv"
+      csv_filename = os.path.join("stock_info", "temp", "yFinUnsupportedTickers_syncUpNseCommodity.csv")
       df.to_csv(csv_filename, index=False, encoding='utf-8')
       logger1.info("saved " + csv_filename)
 
@@ -2875,12 +2875,12 @@ def generateAnnouncementAnalysis():
     fetchNseDocuments(urlType="announcement",
                       start_date=datetime(2024, 5, 4), 
                       end_date=datetime(2024, 5, 4),
-                      file_name="stock_fillings\\announcements_" + formatted_datetime + ".csv")
+                      file_name = os.path.join("stock_fillings", f"announcements_{formatted_datetime}.csv"))
 
-    downloadFilesFromCsvList("stock_fillings\\announcements_" + formatted_datetime + ".csv",
+    downloadFilesFromCsvList(os.path.join("stock_fillings", f"announcements_{formatted_datetime}.csv"),
                             downloadDir="downloads")
 
-    searchKeywordsFromCsvList("stock_fillings\\announcements_" + formatted_datetime + ".csv",
+    searchKeywordsFromCsvList(os.path.join("stock_fillings", f"announcements_{formatted_datetime}.csv"),
                               announcementKeywords,
                               downloadDir="downloads")
 
