@@ -185,10 +185,13 @@ function Dashboard() {
                 <tr className="bg-gray-100">
                   <th className="sticky left-0 bg-gray-100 z-20 p-2">#</th>
                   <th className="sticky left-[2.5rem] bg-gray-100 z-20 p-2 text-left">Industry</th>
+                  {/* Header */}
                   {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                     <th
                       key={field}
-                      className="p-2 cursor-pointer"
+                      className={`sticky top-0 bg-gray-100 z-20 p-2 cursor-pointer ${
+                        field === 'ltpVs52WHigh' ? 'min-w-[100px] max-w-[100px] text-center' : ''
+                      }`}
                       onClick={() => toggleSort(activeType, field)}
                     >
                       {field}
@@ -196,6 +199,7 @@ function Dashboard() {
                         (sortConfigs[activeType].direction === 'asc' ? ' ↑' : ' ↓')}
                     </th>
                   ))}
+
                 </tr>
               </thead>
               <tbody>
@@ -218,8 +222,14 @@ function Dashboard() {
                         >
                           {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} ({data.stocks.length})
                         </td>
+
+                        {/* Data rows */}
                         {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
-                          <td key={field} style={getColorStyle(data.weightedReturns[weighted ? field : field + '_N'])}>
+                          <td
+                            key={field}
+                            className={field === 'ltpVs52WHigh' ? 'min-w-[100px] max-w-[100px] text-center' : ''}
+                            style={getColorStyle(data.weightedReturns[weighted ? field : field + '_N'])}
+                          >
                             {data.weightedReturns[weighted ? field : field + '_N'] || '-'}
                           </td>
                         ))}
@@ -235,7 +245,7 @@ function Dashboard() {
                         })
                         .map((stock) => (
                           <tr key={stock.symbol} className="bg-blue-50 border-t">
-                            <td className="sticky left-0 bg-blue-50 z-10 p-2">
+                            <td className="sticky left-0 bg-blue-50 z-10 p-2 min-w-[50px] w-[70px]">
                               <Sparklines data={stock.sparklineData} height={20} width={100}>
                                 <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
