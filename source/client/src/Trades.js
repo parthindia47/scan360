@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
 import axios from 'axios';
 
 function Trades() {
@@ -99,25 +99,10 @@ function Trades() {
 
   const DealsTable = ({ rows, tabKey }) => {
     const sorted = sortData(rows, sortConfigs[tabKey]);
-    const scrollRef = React.useRef();
 
-    // Restore scroll position after sort
-    useEffect(() => {
-      if (scrollRef.current && scrollRef.current.savedScrollLeft != null) {
-        scrollRef.current.scrollLeft = scrollRef.current.savedScrollLeft;
-      }
-    }, [sortConfigs[tabKey]]);
-
-    const saveScrollPosition = () => {
-      if (scrollRef.current) {
-        scrollRef.current.savedScrollLeft = scrollRef.current.scrollLeft;
-      }
-    };
 
     return (
         <div
-          ref={scrollRef}
-          onScroll={saveScrollPosition}
           className="overflow-x-auto mb-6"
         >
         <table className="table-auto border-collapse w-full text-sm text-gray-800">
@@ -146,7 +131,7 @@ function Trades() {
                     {row.name || row.company || '—'}
                   </a>
                 </td>
-                <td className={`p-2 ${row.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <td className={`p-2 ${row.change ? row.change >= 0 ? 'text-green-600' : 'text-red-600': 'text-gray-600'}`}>
                   {row.change != null ? `${row.change.toFixed(2)}%` : '—'}
                 </td>
                 <td className="p-2">{new Date(row.date).toLocaleDateString('en-IN')}</td>
