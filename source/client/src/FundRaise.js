@@ -178,7 +178,6 @@ function FundRaise() {
         ))}
       </div>
 
-
       {/* 🔹 Preferential Issue */}
       {activeTab === 'prefIssue' && (
         <>
@@ -187,10 +186,9 @@ function FundRaise() {
           ) : (
         <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
+            <thead className="bg-gray-200 text-left sticky top-0 z-40">
               <tr>
-                <th className="p-2 text-left">Symbol</th>
-                <th className="p-2 text-left">Company</th>
+                <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
                 {renderSortableHeader('Change', 'change', 'prefIssue')}
                 <th className="p-2 text-left">Allotment Date</th>
                 {renderSortableHeader('System Date', 'systemDate', 'prefIssue')}
@@ -202,17 +200,16 @@ function FundRaise() {
             <tbody>
               {sortedPrefData.map((row, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                  <td className="p-2">
+                  <td className="p-2 sticky left-0 bg-white z-10 font-medium">
                     <a
                       href={`symbol/${row.symbol}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 underline"
                     >
-                      {row.symbol || '—'}
+                      {row.nameOfTheCompany || '—'}
                     </a>
                   </td>
-                  <td className="p-2">{row.nameOfTheCompany || '—'}</td>
                   <td className="p-2">
                     {getChange(row.currentPrice, row.previousClose)}
                   </td>

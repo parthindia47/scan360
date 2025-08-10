@@ -102,13 +102,11 @@ function Trades() {
 
 
     return (
-        <div
-          className="overflow-x-auto mb-6"
-        >
+        <div className="overflow-x-auto mb-6">
         <table className="table-auto border-collapse w-full text-sm text-gray-800">
-          <thead className="bg-gray-200">
+          <thead className="bg-gray-200 text-left sticky top-0 z-40">
             <tr>
-              <th className="p-2 text-left sticky left-0 bg-gray-200 z-10">Company</th>
+              <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
               {renderSortableHeader('Change', 'change', tabKey)}
               {renderSortableHeader('Date', 'date', tabKey)}
               <th className="p-2 text-left">Buyer/Seller</th>
@@ -121,7 +119,7 @@ function Trades() {
           <tbody>
             {sorted.map((row, idx) => (
               <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="p-2 sticky left-0 bg-white z-10">
+                <td className="p-2 sticky left-0 bg-white z-10 font-medium">
                   <a
                     href={`symbol/${row.symbol}`}
                     target="_blank"
