@@ -254,7 +254,7 @@ function UpcomingEvents() {
   return (
     <div className="p-4 mb-4">
       {/* 🔹 Navbar Tabs */}
-      <div className="flex border-b mb-4 gap-x-6 ml-1">
+      <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
         {['events', 'upcomingIssues', 'forthcomingListing', 'forthcomingOfs'].map(tab => (
           <a
             href="#"
