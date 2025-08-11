@@ -184,14 +184,12 @@ function Dashboard() {
               <thead>
                 <tr className="bg-gray-100">
                   <th className="sticky left-0 top-0 bg-gray-100 z-30 p-2 w-[70px] min-w-[70px] max-w-[70px]">#</th>
-                  <th className="sticky left-[70px] top-0 bg-gray-100 z-30 p-2 text-left min-w-[200px] max-w-[200px]">Industry</th>
+                  <th className="sticky left-[70px] top-0 bg-gray-100 z-30 p-2 text-left min-w-[250px] max-w-[250px]">Industry</th>
                   {/* Header */}
-                  {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
+                  {['vs52WH', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                     <th
                       key={field}
-                      className={`sticky top-0 bg-gray-100 z-20 p-2 cursor-pointer ${
-                        field === 'ltpVs52WHigh' ? 'min-w-[100px] max-w-[100px] text-center' : ''
-                      }`}
+                      className={`sticky top-0 bg-gray-100 z-20 p-2 cursor-pointer`}
                       onClick={() => toggleSort(activeType, field)}
                     >
                       {field}
@@ -217,19 +215,15 @@ function Dashboard() {
                       <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="sticky left-0 bg-inherit z-10 p-2 w-[70px] min-w-[70px] max-w-[70px]">{index + 1}</td>
                         <td
-                          className="sticky left-[70px] bg-inherit z-10 p-2 cursor-pointer text-blue-600 min-w-[200px] max-w-[200px]"
+                          className="sticky left-[70px] bg-inherit z-10 p-2 cursor-pointer text-blue-600 min-w-[250px] max-w-[250px]"
                           onClick={() => toggleExpand(industry)}
                         >
                           {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} ({data.stocks.length})
                         </td>
 
                         {/* Data rows */}
-                        {['ltpVs52WHigh', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
-                          <td
-                            key={field}
-                            className={field === 'ltpVs52WHigh' ? 'min-w-[100px] max-w-[100px] text-center' : ''}
-                            style={getColorStyle(data.weightedReturns[weighted ? field : field + '_N'])}
-                          >
+                        {['vs52WH', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
+                            <td key={field} style={getColorStyle(data.weightedReturns[weighted ? field : field + '_N'])}>
                             {data.weightedReturns[weighted ? field : field + '_N'] || '-'}
                           </td>
                         ))}
@@ -250,7 +244,7 @@ function Dashboard() {
                                 <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
                             </td>
-                            <td className="sticky left-[70px] bg-blue-50 z-10 p-2 min-w-[200px] max-w-[200px]">
+                            <td className="symbol-cell sticky left-[70px] bg-blue-50 z-10 p-2 min-w-[250px] max-w-[250px]">
                               <a
                                 href={`symbol/${stock.symbol}`}
                                 target="_blank"
@@ -259,15 +253,37 @@ function Dashboard() {
                               >
                                 {stock.name}
                               </a>
+                                {" "}
+                                {activeType === 'USD' ? 
+                                  `(CMP $${(stock.price ?? 0).toFixed(3)})` :
+                                  activeType === 'WORLD_INDEX' ?
+                                  `(CMP ${(stock.price ?? 0).toFixed(2)})` :
+                                  `(CMP ₹${(stock.price ?? 0).toFixed(2)})`
+                                }
+                                {activeType === 'EQUITY' && (                                
+                                  <>
+                                  <br />
+                                    {"PE " + (stock.pe ?? 0).toFixed(2) +
+                                    " | ROE " + ((stock.roe ?? 0) * 100).toFixed(2) + "%" +
+                                    " | Mcap ₹" + ((stock.marketCap ?? 0) / 1e7).toFixed(2) + " Cr"}
+                                  <br />
+                                  {Array.isArray(stock.events) && stock.events.length > 0 && (
+                                    <div className="text-gray-500 text-sm mt-1">
+                                      {stock.events.map((e, idx) => (
+                                        <div key={idx}>📌 {e.purpose} - {formatDate(e.date)}</div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  </>
+                                )}
                             </td>
-                            {["ltpVs52WHigh", "1D", "1W", "1M", "3M", "6M", "1Y"].map((field) => (
+                              {['vs52WH', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                               <td key={field} style={getColorStyle(stock.dummyData[field])}>
-                                {stock.dummyData[field] || "-"}
+                                  {stock.dummyData[field] || '-'}
                               </td>
                             ))}
                           </tr>
                         ))}
-
                     </React.Fragment>
                   ))}
               </tbody>

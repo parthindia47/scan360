@@ -156,7 +156,7 @@ const getStockReturns = async (symbolWithNS) => {
   if (!symbolWithNS) {
     return resolve({
       '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
-      '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+      '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
     });
   }
 
@@ -167,7 +167,7 @@ const getStockReturns = async (symbolWithNS) => {
   if (!fs.existsSync(csvPath)) {
     return resolve({
       '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
-      '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+      '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
     });
   }
 
@@ -188,17 +188,17 @@ const getStockReturns = async (symbolWithNS) => {
         if (candles.length < 2) {
           return resolve({
             '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
-            '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+            '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
           });
         }
 
         const latest = candles[candles.length - 1];
         const last252Candles = candles.slice(Math.max(candles.length - 252, 0));
-        const highest52WClose = Math.max(...last252Candles);
+        const highestvs52WHClose = Math.max(...last252Candles);
 
-        let ltpVs52WHigh = 'N/A';
-        if (highest52WClose !== 0) {
-          ltpVs52WHigh = (((latest - highest52WClose) / highest52WClose) * 100).toFixed(2) + '%';
+        let vs52WH = 'N/A';
+        if (highestvs52WHClose !== 0) {
+          vs52WH = (((latest - highestvs52WHClose) / highestvs52WHClose) * 100).toFixed(2) + '%';
         }
 
         const calc = (indexAgo) => {
@@ -220,7 +220,7 @@ const getStockReturns = async (symbolWithNS) => {
           '3M': calc(66),
           '6M': calc(132),
           '1Y': calc(252),
-          'ltpVs52WHigh': ltpVs52WHigh,
+          'vs52WH': vs52WH,
           '1M_candle': last20Candles,
           'lastCandleDate': lastCandleDate  // 👈 added here
         });
@@ -228,7 +228,7 @@ const getStockReturns = async (symbolWithNS) => {
       .on('error', () => {
         resolve({
           '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
-          '6M': 'N/A', '1Y': 'N/A', 'ltpVs52WHigh': 'N/A'
+          '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
         });
       });
   });
@@ -319,8 +319,8 @@ const loadIndustries = async () => {
       '6M_N': unweightedAverage('6M'),
       '1Y_N': unweightedAverage('1Y'),
 
-      'ltpVs52WHigh': weightedAverage('ltpVs52WHigh'),
-      'ltpVs52WHigh_N': unweightedAverage('ltpVs52WHigh')
+      'vs52WH': weightedAverage('vs52WH'),
+      'vs52WH_N': unweightedAverage('vs52WH')
     };
   }
 };
