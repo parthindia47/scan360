@@ -9,6 +9,14 @@ function Dashboard() {
   const [sortConfigs, setSortConfigs] = useState({});
   const [activeType, setActiveType] = useState(null);
   const [weighted, setWeighted] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/api/industries`)
@@ -184,7 +192,13 @@ function Dashboard() {
               <thead>
                 <tr className="bg-gray-100">
                   <th className="sticky left-0 top-0 bg-gray-100 z-30 p-2 w-[70px] min-w-[70px] max-w-[70px]">#</th>
-                  <th className="sticky left-[70px] top-0 bg-gray-100 z-30 p-2 text-left min-w-[250px] max-w-[250px]">Industry</th>
+                  <th
+                    className={`sticky left-[70px] top-0 bg-gray-100 z-30 p-2 text-left ${
+                      isMobile ? "min-w-[200px] max-w-[200px]" : "min-w-[250px] max-w-[250px]"
+                    }`}
+                  >
+                    Industry
+                  </th>
                   {/* Header */}
                   {['vs52WH', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
                     <th
@@ -215,7 +229,9 @@ function Dashboard() {
                       <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="sticky left-0 bg-inherit z-10 p-2 w-[70px] min-w-[70px] max-w-[70px]">{index + 1}</td>
                         <td
-                          className="sticky left-[70px] bg-inherit z-10 p-2 cursor-pointer text-blue-600 min-w-[250px] max-w-[250px]"
+                          className={`sticky left-[70px] bg-inherit z-10 p-2 cursor-pointer text-blue-600 ${
+                                      isMobile ? "min-w-[200px] max-w-[200px]" : "min-w-[250px] max-w-[250px]"
+                                    }`}
                           onClick={() => toggleExpand(industry)}
                         >
                           {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} ({data.stocks.length})
@@ -244,7 +260,12 @@ function Dashboard() {
                                 <SparklinesLine color="blue" style={{ strokeWidth: 2, fill: "none" }} />
                               </Sparklines>
                             </td>
-                            <td className="symbol-cell sticky left-[70px] bg-blue-50 z-10 p-2 min-w-[250px] max-w-[250px]">
+
+                            <td
+                              className={`symbol-cell sticky left-[70px] bg-blue-50 z-10 p-2 ${
+                                isMobile ? "min-w-[200px] max-w-[200px]" : "min-w-[250px] max-w-[250px]"
+                              }`}
+                            >
                               <a
                                 href={`symbol/${stock.symbol}`}
                                 target="_blank"
