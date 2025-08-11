@@ -1583,7 +1583,7 @@ def getyFinTickerCandles(yFinTicker,start_date,end_date):
     })
 
     try:
-      tickerInformation = yf.Ticker(yFinTicker,session=session)
+      tickerInformation = yf.Ticker(yFinTicker)
       tickerHistory = tickerInformation.history(start=start_date, end=end_date)
       if not tickerHistory.empty:
         return tickerHistory
@@ -3730,11 +3730,11 @@ def nse_xbrl_to_json(xml_path):
   
 def save_xml_from_url(url, save_dir="."):
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers, timeout=60)
         response.raise_for_status()
 
         # Extract filename from URL
-        parsed_url = urlparse(url, headers=headers, timeout=60)
+        parsed_url = urlparse(url)
         filename = os.path.basename(parsed_url.path)
 
         if not filename.lower().endswith(".xml"):
