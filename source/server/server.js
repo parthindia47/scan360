@@ -91,13 +91,13 @@ const daysPastList = {
   prefIssue: 5,
   schemeOfArrangement: 10,
 
-  integratedResults: 6,
+  integratedResults: 4,
 
-  bulkDeals: 4,
-  blockDeals: 15,
-  shortDeals: 4,
-  sastDeals: 4,
-  insiderDeals: 3
+  bulkDeals: 2,
+  blockDeals: 10,
+  shortDeals: 2,
+  sastDeals: 2,
+  insiderDeals: 2
 };
 
 let eventsMap = {}; // key: symbol, value: array of events
@@ -335,6 +335,37 @@ app.get('/api/industries', async (req, res) => {
 });
 
 // ===================== Document APIS ===================================
+
+function getTradeDate(dayPast = 0) {
+  let tradeDate = new Date();
+
+  // If before 9:30 AM, go to previous calendar day
+  const now = new Date();
+  const isBeforeMarketOpen =
+    now.getHours() < 9 || (now.getHours() === 9 && now.getMinutes() < 30);
+  if (isBeforeMarketOpen) {
+    tradeDate.setDate(tradeDate.getDate() - 1);
+  }
+
+  // Now move back `dayPast` *trading days*
+  let remaining = dayPast;
+  while (remaining > 0) {
+    tradeDate.setDate(tradeDate.getDate() - 1);
+    if (tradeDate.getDay() !== 0 && tradeDate.getDay() !== 6) {
+      remaining--;
+    }
+  }
+
+  // If we land on weekend (just in case), move back to Friday
+  while (tradeDate.getDay() === 0 || tradeDate.getDay() === 6) {
+    tradeDate.setDate(tradeDate.getDate() - 1);
+  }
+
+  return tradeDate;
+}
+
+
+
 app.get('/api/:type', (req, res) => {
   const { type } = req.params;
 
@@ -342,8 +373,8 @@ app.get('/api/:type', (req, res) => {
   const dateKey = dateKeys[type];
   const dayPast = daysPastList[type];
 
-  const filterDate = new Date();
-  filterDate.setDate(filterDate.getDate() - dayPast);
+  const filterDate = getTradeDate(dayPast);
+  // filterDate.setDate(filterDate.getDate() - dayPast);
 
   // ✅ Check if CSV file exists — if not, return empty array
   if (!fs.existsSync(filePath)) {
