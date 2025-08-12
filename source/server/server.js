@@ -79,7 +79,7 @@ const dateKeys = {
 };
 
 const daysPastList = {
-  announcements: 3,
+  announcements: 2,
 
   events: 2,
   upcomingIssues: 2,
