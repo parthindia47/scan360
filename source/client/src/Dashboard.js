@@ -313,6 +313,7 @@ function Dashboard() {
 
               {/* --- ADD: Date Picker + Go / Clear */}
               <div className="flex items-center gap-2">
+                <span className="font-bold text-black">Date:</span>
                 <input
                   type="date"
                   value={asOfInput}
@@ -334,19 +335,21 @@ function Dashboard() {
                 </button>
               </div>
 
-              <button
-                onClick={() => handleExportCSV()}          // symbols (stocks) export
-                className="px-3 py-1 text-xs border rounded bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                Export Symbols
-              </button>
+              <div className={isMobile ? "grid grid-flow-col auto-cols-max gap-2" : "inline-flex gap-2 flex-nowrap"}>
+                <button
+                  onClick={() => handleExportCSV()}
+                  className={`flex-none ${isMobile ? 'px-2 py-1 text-[11px]' : 'px-3 py-1 text-xs'} border rounded bg-emerald-600 text-white hover:bg-emerald-700`}
+                >
+                  Export Symbols
+                </button>
 
-              <button
-                onClick={() => handleExportCSV('sectors')} // sector-level export
-                className="px-3 py-1 text-xs border rounded bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                Export Sectors
-              </button>
+                <button
+                  onClick={() => handleExportCSV('sectors')}
+                  className={`flex-none ${isMobile ? 'px-2 py-1 text-[11px]' : 'px-3 py-1 text-xs'} border rounded bg-emerald-600 text-white hover:bg-emerald-700`}
+                >
+                  Export Sectors
+                </button>
+              </div>
 
             </div>
           </div>
