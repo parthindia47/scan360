@@ -10,6 +10,37 @@ function Dashboard() {
   const [activeType, setActiveType] = useState(null);
   const [weighted, setWeighted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [asOfInput, setAsOfInput] = useState(''); // html date input
+
+  const fetchIndustries = async (asOfStr = '') => {
+    try {
+      setLoading(true);
+      // Convert YYYY-MM-DD -> DD-MM-YYYY for the API query as requested
+      const asOfParam = asOfStr
+        ? (() => {
+            const [y, m, d] = asOfStr.split('-');
+            return `${d}-${m}-${y}`;
+          })()
+        : '';
+      const url = asOfParam
+        ? `${process.env.REACT_APP_API_URL}/api/industries?asOf=${asOfParam}`
+        : `${process.env.REACT_APP_API_URL}/api/industries`;
+      const res = await axios.get(url);
+      setIndustries(res.data);
+      const types = Object.values(res.data).map(i => i.type || 'Other');
+      const defaultType = types[0];
+      setActiveType(defaultType);
+      const initialSorts = {};
+      types.forEach(type => {
+        initialSorts[type] = { field: '1D', direction: 'desc' };
+      });
+      setSortConfigs(initialSorts);
+    } catch (error) {
+      console.error('Error fetching data', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -19,24 +50,120 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api/industries`)
-      .then(res => {
-        setIndustries(res.data);
-        const types = Object.values(res.data).map(i => i.type || 'Other');
-        const defaultType = types[0];
-        setActiveType(defaultType);
-        const initialSorts = {};
-        types.forEach(type => {
-          initialSorts[type] = { field: '1D', direction: 'desc' };
-        });
-        setSortConfigs(initialSorts);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching data', error);
-        setLoading(false);
-      });
+    fetchIndustries(); // live load (no asOf)
   }, []);
+
+  // pass: buildExportRows()            -> exports stocks (current behavior)
+  // pass: buildExportRows("sectors")   -> exports top-level sectors only
+  const buildExportRows = (mode) => {
+    const rows = [];
+    const entries = Object.entries(industries)
+      .filter(([, data]) => !activeType || data.type === activeType);
+
+    const toNum = (v) => {
+      if (v == null) return -Infinity;
+      const s = String(v);
+      if (s.endsWith('%')) {
+        const n = parseFloat(s.slice(0, -1));
+        return Number.isNaN(n) ? -Infinity : n;
+      }
+      const n = parseFloat(s);
+      return Number.isNaN(n) ? -Infinity : n;
+    };
+
+    if (mode === "sectors") {
+      // ---- sector-level export (one row per sector) ----
+      for (const [industry, data] of entries) {
+        const stocks = data.stocks || [];
+
+        const totalMcap = stocks.reduce((acc, s) => acc + (s.marketCap || 0), 0);
+        const latestUpdate = stocks.reduce((latest, s) => {
+          const d = s?.lastUpdateDate ? new Date(s.lastUpdateDate) : null;
+          if (!d || isNaN(d)) return latest;
+          return !latest || d > latest ? d : latest;
+        }, null);
+
+        const wr = data.weightedReturns || {};
+
+        rows.push({
+          Industry: industry,
+          Type: data.type || '',
+          Stocks: stocks.length,
+          MarketCapCr: totalMcap ? (totalMcap / 1e7).toFixed(2) : '',
+          '1D': wr['1D'] ?? '',
+          '1W': wr['1W'] ?? '',
+          '1M': wr['1M'] ?? '',
+          '3M': wr['3M'] ?? '',
+          '6M': wr['6M'] ?? '',
+          '1Y': wr['1Y'] ?? '',
+          vs52WH: wr['vs52WH'] ?? '',
+          LastUpdate: latestUpdate ? latestUpdate.toISOString().slice(0, 10) : '',
+        });
+      }
+    } else {
+      // ---- stock-level export (existing behavior) ----
+      for (const [industry, data] of entries) {
+        for (const s of (data.stocks || [])) {
+          rows.push({
+            Industry: industry,
+            Symbol: s.symbol,
+            Name: s.name,
+            Price: Number.isFinite(s.price) ? s.price.toFixed(2) : '',
+            PE: Number.isFinite(s.pe) ? s.pe.toFixed(2) : '',
+            ROE: typeof s.roe === 'number' ? (s.roe * 100).toFixed(2) + '%' : '',
+            MarketCapCr: Number.isFinite(s.marketCap) ? (s.marketCap / 1e7).toFixed(2) : '',
+            '1D': s?.dummyData?.['1D'] ?? '',
+            '1W': s?.dummyData?.['1W'] ?? '',
+            '1M': s?.dummyData?.['1M'] ?? '',
+            '3M': s?.dummyData?.['3M'] ?? '',
+            '6M': s?.dummyData?.['6M'] ?? '',
+            '1Y': s?.dummyData?.['1Y'] ?? '',
+            vs52WH: s?.dummyData?.['vs52WH'] ?? '',
+            LastUpdate: s?.lastUpdateDate ?? '',
+          });
+        }
+      }
+    }
+
+    // Sort using the current UI config (works for both modes)
+    const cfg = sortConfigs[activeType];
+    if (cfg?.field) {
+      const f = cfg.field;
+      rows.sort((a, b) => {
+        const av = toNum(a[f]);
+        const bv = toNum(b[f]);
+        return cfg.direction === 'asc' ? av - bv : bv - av;
+      });
+    }
+
+    return rows;
+  };
+
+  const toCSV = (rows) => {
+    if (!rows.length) return '';
+    const headers = Object.keys(rows[0]);
+    const esc = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n');
+  };
+
+  const handleExportCSV = (mode) => {
+    const rows = buildExportRows(mode);
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const asOfPart = asOfInput ? `_${asOfInput}` : '';
+    const fname = `industries_${activeType || 'all'}_${mode || 'symbols'}_${asOfPart}.csv`;
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = fname;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const groupedByType = useMemo(() => {
     const groups = {};
@@ -160,29 +287,67 @@ function Dashboard() {
               </button>
               {activeType === 'EQUITY' && (
                 <>
-                <button
-                  className={`px-3 py-1 text-xs border rounded-full transition-colors ${
-                    weighted
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
-                  }`}
-                  onClick={() => setWeighted(true)}
-                >
-                  Weighted
-                </button>
+                  <button
+                    className={`px-3 py-1 text-xs border rounded-full transition-colors ${
+                      weighted
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                    }`}
+                    onClick={() => setWeighted(true)}
+                  >
+                    Weighted
+                  </button>
 
-                <button
-                  className={`px-3 py-1 text-xs border rounded-full transition-colors ${
-                    !weighted
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
-                  }`}
-                  onClick={() => setWeighted(false)}
-                >
-                  Equal Weight
-                </button>
+                  <button
+                    className={`px-3 py-1 text-xs border rounded-full transition-colors ${
+                      !weighted
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                    }`}
+                    onClick={() => setWeighted(false)}
+                  >
+                    Equal Weight
+                  </button>
                 </>
               )}
+
+              {/* --- ADD: Date Picker + Go / Clear */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={asOfInput}
+                  onChange={(e) => setAsOfInput(e.target.value)}
+                  className="px-2 py-1 text-xs border rounded"
+                  aria-label="As of date"
+                />
+                <button
+                  onClick={() => asOfInput && fetchIndustries(asOfInput)}
+                  className="px-3 py-1 text-xs border rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  Go
+                </button>
+                <button
+                  onClick={() => { setAsOfInput(''); fetchIndustries(); }}
+                  className="px-3 py-1 text-xs border rounded bg-gray-100 hover:bg-gray-200"
+                >
+                  Clear
+                </button>
+              </div>
+
+              <button
+                onClick={() => handleExportCSV()}          // symbols (stocks) export
+                className="px-3 py-1 text-xs border rounded bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Export Symbols
+              </button>
+
+              <button
+                onClick={() => handleExportCSV('sectors')} // sector-level export
+                className="px-3 py-1 text-xs border rounded bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Export Sectors
+              </button>
+
             </div>
           </div>
 

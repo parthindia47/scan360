@@ -8,7 +8,8 @@ const app = express();
 app.use(cors());
 
 
-const industryData = {};
+let industryData = {};
+let eventsMap = {}; // key: symbol, value: array of events
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
 const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalone');
@@ -100,8 +101,6 @@ const daysPastList = {
   insiderDeals: 2
 };
 
-let eventsMap = {}; // key: symbol, value: array of events
-
 // ===================== Helper Functions ===================================
 
 function toCrores(value, decimals = 2) {
@@ -119,6 +118,41 @@ const formatDate = (rawDateStr) => {
     year: 'numeric'
   });
 };
+
+// Put these near the top of your file
+function parseAsOfDate(asOfStr) {
+  if (!asOfStr) return null; // was: return new Date()
+  const s = String(asOfStr).trim();
+
+  // Try YYYY-MM-DD
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  if (iso.test(s)) {
+    const d = new Date(s + 'T00:00:00'); // local midnight
+    if (!isNaN(d)) return d;
+  }
+
+  // Try DD-MM-YYYY
+  const dmy = /^(\d{2})-(\d{2})-(\d{4})$/;
+  const m = s.match(dmy);
+  if (m) {
+    const [_, dd, mm, yyyy] = m;
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    if (!isNaN(d)) return d;
+  }
+
+  // Fallback
+  const d = new Date(s);
+  return isNaN(d) ? new Date() : d;
+}
+
+function findRefIndex(dates, referenceDate) {
+  // returns largest index i where Date(dates[i]) <= referenceDate, else -1
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const di = new Date(dates[i]);
+    if (!isNaN(di) && di <= referenceDate) return i;
+  }
+  return -1;
+}
 
 // ===================== Data Loading Functions =============================
 function loadEventsFromCSV(callback) {
@@ -152,66 +186,74 @@ function loadEventsFromCSV(callback) {
     });
 }
 
-const getStockReturns = async (symbolWithNS) => {
-  if (!symbolWithNS) {
-    return resolve({
-      '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
-      '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
-    });
-  }
-
-  const symbol = symbolWithNS.replace('.NS', '');
-  const csvPath = path.join(candleDataFolder, `${symbol}.csv`);
-  const candles = [];
-
-  if (!fs.existsSync(csvPath)) {
-    return resolve({
-      '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
-      '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
-    });
-  }
-
-  let lastCandleDate = null;
-
+const getStockReturns = async (symbolWithNS, asOfDate) => {
   return new Promise((resolve) => {
+    if (!symbolWithNS) {
+      return resolve({
+        '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+        '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
+      });
+    }
+
+    const symbol = symbolWithNS.replace('.NS', '');
+    const csvPath = path.join(candleDataFolder, `${symbol}.csv`);
+    if (!fs.existsSync(csvPath)) {
+      return resolve({
+        '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+        '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
+      });
+    }
+
+    const closes = [];
+    const dates = [];
+
     fs.createReadStream(csvPath)
       .pipe(csv())
       .on('data', (row) => {
-        if (row['Close']) {
-          candles.push(parseFloat(row['Close']));
-        }
-        if (row['Date']) {
-          lastCandleDate = row['Date']; // always overwrite — last value will be from last row
-        }
+        if (row['Close']) closes.push(parseFloat(row['Close']));
+        if (row['Date']) dates.push(row['Date']); // aligned with closes
       })
       .on('end', () => {
-        if (candles.length < 2) {
+        if (closes.length < 2 || dates.length !== closes.length) {
           return resolve({
             '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
             '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
           });
         }
 
-        const latest = candles[candles.length - 1];
-        const last252Candles = candles.slice(Math.max(candles.length - 252, 0));
-        const highestvs52WHClose = Math.max(...last252Candles);
-
-        let vs52WH = 'N/A';
-        if (highestvs52WHClose !== 0) {
-          vs52WH = (((latest - highestvs52WHClose) / highestvs52WHClose) * 100).toFixed(2) + '%';
+        const referenceDate = asOfDate || new Date();
+        const refIdx = findRefIndex(dates, referenceDate);
+        if (refIdx < 1) {
+          // no candle on/before asOf date
+          return resolve({
+            '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
+            '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A',
+            '1M_candle': [],
+            'lastCandleDate': null
+          });
         }
 
+        const latest = closes[refIdx];
+
+        // 52W high using up to refIdx (last 252 trading days)
+        const start52 = Math.max(0, refIdx - 251);
+        const highestvs52WHClose = Math.max(...closes.slice(start52, refIdx + 1));
+        const vs52WH =
+          highestvs52WHClose > 0
+            ? (((latest - highestvs52WHClose) / highestvs52WHClose) * 100).toFixed(2) + '%'
+            : 'N/A';
+
         const calc = (indexAgo) => {
-          if (candles.length > indexAgo) {
-            const old = candles[candles.length - 1 - indexAgo];
-            if (old === 0) return 'N/A';
-            return (((latest - old) / old) * 100).toFixed(2) + '%';
-          }
-          return 'N/A';
+          const idx = refIdx - indexAgo;
+          if (idx < 0 || !isFinite(idx)) return 'N/A';
+          const old = closes[idx];
+          if (!isFinite(old) || old === 0) return 'N/A';
+          return (((latest - old) / old) * 100).toFixed(2) + '%';
         };
 
-        // Get last 20 days candles (oldest first)
-        const last20Candles = candles.slice(-20);
+        const last20Start = Math.max(0, refIdx - 19);
+        const last20Candles = closes.slice(last20Start, refIdx + 1);
+        const lastCandleDate = dates[refIdx];
 
         resolve({
           '1D': calc(1),
@@ -222,7 +264,7 @@ const getStockReturns = async (symbolWithNS) => {
           '1Y': calc(252),
           'vs52WH': vs52WH,
           '1M_candle': last20Candles,
-          'lastCandleDate': lastCandleDate  // 👈 added here
+          'lastCandleDate': lastCandleDate
         });
       })
       .on('error', () => {
@@ -234,9 +276,11 @@ const getStockReturns = async (symbolWithNS) => {
   });
 };
 
-const loadIndustries = async () => {
-  const results = [];
+const loadIndustries = async (asOfDate) => {
+  // fresh local snapshot every run
+  let industryData_local = {};
 
+  const results = [];
   await new Promise((resolve) => {
     fs.createReadStream(stockInfoFilePath)
       .pipe(csv())
@@ -244,41 +288,45 @@ const loadIndustries = async () => {
       .on('end', resolve);
   });
 
-  loadEventsFromCSV(() => {});
+  // Load events only for LIVE (no asOf) runs; clear old events first
+  if (!asOfDate) {                        // clear stale events
+    await new Promise((resolve) => loadEventsFromCSV(resolve));
+  }
 
   for (const row of results) {
     const industries = row['tjiIndustry']?.split('\\').flatMap(i => i.split('/').map(s => s.trim())) || [];
-    const realReturns = await getStockReturns(row['symbol']);
+    const realReturns = await getStockReturns(row['symbol'], asOfDate);
 
     industries
-    .filter(industry => industry !== 'N' && industry !== 'NEW')
-    .forEach(industry => {
-      if (!industryData[industry]) {
-        industryData[industry] = {
-          stocks: [],
-          type: row['quoteType'] || 'Other'  // <== Add this line
-        };
-      }
-      const symbol_clean = row['symbol'].replace('.NS', '')
-      industryData[industry].stocks.push({
-        symbol: symbol_clean,
-        name: row['longName'] ? row['longName']  : symbol_clean,
-        marketCap: parseFloat(row['marketCap'] || '0'),
-        price: parseFloat(row['currentPrice'] || '0'),
-        pe: parseFloat(row['trailingPE'] || '0'),
-        roe: parseFloat(row['returnOnEquity'] || '0'),
-        events: eventsMap[symbol_clean] || [], // ← Add matched events here
-        sparklineData: realReturns['1M_candle'],
-        lastUpdateDate: realReturns['lastCandleDate'],
-        dummyData: {
-          weight: 1,
-          ...realReturns
+      .filter(industry => industry !== 'N' && industry !== 'NEW')
+      .forEach(industry => {
+        if (!industryData_local[industry]) {
+          industryData_local[industry] = {
+            stocks: [],
+            type: row['quoteType'] || 'Other'
+          };
         }
+        const symbol_clean = row['symbol'].replace('.NS', '');
+        industryData_local[industry].stocks.push({
+          symbol: symbol_clean,
+          name: row['longName'] ? row['longName'] : symbol_clean,
+          marketCap: parseFloat(row['marketCap'] || '0'),
+          price: parseFloat(row['currentPrice'] || '0'),
+          pe: parseFloat(row['trailingPE'] || '0'),
+          roe: parseFloat(row['returnOnEquity'] || '0'),
+          // no events for asOf snapshots
+          events: asOfDate ? [] : (eventsMap[symbol_clean] || []),  // was eventsMap[...] always
+          sparklineData: realReturns['1M_candle'],
+          lastUpdateDate: realReturns['lastCandleDate'],
+          dummyData: {
+            weight: 1,
+            ...realReturns                                      // fix earlier ".realReturns" typo
+          }
+        });
       });
-    });
   }
 
-  for (const [industry, data] of Object.entries(industryData)) {
+  for (const [industry, data] of Object.entries(industryData_local)) {
     const stocks = data.stocks;
 
     const totalMarketCap = stocks.reduce((acc, stock) => acc + stock.marketCap, 0);
@@ -323,15 +371,31 @@ const loadIndustries = async () => {
       'vs52WH_N': unweightedAverage('vs52WH')
     };
   }
+
+  return industryData_local; // <-- return the snapshot for this run
 };
 
 // ==================== Main DashBoard API ===============================
 app.get('/api/industries', async (req, res) => {
-  if (Object.keys(industryData).length === 0) {
-    await loadIndustries();
+  try {
+    const asOf = parseAsOfDate(req.query.asOf); // returns Date or null
+
+    if (asOf) {
+      // As-of request: one-off snapshot; DO NOT touch global
+      const snapshot = await loadIndustries(asOf);
+      return res.json(snapshot);
+    }
+
+    // Live request: build once and cache in the global
+    if (!industryData || Object.keys(industryData).length === 0) {
+      const snapshot = await loadIndustries(null);
+      industryData = snapshot; // atomic replace
+    }
+    return res.json(industryData);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to build industries snapshot' });
   }
-  // console.log(industryData);
-  res.json(industryData);
 });
 
 // ===================== Document APIS ===================================
