@@ -498,6 +498,38 @@ function SymbolPage() {
         </div>
       )}
 
+    { stockInfo && 
+    <div className="flex flex-col md:flex-row gap-4">
+      {/* Positive List */}
+      <div className="flex-1">
+        <h3 className="font-semibold text-green-600 mb-2">Positive Impacts</h3>
+        {stockInfo.positiveImpacts && stockInfo.positiveImpacts.length > 5 && stockInfo.positiveImpacts.trim() !== "" ? (
+          <ul className="list-disc list-inside text-sm">
+            {stockInfo.positiveImpacts.split("/").map((item, idx) => (
+              <li key={idx}>{item.trim()}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-400 text-sm italic">No positive impacts available</p>
+        )}
+      </div>
+
+      {/* Negative List */}
+      <div className="flex-1">
+        <h3 className="font-semibold text-red-600 mb-2">Negative Impacts</h3>
+        {stockInfo.negativeImpacts && stockInfo.negativeImpacts.length > 5 && stockInfo.negativeImpacts.trim() !== "" ? (
+          <ul className="list-disc list-inside text-sm">
+            {stockInfo.negativeImpacts.split("/").map((item, idx) => (
+              <li key={idx}>{item.trim()}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-400 text-sm italic">No negative impacts available</p>
+        )}
+      </div>
+    </div>}
+
+
     </div>
   );
 }
