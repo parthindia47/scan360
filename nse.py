@@ -1431,9 +1431,9 @@ def getDateKeyForNseDocument(urlType):
       "forthcomingListing":"effectiveDate",  #no date needed
       "upcomingIssues":"issueEndDate",       #no date needed
       "forthcomingOfs":"endDate",
-      "upcomingTender":None,
+      "upcomingTender":"todEndDate",
       "upcomingRights":None,
-      "liveTender":None,
+      "liveTender":"todEndDate",
       "liveRights":None,
       
       "rightsFilings":"date",   #done
@@ -1536,6 +1536,13 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   # "prefIssue" clean up    
   if urlType == "sastDeals" and 'timestamp' in df.columns:
       df.rename(columns={"timestamp": "date"}, inplace=True)
+  
+  # "upcomingTender" clean up   
+  if urlType == "upcomingTender" and 'sr_no' in df.columns:
+      df = df.drop(columns=['sr_no'])
+      
+  if urlType == "upcomingTender" and 'timeStamp' in df.columns:
+      df = df.drop(columns=['timeStamp'])
         
   # logger1.info(df)
   df[date_key] = pd.to_datetime(df[date_key])
@@ -4390,29 +4397,34 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
-nseStockList = getAllNseSymbols(local=False)
+# nseStockList = getAllNseSymbols(local=False)
+
+# fetchNseDocuments(urlType="upcomingTender",cookies=cookies_local)
+
+syncUpNseDocuments(urlType="upcomingTender", cookies=cookies_local)
+
 
 # Fetch any new symbol from yahoo with partial True
 # fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 
-# Fetch NSE Candles
-syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# # Fetch NSE Candles
+# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# Fetch Commodities Candles
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# # Fetch Commodities Candles
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# Fetch Other Candles From Yahoo
-syncUpYahooFinOtherSymbols()
+# # Fetch Other Candles From Yahoo
+# syncUpYahooFinOtherSymbols()
 
-# Fetch NSE Fillings and results
-syncUpAllNseFillings(cookies=cookies_local)
-integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
-syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+# # Fetch NSE Fillings and results
+# syncUpAllNseFillings(cookies=cookies_local)
+# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# Finally recalculate details
-recalculateYFinStockInfo(useNseBhavCopy=True)
+# # Finally recalculate details
+# recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # **************************************************************************
 

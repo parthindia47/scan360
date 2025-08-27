@@ -21,6 +21,7 @@ const eventsPath = path.join(__dirname, '../../stock_fillings/events_nse.csv');
 const upcomingIssuesPath = path.join(__dirname, '../../stock_fillings/upcomingIssues_nse.csv');
 const forthcomingListingPath = path.join(__dirname, '../../stock_fillings/forthcomingListing_nse.csv');
 const forthcomingOfsPath = path.join(__dirname, '../../stock_fillings/forthcomingOfs_nse.csv');
+const upcomingTenderPath = path.join(__dirname, '../../stock_fillings/upcomingTender_nse.csv');
 
 const rightsFilingsPath = path.join(__dirname, '../../stock_fillings/rightsFilings_nse.csv');
 const qipFilingsPath = path.join(__dirname, '../../stock_fillings/qipFilings_nse.csv');
@@ -42,6 +43,7 @@ const csvPaths = {
   upcomingIssues: upcomingIssuesPath,
   forthcomingListing: forthcomingListingPath,
   forthcomingOfs: forthcomingOfsPath,
+  upcomingTender: upcomingTenderPath,
 
   rightsFilings: rightsFilingsPath,
   qipFilings: qipFilingsPath,
@@ -64,6 +66,7 @@ const dateKeys = {
   upcomingIssues: "issueEndDate",
   forthcomingListing: "effectiveDate",
   forthcomingOfs: "endDate",
+  upcomingTender: "todEndDate",
 
   rightsFilings: "date",
   qipFilings: "date",
@@ -86,6 +89,7 @@ const daysPastList = {
   upcomingIssues: 2,
   forthcomingListing: 3,
   forthcomingOfs: 3,
+  upcomingTender: 20,
 
   rightsFilings: 15,
   qipFilings: 15,

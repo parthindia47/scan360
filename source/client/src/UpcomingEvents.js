@@ -6,6 +6,7 @@ function UpcomingEvents() {
   const [upcomingIssuesData, setUpcomingIssuesData] = useState([]);
   const [forthcomingListingData, setForthcomingListingData] = useState([]);
   const [forthcomingOfsData, setForthcomingOfsData] = useState([]);
+  const [upcomingTenderData, setUpcomingTenderData] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('events'); // 🔹 tracks which tab is active
@@ -18,6 +19,7 @@ function UpcomingEvents() {
     upcomingIssues: { key: 'date', direction: 'desc' },
     forthcomingListing: { key: 'date', direction: 'asc' },
     forthcomingOfs: { key: 'date', direction: 'asc' },
+    upcomingTender: { key: 'date', direction: 'asc' }
   });
   
 
@@ -60,6 +62,16 @@ function UpcomingEvents() {
       })
       .catch(err => {
         console.error('Failed to fetch forthcomingOfs', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/upcomingTender`)
+      .then(res => {
+        setUpcomingTenderData(res.data);
+      })
+      .catch(err => {
+        console.error('Failed to fetch upcomingTender', err);
       });
   }, []);
 
@@ -251,11 +263,38 @@ function UpcomingEvents() {
     return 0;
   });
 
+  // ------------------------ Upcoming Tender --------------------------------
+  const enrichedUpcomingTenderData = upcomingTenderData.map(row => {
+    const size = parseFloat((row.issueSize || '').toString().replace(/,/g, ''));
+    const price = parseFloat((row.floorPrice || '').toString().replace(/,/g, ''));
+    const totalSize = (!isNaN(size) && !isNaN(price)) ? (size * price) / 1e7 : null;
+    return { ...row, totalSize };
+  });
+
+  const sortedUpcomingTenderData = [...enrichedUpcomingTenderData].sort((a, b) => {
+    const { key, direction } = sortConfigs.forthcomingOfs;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'totalSize') {
+      const valA = isNaN(a.totalSize) ? -Infinity : a.totalSize;
+      const valB = isNaN(b.totalSize) ? -Infinity : b.totalSize;
+      return dir * (valA - valB);
+    }
+
+    if (key === 'date') {
+      const dateA = new Date(a.endDate);
+      const dateB = new Date(b.endDate);
+      return dir * (dateA - dateB);
+    }
+
+    return 0;
+  });
+
   return (
     <div className="p-4 mb-4">
       {/* 🔹 Navbar Tabs */}
       <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
-        {['events', 'upcomingIssues', 'forthcomingListing', 'forthcomingOfs'].map(tab => (
+        {['events', 'upcomingIssues', 'forthcomingListing', 'forthcomingOfs', 'upcomingTender'].map(tab => (
           <a
             href="#"
             key={tab}
@@ -273,7 +312,9 @@ function UpcomingEvents() {
             {tab === 'events' ? 'Events' :
              tab === 'upcomingIssues' ? 'Upcoming Issues' :
              tab === 'forthcomingListing' ? 'Upcoming Listings':
-             'Upcoming OFS'}
+             tab === 'forthcomingOfs' ? 'Upcoming OFS':
+             'Upcoming Tenders'
+             }
           </a>
         ))}
       </div>
@@ -545,6 +586,62 @@ function UpcomingEvents() {
           </table>
         </div>
       )}
+
+      {/* 🔹 Upcoming Tenders */}
+      {activeTab === 'upcomingTender' && (
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="p-2 text-left">Company</th>
+                <th className="p-2 text-left">Series</th>
+                <th className="p-2 text-left">Offer Type</th>
+                <th className="p-2 text-left">Issue Type</th>
+                <th className="p-2 text-left">Start Date</th>
+                {renderSortableHeader('Closing Date', 'date', 'upcomingTender')}
+                <th className="p-2 text-left">Floor Price</th>
+                {renderSortableHeader('Total Size', 'totalSize', 'upcomingTender')}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedUpcomingTenderData.map((row, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                  <td className="p-2">
+                    <a
+                      href={`symbol/${row.symbol}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {row.company || '—'}
+                    </a>
+                  </td>
+                  <td className="p-2">{row.series || '—'}</td>
+                  <td className="p-2">{row.offerType || '—'}</td>
+                  <td className="p-2">{row.issueType || '—'}</td>
+                  <td className="p-2">{formatDate(row.todStartDate)}</td>
+                  <td className="p-2">{formatDate(row.todEndDate)}</td>
+                  <td className="p-2">{row.band}</td>
+                  <td className="p-2 font-medium">
+                    {(() => {
+                      const size = parseFloat((row.issueSize || '').toString().replace(/,/g, ''));
+                      const price = parseFloat((row.band || '').toString().replace(/,/g, ''));
+
+                      if (!isNaN(size) && !isNaN(price)) {
+                        const total = (size * price) / 1e7;
+                        return `₹${total.toFixed(2)} Cr`;
+                      }
+                      return '—';
+                    })()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+
     </div>
   );
 }
