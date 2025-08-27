@@ -2522,6 +2522,7 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
+  syncUpNseDocuments(urlType="upcomingTender", cookies=cookies_local)
   
   syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)
               
@@ -2563,6 +2564,8 @@ def fetchAllNseFillings():
   # fetchNseDocuments("upcomingIssues", cookies=cookies)
 
   # fetchNseDocuments("forthcomingListing", cookies=cookies)
+  
+  fetchNseDocuments(urlType="upcomingTender",cookies=cookies_local)
   
   fetchNseDocuments(urlType="rightsFilings", 
                     index="equities",
@@ -4397,34 +4400,29 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()
-# nseStockList = getAllNseSymbols(local=False)
-
-# fetchNseDocuments(urlType="upcomingTender",cookies=cookies_local)
-
-syncUpNseDocuments(urlType="upcomingTender", cookies=cookies_local)
-
+nseStockList = getAllNseSymbols(local=False)
 
 # Fetch any new symbol from yahoo with partial True
-# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 
-# # Fetch NSE Candles
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# Fetch NSE Candles
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# # Fetch Commodities Candles
-# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# Fetch Commodities Candles
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# # Fetch Other Candles From Yahoo
-# syncUpYahooFinOtherSymbols()
+# Fetch Other Candles From Yahoo
+syncUpYahooFinOtherSymbols()
 
-# # Fetch NSE Fillings and results
-# syncUpAllNseFillings(cookies=cookies_local)
-# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
-# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+# Fetch NSE Fillings and results
+syncUpAllNseFillings(cookies=cookies_local)
+integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# # Finally recalculate details
-# recalculateYFinStockInfo(useNseBhavCopy=True)
+# Finally recalculate details
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # **************************************************************************
 
