@@ -221,7 +221,7 @@ def sensiBullDataScrapper(urlType,fromDate=None,toDate=None):
   response = fetchUrl(url=baseUrls[urlType])
   print(response)
   jsonObj = fetchPostJson(jsonUrls[urlType], response.cookies, payload)
-  print(jsonObj)
+  # print(jsonObj)
   return jsonObj
 
 
@@ -520,8 +520,8 @@ def testGrowScrapper():
 
 # fromDate = datetime(2025, 5, 28)
 # toDate = datetime(2025, 6, 2)
-# resp = sensiBullDataScrapper(urlType="resultCalender")
-# print(resp)
+resp = sensiBullDataScrapper(urlType="economicCalender")
+print(resp["payload"]["data"])
 
 # Example usage:
 # df, json_data = fetch_google_rss_news("Premier Energies Limited")

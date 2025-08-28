@@ -9,7 +9,9 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip
+  Tooltip,
+  ReferenceDot,     // ← add
+  ReferenceLine     // ← optional
 } from 'recharts';
 
 const timeFrames = {
@@ -132,13 +134,32 @@ function SymbolPage() {
     });
   };
 
+  // Normalize any incoming date to "YYYY-MM-DD"
+  const toYMD = (d) => {
+    if (!d) return d;
+    // Handle "DD-MM-YYYY"
+    if (/^\d{2}-\d{2}-\d{4}$/.test(d)) {
+      const [DD, MM, YYYY] = d.split('-');
+      return `${YYYY}-${MM}-${DD}`;
+    }
+    // Handle ISO like "2025-08-01T00:00:00Z"
+    const dt = new Date(d);
+    if (!isNaN(dt)) {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    return d; // already Y-M-D string
+  };
+
   const getChartData = () => {
     const totalLength = candles.close.length;
     const limit = timeFrames[selectedRange];
     const start = Math.max(0, totalLength - limit);
 
     return candles.close.slice(start).map((close, i) => ({
-      date: candles.date[start + i],               // ✅ Add date here
+      date: toYMD(candles.date?.[start + i]),      // ← normalize to Y-M-D
       close: Number(close),                        // optional: ensure numeric
       volume: candles.volume[start + i] ?? 0
     }));
@@ -146,6 +167,18 @@ function SymbolPage() {
 
   if (loading) return <div className="p-4">Loading...</div>;
   if (!candles.close || candles.close.length === 0) return <div className="p-4">No data available</div>;
+
+  // Example: keep these in your component (or pass them as props)
+  const dividendEvents = [
+    { date: "2025-08-01" },
+    { date: "2025-07-01" }
+  ];
+
+  // Helper: get close price on a given date from chartData
+  const getCloseByDate = (data, dateStr) => {
+    const row = data.find(d => d.date === dateStr);
+    return row ? row.close : null;
+  };
 
   const chartData = getChartData();
   const closePrices = chartData.map(d => d.close);
@@ -317,6 +350,7 @@ function SymbolPage() {
         })}
       </div>
 
+      {/* Stock Chart */}
       <div className="-mx-4 sm:mx-0">
         <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
           <ComposedChart
@@ -410,6 +444,31 @@ function SymbolPage() {
               strokeWidth={2}
               dot={false}
             />
+
+          {/* ---------- DIVIDEND MARKERS (CIRCLES WITH "D") ---------- */}
+          {dividendEvents.map((ev, idx) => {
+            const y = getCloseByDate(chartData, ev.date);
+            if (y == null) return null; // date not in data
+            return (
+              <ReferenceDot
+                key={idx}
+                x={ev.date}
+                y={y}
+                yAxisId="right"
+                r={11}
+                fill="#f59e0b"  // amber
+                stroke="white"
+                strokeWidth={2}
+                label={{
+                  value: "N",
+                  fill: "white",
+                  fontSize: 10,
+                  position: "center"
+                }}
+              />
+            );
+          })}
+
           </ComposedChart>
         </ResponsiveContainer>
       </div>

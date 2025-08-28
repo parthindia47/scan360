@@ -157,6 +157,10 @@ def getOutputCsvFile(urlType):
         "shortDeals":"stock_fillings/shortDeals_nse.csv",
         "sastDeals":"stock_fillings/sastDeals_nse.csv",
         "insiderDeals":"stock_fillings/insiderDeals_nse.csv",
+        
+        #sensiBull
+        "sensiBullEconomicCalender":"stock_fillings/sensiBullEconomicCalender_nse.csv",
+        "sensiBullResultCalender":"stock_fillings/sensiBullResultCalender_nse.csv",
     }
     return csv_output_files[urlType]
 
@@ -750,6 +754,9 @@ def getTopicJsonQuery(urlType):
         "bulkDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
         "blockDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
         "shortDeals":"https://www.nseindia.com/api/snapshot-capital-market-largedeal",
+        
+        "sensiBullEconomicCalender":"https://oxide.sensibull.com/v1/compute/market_global_events",
+        "sensiBullResultCalender":"https://oxide.sensibull.com/v1/compute/market_stock_events",
     }
 
     baseUrl = baseUrls[urlType]
@@ -843,7 +850,9 @@ def getBaseUrl(urlType,symbol=None):
         "upcomingTender":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-tender-offer",
         "upcomingRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights",
         "liveTender":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-tender-offer",
-        "liveRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights"
+        "liveRights":"https://www.nseindia.com/market-data/all-upcoming-issues-ofs-rights",
+        "sensiBullEconomicCalender":"https://web.sensibull.com/stock-market-calendar/economic-calendar" ,
+        "sensiBullResultCalender":"https://web.sensibull.com/stock-market-calendar/stock-results-calendar",
     }
     
     symbolBaseUrl = ["stockQuote", "stockInfo"]
@@ -911,7 +920,28 @@ def fetchGetJson(url,cookies=None):
             logger1.info(f"Failed to download JSON. Status code: {response.status_code}")
     except Exception as e:
         logger1.info(f"An error occurred: {e}")
+        
+def fetchPostJson(url, cookies=None, payload=None):
+    print("Fetching JSON Object : " + url)
+    try:
+        # Send a GET request to the URL to download the JSON content
+        #print("Cookies Type:", type(cookies))
+        # for i, cookie in enumerate(cookies):
+        #     print(f"Cookie {i}: type={type(cookie)}, value={cookie}")
 
+        if cookies:
+          headers["Cookie"] = '; '.join([f"{k}={v}" for k, v in cookies.items()])
+        response = requests.post(url, headers=headers, json=payload)
+        
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # Parse the JSON content
+            jsonData = response.json()
+            return jsonData
+        else:
+            print("Failed to download JSON. Status code:", response.status_code)
+    except Exception as e:
+        print("An error occurred:", e)
 '''
 returns the response of given url
 should pass base/first urls which "do not need cookies" to access.
@@ -1170,7 +1200,9 @@ def fetchNseJsonObj(urlType,
       cookies = response.cookies
       logger1.info(response)
     
-    if not symbol and not index:
+    if urlType in ["sensiBullEconomicCalender", "sensiBullResultCalender"]:
+      pass
+    elif not symbol and not index:
       logger1.info("Fetching 1")
       jsonUrl = getTopicJsonQuery(urlType=urlType)
       jsonObj = fetchGetJson(jsonUrl, cookies)
@@ -1191,7 +1223,7 @@ def fetchNseJsonObj(urlType,
     
     if noDateTimeFetch: 
       if jsonObjMaster:
-        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals", "commoditySpotAll"]:
+        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals", "commoditySpotAll", "liveRights"]:
           jsonObjMaster = jsonObjMaster["data"]
         if urlType=="bulkDeals":
           jsonObjMaster = jsonObjMaster["BULK_DEALS_DATA"]
@@ -1199,6 +1231,7 @@ def fetchNseJsonObj(urlType,
           jsonObjMaster = jsonObjMaster["BLOCK_DEALS_DATA"]
         if urlType=="shortDeals":
           jsonObjMaster = jsonObjMaster["SHORT_DEALS_DATA"]
+
         return get_df_from_json_list(jsonObjMaster)
       else:
         return pd.DataFrame()
@@ -1220,18 +1253,36 @@ def fetchNseJsonObj(urlType,
         #logger1.info("AFTER Function start_date ",start_date," end_date ",end_date)
         logger1.info(f"AFTER start_date={start_date} end_date={end_date}")
     
-        jsonUrl = getJsonUrlQuery(urlType=urlType, 
-                                  index=index, 
-                                  symbol=symbol, 
-                                  instrumentType=instrumentType, 
-                                  fromDate=start_date, 
-                                  toDate=end_date,
-                                  period=period)
-        jsonObj = fetchGetJson(jsonUrl, cookies)
+        if urlType in ["sensiBullEconomicCalender", "sensiBullResultCalender"]:
+          from_date_str = fromDate.strftime('%Y-%m-%d')
+          to_date_str = toDate.strftime('%Y-%m-%d')
+
+          payload = {
+            "countries": [],
+            "impacts": [],
+            "from_date": from_date_str,
+            "to_date": to_date_str
+          }
+          jsonUrl = getTopicJsonQuery(urlType=urlType)
+          jsonObj = fetchPostJson(jsonUrl, cookies, payload)
+          # print(jsonObj)
+        else:
+          jsonUrl = getJsonUrlQuery(urlType=urlType, 
+                                    index=index, 
+                                    symbol=symbol, 
+                                    instrumentType=instrumentType, 
+                                    fromDate=start_date, 
+                                    toDate=end_date,
+                                    period=period)
+          jsonObj = fetchGetJson(jsonUrl, cookies)
         
-        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals"]:
+        if urlType in ["forthcomingListing", "prefIssue", "integratedResults", "sastDeals", "insiderDeals", "commoditySpotAll", "liveRights"]:
           if jsonObj:
             jsonObj = jsonObj["data"]
+        
+        if urlType in ["sensiBullEconomicCalender", "sensiBullResultCalender"]:
+          if jsonObj:
+            jsonObj = jsonObj["payload"]["data"]
 
         # Extend the list with the fetched data
         if jsonObj:
@@ -1434,7 +1485,7 @@ def getDateKeyForNseDocument(urlType):
       "upcomingTender":"todEndDate",
       "upcomingRights":None,
       "liveTender":"todEndDate",
-      "liveRights":None,
+      "liveRights":"rightEndDate",
       
       "rightsFilings":"date",   #done
       "qipFilings":"date",           #done
@@ -1448,7 +1499,11 @@ def getDateKeyForNseDocument(urlType):
       "blockDeals":"date",
       "shortDeals":"date",
       "sastDeals":"date",
-      "insiderDeals":"date"
+      "insiderDeals":"date",
+      
+      #sensiBull
+      "sensiBullEconomicCalender":"date",
+      "sensiBullResultCalender":"date",
   }
   
   return date_key_dict[urlType]
@@ -1543,7 +1598,11 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
       
   if urlType == "upcomingTender" and 'timeStamp' in df.columns:
       df = df.drop(columns=['timeStamp'])
-        
+      
+  # "liveRights" clean up
+  if urlType == "liveRights" and 'sr_no' in df.columns:
+      df = df.drop(columns=['sr_no'])
+  
   # logger1.info(df)
   df[date_key] = pd.to_datetime(df[date_key])
   df = df.sort_values(by=date_key)
@@ -2505,7 +2564,11 @@ def getIndexForNseDocuments(urlType):
         "upcomingTender": None,
         "upcomingRights":None,
         "liveTender": None,
-        "liveRights":None
+        "liveRights":None,
+        
+        #sensiBull
+        "sensiBullEconomicCalender":None,
+        "sensiBullResultCalender":None,
     }
     return index_type[urlType]
 
@@ -2522,13 +2585,13 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingListing", cookies=cookies)
   syncUpNseDocuments(urlType="forthcomingOfs", cookies=cookies)
-  syncUpNseDocuments(urlType="upcomingTender", cookies=cookies_local)
+  syncUpNseDocuments(urlType="upcomingTender", cookies=cookies)
   
-  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)
-              
+  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)           
   syncUpNseDocuments(urlType="qipFilings", cookies=cookies)
-  syncUpNseDocuments(urlType="prefIssue", cookies=cookies)
   syncUpNseDocuments(urlType="schemeOfArrangement", cookies=cookies)
+  syncUpNseDocuments(urlType="rightsFilings", cookies=cookies)
+  syncUpNseDocuments(urlType="liveRights",cookies=cookies)
   
   syncUpNseDocuments(urlType="integratedResults", startDateOffset=3, cookies=cookies)
   
@@ -2537,6 +2600,8 @@ def syncUpAllNseFillings(cookies = None):
   syncUpNseDocuments(urlType="shortDeals", cookies=cookies)
   syncUpNseDocuments(urlType="sastDeals", cookies=cookies)
   syncUpNseDocuments(urlType="insiderDeals", cookies=cookies)
+  
+  syncUpNseDocuments(urlType="sensiBullEconomicCalender", startDateOffset=10, endDateOffset=20)
   
   pass
 
@@ -2565,7 +2630,7 @@ def fetchAllNseFillings():
 
   # fetchNseDocuments("forthcomingListing", cookies=cookies)
   
-  fetchNseDocuments(urlType="upcomingTender",cookies=cookies_local)
+  fetchNseDocuments(urlType="upcomingTender",cookies=cookies)
   
   fetchNseDocuments(urlType="rightsFilings", 
                     index="equities",
@@ -4398,31 +4463,39 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # dummyList = [{"SYMBOL":"UJJIVANSFB"}]
 # syncUpNseResults(dummyList)
 
+
+
+# fetchNseDocuments(urlType="sensiBullEconomicCalender",
+#                   start_date=datetime(2025, 8, 10), 
+#                   end_date=datetime(2025, 8, 30))
+
+# syncUpNseDocuments(urlType="sensiBullEconomicCalender", endDateOffset=20)
+
 # **************************** Daily Sync Up ********************************
-cookies_local = getNseCookies()
-nseStockList = getAllNseSymbols(local=False)
+# cookies_local = getNseCookies()
+# nseStockList = getAllNseSymbols(local=False)
 
-# Fetch any new symbol from yahoo with partial True
-fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+# # Fetch any new symbol from yahoo with partial True
+# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 
-# Fetch NSE Candles
-syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# # Fetch NSE Candles
+# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# Fetch Commodities Candles
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# # Fetch Commodities Candles
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# Fetch Other Candles From Yahoo
-syncUpYahooFinOtherSymbols()
+# # Fetch Other Candles From Yahoo
+# syncUpYahooFinOtherSymbols()
 
-# Fetch NSE Fillings and results
-syncUpAllNseFillings(cookies=cookies_local)
-integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
-syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+# # Fetch NSE Fillings and results
+# syncUpAllNseFillings(cookies=cookies_local)
+# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# Finally recalculate details
-recalculateYFinStockInfo(useNseBhavCopy=True)
+# # Finally recalculate details
+# recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # **************************************************************************
 

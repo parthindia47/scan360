@@ -7,6 +7,7 @@ function UpcomingEvents() {
   const [forthcomingListingData, setForthcomingListingData] = useState([]);
   const [forthcomingOfsData, setForthcomingOfsData] = useState([]);
   const [upcomingTenderData, setUpcomingTenderData] = useState([]);
+  const [economicCalenderData, setEconomicCalenderData] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('events'); // 🔹 tracks which tab is active
@@ -19,6 +20,7 @@ function UpcomingEvents() {
     upcomingIssues: { key: 'date', direction: 'desc' },
     forthcomingListing: { key: 'date', direction: 'asc' },
     forthcomingOfs: { key: 'date', direction: 'asc' },
+    economicCalender: { key: 'date', direction: 'desc' },
     upcomingTender: { key: 'date', direction: 'asc' }
   });
   
@@ -72,6 +74,16 @@ function UpcomingEvents() {
       })
       .catch(err => {
         console.error('Failed to fetch upcomingTender', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/economicCalender`)
+      .then(res => {
+        setEconomicCalenderData(res.data);
+      })
+      .catch(err => {
+        console.error('Failed to fetch economicCalender', err);
       });
   }, []);
 
@@ -188,13 +200,13 @@ function UpcomingEvents() {
     return dir * (dateA - dateB);
   });
 
-  const sortedForthcomingListingData = [...forthcomingListingData].sort((a, b) => {
-    const { key, direction } = sortConfigs.forthcomingListing;
+  const sortedEconomicCalenderData = [...economicCalenderData].sort((a, b) => {
+    const { key, direction } = sortConfigs.economicCalender;
     const dir = direction === 'asc' ? 1 : -1;
 
     if (key === 'date') {
-      const dateA = new Date(a.effectiveDate);
-      const dateB = new Date(b.effectiveDate);
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
       return dir * (dateA - dateB);
     }
 
@@ -290,11 +302,53 @@ function UpcomingEvents() {
     return 0;
   });
 
+  // ----------------------- Economic Calender ------------------------------
+  const sortedForthcomingListingData = [...forthcomingListingData].sort((a, b) => {
+    const { key, direction } = sortConfigs.forthcomingListing;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    if (key === 'date') {
+      const dateA = new Date(a.effectiveDate);
+      const dateB = new Date(b.effectiveDate);
+      return dir * (dateA - dateB);
+    }
+
+    return 0;
+  });
+
+  const flagMap = {
+    India: "🇮🇳",
+    China: "🇨🇳",
+    Japan: "🇯🇵",
+    "Euro Area": "🇪🇺",
+    USA: "🇺🇸"
+  };
+
+  const impactClasses = {
+    low: "bg-green-100 text-green-800",
+    medium: "bg-yellow-100 text-yellow-800",
+    high: "bg-red-100 text-red-800",
+  };
+
+  const [expandedRows, setExpandedRows] = React.useState({}); // { [rowKey]: true/false }
+  const toggleRow = (key) =>
+    setExpandedRows((p) => ({ ...p, [key]: !p[key] }));
+
+  const truncateWords = (text, limit = 100) => {
+    if (!text) return { short: "—", isTruncated: false };
+    const words = text.trim().split(/\s+/);
+    return {
+      short: words.slice(0, limit).join(" "),
+      isTruncated: words.length > limit,
+    };
+  };
+
   return (
     <div className="p-4 mb-4">
       {/* 🔹 Navbar Tabs */}
       <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
-        {['events', 'upcomingIssues', 'forthcomingListing', 'forthcomingOfs', 'upcomingTender'].map(tab => (
+        {['events', 'upcomingIssues', 'forthcomingListing', 
+          'forthcomingOfs','upcomingTender', 'economicCalender'].map(tab => (
           <a
             href="#"
             key={tab}
@@ -309,11 +363,12 @@ function UpcomingEvents() {
                 : 'border-transparent text-gray-500 hover:text-blue-500 hover:border-blue-300'
             }`}
           >
-            {tab === 'events' ? 'Events' :
+            {tab === 'events' ? 'Stock Events' :
              tab === 'upcomingIssues' ? 'Upcoming Issues' :
              tab === 'forthcomingListing' ? 'Upcoming Listings':
              tab === 'forthcomingOfs' ? 'Upcoming OFS':
-             'Upcoming Tenders'
+             tab === 'upcomingTender'? 'Upcoming Tenders':
+             'Economic Calender'
              }
           </a>
         ))}
@@ -636,6 +691,91 @@ function UpcomingEvents() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 🔹 Economic Calender */}
+      {activeTab === 'economicCalender' && (
+        <div className="overflow-x-auto">
+          {/* Holidays Link */}
+          <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
+            📅 Check upcoming market holidays:{" "}
+            <a
+              href="https://www.nseindia.com/resources/exchange-communication-holidays"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline font-medium"
+            >
+              NSE Holiday Calendar
+            </a>
+          </div>
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="p-2 text-left">Date</th>
+                <th className="p-2 text-left">Country</th>
+                <th className="p-2 text-left">Title</th>
+                <th className="p-2 text-left">Impact</th>
+                <th className="p-2 text-left">Actual</th>
+                <th className="p-2 text-left">Expected</th>
+                <th className="p-2 text-left">Previous</th>
+                <th className="p-2 text-left">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedEconomicCalenderData.map((row, idx) => {
+                // if you have a unique id on each row, use it instead of idx
+                const rowKey = row.id ?? idx;
+                const impactKey = (row.impact || "").toLowerCase();
+                const impactChip =
+                  row.impact ? (
+                    <span
+                      className={`inline-flex items-center justify-center w-16 h-6 rounded text-xs font-semibold ${
+                        impactClasses[impactKey] || "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {row.impact}
+                    </span>
+                  ) : (
+                    "—"
+                  );
+
+                const { short, isTruncated } = truncateWords(row.description, 20);
+
+                return (
+                  <tr key={rowKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="p-2">{formatDate(row.date)}</td>
+                    <td className="p-2">
+                      <span className="mr-1">{flagMap[row.country] || ""}</span>
+                      {row.country || "—"}
+                    </td>
+                    <td className="p-2">{row.title || '—'}</td>
+                    <td className="p-2">{impactChip}</td>
+                    <td className="p-2">{row.actual || '—'}</td>
+                    <td className="p-2">{row.expected || '—'}</td>
+                    <td className="p-2">{row.previous || '—'}</td>
+                    <td className="p-2 max-w-xs">
+                      {row.description ? (
+                        <>
+                          {expandedRows[rowKey] ? row.description : short}
+                          {isTruncated && (
+                            <button
+                              onClick={() => toggleRow(rowKey)}
+                              className="ml-1 text-blue-600 underline text-xs"
+                            >
+                              {expandedRows[rowKey] ? "less" : "more"}
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

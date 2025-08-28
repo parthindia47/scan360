@@ -6,6 +6,8 @@ function FundRaise() {
   const [qipData, setQipData] = useState([]);
   const [prefData, setPrefData] = useState([]);
   const [schemeData, setSchemeData] = useState([]);
+  const [liveRightsData, setLiveRightsData] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('prefIssue');
 
@@ -48,6 +50,12 @@ function FundRaise() {
     axios.get(`${process.env.REACT_APP_API_URL}/api/schemeOfArrangement`)
       .then(res => setSchemeData(res.data))
       .catch(err => console.error('Failed to fetch schemeOfArrangement', err));
+  }, []);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/liveRights`)
+      .then(res => setLiveRightsData(res.data))
+      .catch(err => console.error('Failed to fetch liveRights', err));
   }, []);
 
   const formatDate = (dateStr) => {
@@ -156,7 +164,7 @@ function FundRaise() {
     <div className="p-4 mb-4">
       {/* 🔹 Tabs */}
       <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
-        {['prefIssue', 'qipFilings', 'schemeOfArrangement', 'rightsFilings'].map(tab => (
+        {['prefIssue', 'qipFilings', 'schemeOfArrangement', 'rightsFilings', 'liveRights'].map(tab => (
           <a
             key={tab}
             href="#"
@@ -173,7 +181,8 @@ function FundRaise() {
             {tab === 'rightsFilings' ? 'Rights Filings' :
             tab === 'qipFilings' ? 'QIP Filings' :
             tab === 'prefIssue' ? 'Preferential Issues' :
-            'Scheme of Arrangement'}
+            tab === 'schemeOfArrangement' ? 'Scheme of Arrangement':
+            'Active Rights'}
           </a>
         ))}
       </div>
@@ -357,6 +366,47 @@ function FundRaise() {
                         '—'
                       )}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+        </>
+      )}
+
+      {/* 🔹 Live Rights */}
+      {activeTab === 'liveRights' && (
+        <>
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+              <thead className="bg-gray-200">
+                <tr>
+                  <th className="p-2 text-left">Company</th>
+                  <th className="p-2 text-left">Start Date</th>
+                  <th className="p-2 text-left">End Date</th>
+                  <th className="p-2 text-left">Status</th>
+                  <th className="p-2 text-left">Bid Qty</th>
+                  <th className="p-2 text-left">Collected Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {liveRightsData.map((row, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="p-2">
+                      <a
+                        href={`symbol/${row.symbol}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {row.company || '—'}
+                      </a>
+                    </td>
+                    <td className="p-2">{formatDate(row.rightStartDate)}</td>
+                    <td className="p-2">{formatDate(row.rightEndDate)}</td>
+                    <td className="p-2">{row.status || '—'}</td>
+                    <td className="p-2">{row.bidQty || '—'}</td>
+                    <td className="p-2">{row.nse_bse_cumu || '—'}</td>
                   </tr>
                 ))}
               </tbody>

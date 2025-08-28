@@ -22,11 +22,13 @@ const upcomingIssuesPath = path.join(__dirname, '../../stock_fillings/upcomingIs
 const forthcomingListingPath = path.join(__dirname, '../../stock_fillings/forthcomingListing_nse.csv');
 const forthcomingOfsPath = path.join(__dirname, '../../stock_fillings/forthcomingOfs_nse.csv');
 const upcomingTenderPath = path.join(__dirname, '../../stock_fillings/upcomingTender_nse.csv');
+const economicCalenderPath = path.join(__dirname, '../../stock_fillings/sensiBullEconomicCalender_nse.csv');
 
 const rightsFilingsPath = path.join(__dirname, '../../stock_fillings/rightsFilings_nse.csv');
 const qipFilingsPath = path.join(__dirname, '../../stock_fillings/qipFilings_nse.csv');
 const prefIssuePath = path.join(__dirname, '../../stock_fillings/prefIssue_nse.csv');
 const schemeOfArrangementPath = path.join(__dirname, '../../stock_fillings/schemeOfArrangement_nse.csv');
+const liveRightsPath = path.join(__dirname, '../../stock_fillings/liveRights_nse.csv');
 
 const integratedResultsPath = path.join(__dirname, '../../stock_fillings/integratedResults_nse.csv');
 
@@ -44,11 +46,13 @@ const csvPaths = {
   forthcomingListing: forthcomingListingPath,
   forthcomingOfs: forthcomingOfsPath,
   upcomingTender: upcomingTenderPath,
+  economicCalender: economicCalenderPath,
 
   rightsFilings: rightsFilingsPath,
   qipFilings: qipFilingsPath,
   prefIssue: prefIssuePath,
   schemeOfArrangement: schemeOfArrangementPath,
+  liveRights: liveRightsPath,
 
   integratedResults: integratedResultsPath,
 
@@ -67,11 +71,13 @@ const dateKeys = {
   forthcomingListing: "effectiveDate",
   forthcomingOfs: "endDate",
   upcomingTender: "todEndDate",
+  economicCalender: "date",
 
   rightsFilings: "date",
   qipFilings: "date",
   prefIssue: "systemDate",
   schemeOfArrangement: "date",
+  liveRights: "rightEndDate",
 
   integratedResults: "creation_Date",
 
@@ -90,11 +96,13 @@ const daysPastList = {
   forthcomingListing: 3,
   forthcomingOfs: 3,
   upcomingTender: 20,
+  economicCalender: 4,
 
   rightsFilings: 15,
   qipFilings: 15,
   prefIssue: 5,
   schemeOfArrangement: 10,
+  liveRights: 10,
 
   integratedResults: 4,
 
