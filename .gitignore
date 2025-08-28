@@ -14,6 +14,9 @@ stock_fillings/**
 source/client/node_modules/**
 source/server/node_modules/**
 
+stock_info/input/name_changes.csv
+stock_info/input/EQUITY_L.csv
+
 
 # Ignore all doc files
 *.pdf
