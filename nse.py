@@ -4472,30 +4472,30 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # syncUpNseDocuments(urlType="sensiBullEconomicCalender", endDateOffset=20)
 
 # **************************** Daily Sync Up ********************************
-# cookies_local = getNseCookies()
-# nseStockList = getAllNseSymbols(local=False)
+cookies_local = getNseCookies()
+nseStockList = getAllNseSymbols(local=False)
 
-# # Fetch any new symbol from yahoo with partial True
-# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+# Fetch any new symbol from yahoo with partial True
+fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 
-# # Fetch NSE Candles
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# Fetch NSE Candles
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# # Fetch Commodities Candles
-# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# Fetch Commodities Candles
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# # Fetch Other Candles From Yahoo
-# syncUpYahooFinOtherSymbols()
+# Fetch Other Candles From Yahoo
+syncUpYahooFinOtherSymbols()
 
-# # Fetch NSE Fillings and results
-# syncUpAllNseFillings(cookies=cookies_local)
-# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
-# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+# Fetch NSE Fillings and results
+syncUpAllNseFillings(cookies=cookies_local)
+integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# # Finally recalculate details
-# recalculateYFinStockInfo(useNseBhavCopy=True)
+# Finally recalculate details
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # **************************************************************************
 
