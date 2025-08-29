@@ -182,7 +182,7 @@ nseSegments = {"equities":"equities",
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
 ist = pytz.timezone("Asia/Kolkata")
-scrappingStartingDate = datetime(1994, 1, 1)
+scrappingStartingDate = datetime(1992, 1, 1)
 current_datetime = datetime.now()
 current_date = current_datetime.date()
 formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
@@ -3112,7 +3112,7 @@ https://www.nseindia.com/market-data/index-performances
 https://www.nseindia.com/market-data/live-market-indices/heatmap
 '''
 def get_nse_chart_data(symbol="RELIANCE", interval=1, period="D", fromDate=None, toDate=None, printData=None):
-    url = "https://charting.nseindia.com//Charts/ChartData/"
+    url = "https://charting.nseindia.com//Charts/symbolhistoricaldata/"
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -4367,8 +4367,22 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 # resp = getJsonFromCsvForSymbols(symbolType="NSE",local=False)
 # logger1.info(resp)
 
-# dummyList = [{"SYMBOL":"BAJFINANCE"}]
-# fetchYFinTickerCandles(dummyList,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+# dummyList = [{"SYMBOL":"TCS"}, 
+#  {"SYMBOL":"TATAMOTORS"}, 
+#  {"SYMBOL":"COFORGE"}, 
+#  {"SYMBOL":"KPIL"}, 
+#  {"SYMBOL":"INOXINDIA"}, 
+#  {"SYMBOL":"SESHAPAPER"}, 
+#  {"SYMBOL":"PUNJABCHEM"}, 
+#  {"SYMBOL":"DIGJAMLMTD"}, 
+#  {"SYMBOL":"SHEKHAWATI"}]
+
+# dummyList2 = [
+#  {"SYMBOL":"KPIL"}, 
+#  {"SYMBOL":"PUNJABCHEM"}, 
+#  {"SYMBOL":"DIGJAMLMTD"}, 
+#  {"SYMBOL":"SHEKHAWATI"}]
+# fetchYFinTickerCandles(dummyList2,symbolType="NSE",delaySec=6,partial=False,useNseCharting=True)
 # logger1.info(result)
 
 # nseStockList = getAllNseSymbols(local=True)

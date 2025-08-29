@@ -201,6 +201,7 @@ function loadEventsFromCSV(callback) {
 const getStockReturns = async (symbolWithNS, asOfDate) => {
   return new Promise((resolve) => {
     if (!symbolWithNS) {
+      console.log('No symbolWithNS ' + symbol);
       return resolve({
         '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
         '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
@@ -210,6 +211,7 @@ const getStockReturns = async (symbolWithNS, asOfDate) => {
     const symbol = symbolWithNS.replace('.NS', '');
     const csvPath = path.join(candleDataFolder, `${symbol}.csv`);
     if (!fs.existsSync(csvPath)) {
+      console.log('No CSV path for symbol ' + symbol);
       return resolve({
         '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
         '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
@@ -227,6 +229,9 @@ const getStockReturns = async (symbolWithNS, asOfDate) => {
       })
       .on('end', () => {
         if (closes.length < 2 || dates.length !== closes.length) {
+          console.log('No close length ' + symbol);
+          console.log('close length ' + closes.length)
+          console.log('date length ' + dates.length)
           return resolve({
             '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
             '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
@@ -237,6 +242,8 @@ const getStockReturns = async (symbolWithNS, asOfDate) => {
         const refIdx = findRefIndex(dates, referenceDate);
         if (refIdx < 1) {
           // no candle on/before asOf date
+          console.log('refIdx ' + symbol);
+          
           return resolve({
             '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
             '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A',
@@ -280,6 +287,7 @@ const getStockReturns = async (symbolWithNS, asOfDate) => {
         });
       })
       .on('error', () => {
+        console.log('error ' + symbol);
         resolve({
           '1D': 'N/A', '1W': 'N/A', '1M': 'N/A', '3M': 'N/A',
           '6M': 'N/A', '1Y': 'N/A', 'vs52WH': 'N/A'
