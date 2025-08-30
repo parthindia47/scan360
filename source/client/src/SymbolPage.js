@@ -426,7 +426,7 @@ function SymbolPage() {
   if (!candles.close || candles.close.length === 0) return <div className="p-4">No data available</div>;
 
   return (
-    <div className="p-1 mb-10">
+    <div className="p-1 mb-10 overscroll-y-contain overflow-x-hidden touch-pan-y">
       <div>
         {stockInfo && (
           <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-4">
