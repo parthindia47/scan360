@@ -14,9 +14,8 @@ function Navbar() {
     ["/fund_raise", "Fund Raise"],
     ["/results", "Results"],
     ["/trades", "Trades"],
-    ["/news", "Resources"],
-    ["/chat", "Chat"],
-    ["/ai", "AI"],
+    ["/news", "News"],
+    ["/resources", "Resources"],
   ];
 
   // Close menu on outside click

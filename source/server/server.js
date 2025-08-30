@@ -14,6 +14,7 @@ const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
 const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalone');
 const newsFolder = path.join(__dirname, '../../stock_news');
+const stockNewsPath = path.join(__dirname, '../../stock_news/all_stock_news.csv');
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
@@ -61,7 +62,9 @@ const csvPaths = {
   blockDeals: blockDealsPath,
   shortDeals: shortDealsPath,
   sastDeals: sastDealsPath,
-  insiderDeals: insiderDealsPath
+  insiderDeals: insiderDealsPath,
+
+  stockNews: stockNewsPath
 };
 
 const dateKeys = {
@@ -86,7 +89,9 @@ const dateKeys = {
   blockDeals: "date",
   shortDeals: "date",
   sastDeals: "date",
-  insiderDeals: "date"
+  insiderDeals: "date",
+
+  stockNews: "published"
 };
 
 const daysPastList = {
@@ -111,7 +116,9 @@ const daysPastList = {
   blockDeals: 10,
   shortDeals: 2,
   sastDeals: 2,
-  insiderDeals: 2
+  insiderDeals: 2,
+
+  stockNews: 2
 };
 
 // ===================== Helper Functions ===================================
@@ -450,7 +457,6 @@ function getTradeDate(dayPast = 0) {
 }
 
 
-
 app.get('/api/:type', (req, res) => {
   const { type } = req.params;
 
@@ -654,7 +660,6 @@ app.get('/api/results/:type/:symbol', (req, res) => {
       res.status(500).json({ error: `Failed to load ${type} data for symbol '${symbol}'` });
     });
 });
-
 
 app.get('/api/news/:symbol', (req, res) => {
   const { symbol } = req.params;

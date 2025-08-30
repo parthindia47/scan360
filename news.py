@@ -541,15 +541,8 @@ stock_news = {
     "feeds": { 
       "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
       "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms",
-      "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms",
-      "markets": "https://economictimes.indiatimes.com/prime/money-and-markets/rssfeeds/62511286.cms"
-    }
-  },
-  "Zee Business":{
-    "rss_home": "https://www.zeebiz.com/rss",
-    "feeds": { 
-      "economy": "https://www.zeebiz.com/india-economy.xml",
-      "markets": "https://www.zeebiz.com/india-markets.xml"
+      "markets": "https://economictimes.indiatimes.com/prime/money-and-markets/rssfeeds/62511286.cms",
+      "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms"
     }
   },
   "Hindu Business Line":{
@@ -557,7 +550,7 @@ stock_news = {
     "feeds": { 
       "economy": "https://www.thehindubusinessline.com/economy/feeder/default.rss",
       "markets": "https://www.thehindubusinessline.com/markets/feeder/default.rss",
-      "stock": "https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"
+      "stocks": "https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"
     }
   },
   "LiveMint":{
@@ -619,17 +612,21 @@ stock_news = {
   },
 }
 
-from_date = datetime.now() - timedelta(days=7)
-to_date = datetime.now()
+def fetch_rss_feeds():
+  from_date = datetime.now() - timedelta(days=7)
+  to_date = datetime.now()
 
+  url = stock_news["CNBC TV18"]["feeds"]["markets"]
+  print("fetching ",url)
 
-# url = stock_news["Economic Times"]["feeds"]["stocks"]
-# url = stock_news["Zee Business"]["feeds"]["economy"]
-url = stock_news["TOI"]["feeds"]["markets"]
+  df, json_obj = fetch_rss_to_json_df(url, fromDate=from_date, toDate=to_date)
+  print(df)
 
-print(url)
-df, json_obj = fetch_rss_to_json_df(url, fromDate=from_date, toDate=to_date)
-print(json_obj)
+  local_url="stock_news/all_stock_news.csv"
+  df.drop_duplicates(subset="link", keep="last", inplace=True)
+  df.to_csv(local_url, index=False, encoding='utf-8')
+  
+fetch_rss_feeds()
 
 
 

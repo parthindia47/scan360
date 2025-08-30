@@ -11,9 +11,10 @@ import AboutUs from './AboutUs';
 import Terms from './Terms';
 import Contact from './Contact';
 import Results from './Results';
-import News from './News';
+import Resources from './Resources';
 import Ai from './Ai';
 import Chat from './Chat'
+import News from './News'
 
 import Footer from './Footer';
 
@@ -50,7 +51,8 @@ function App() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/results" element={<Results />} />
-            <Route path="/news" element={<News />} />
+            <Route path="/News" element={<News />} />
+            <Route path="/Resources" element={<Resources />} />
             <Route path="/ai" element={<Ai />} />
             <Route path="/chat" element={<Chat />} />
           </Routes>
