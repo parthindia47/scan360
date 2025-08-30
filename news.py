@@ -95,11 +95,10 @@ news_rss = {
         "world": "https://www.news18.com/rss/world.xml" 
       }
     },
-    "Economic Times":{
-      "rss_home": "https://economictimes.indiatimes.com/rss.cms",
+    "Business Standard":{
+      "rss_home": "https://www.business-standard.com/rss-feeds/listing",
       "feeds": { 
-        "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
-        "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms" 
+        "markets": "https://www.business-standard.com/rss/markets-106.rss"
       }
     },
     "India Today":{
@@ -429,7 +428,9 @@ def google_search(query: str, num_results: int = 5):
 
 def fetch_rss_to_json_df(base_url, fromDate=None, toDate=None):
     # Parse feed
-    feed = feedparser.parse(base_url)
+    resp = requests.get(base_url, headers=headers, timeout=10)
+    print(resp)
+    feed = feedparser.parse(resp.content)
 
     # Extract and clean data
     data = []
@@ -520,8 +521,8 @@ def testGrowScrapper():
 
 # fromDate = datetime(2025, 5, 28)
 # toDate = datetime(2025, 6, 2)
-resp = sensiBullDataScrapper(urlType="economicCalender")
-print(resp["payload"]["data"])
+# resp = sensiBullDataScrapper(urlType="economicCalender")
+# print(resp["payload"]["data"])
 
 # Example usage:
 # df, json_data = fetch_google_rss_news("Premier Energies Limited")
@@ -534,10 +535,101 @@ print(resp["payload"]["data"])
 # df, json_obj = google_search('site:business-standard.com "Welspun"', num_results=5)
 # print(df)
 
-# from_date = datetime.now() - timedelta(days=1)
-# to_date = datetime.now()
-# df, json_obj = fetch_rss_to_json_df(news_rss["Hindustan Times"]["feeds"]["world"], fromDate=from_date, toDate=to_date)
-# print(df)
+stock_news = {
+  "Economic Times":{
+    "rss_home": "https://economictimes.indiatimes.com/rss.cms",
+    "feeds": { 
+      "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+      "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms",
+      "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms",
+      "markets": "https://economictimes.indiatimes.com/prime/money-and-markets/rssfeeds/62511286.cms"
+    }
+  },
+  "Zee Business":{
+    "rss_home": "https://www.zeebiz.com/rss",
+    "feeds": { 
+      "economy": "https://www.zeebiz.com/india-economy.xml",
+      "markets": "https://www.zeebiz.com/india-markets.xml"
+    }
+  },
+  "Hindu Business Line":{
+    "rss_home": "https://www.thehindubusinessline.com/rssfeeds/",
+    "feeds": { 
+      "economy": "https://www.thehindubusinessline.com/economy/feeder/default.rss",
+      "markets": "https://www.thehindubusinessline.com/markets/feeder/default.rss",
+      "stock": "https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"
+    }
+  },
+  "LiveMint":{
+    "rss_home": "https://www.livemint.com/rss",
+    "feeds": {
+      "markets":"https://www.livemint.com/rss/markets",
+      "companies": "https://www.livemint.com/rss/companies",
+      "money": "https://www.livemint.com/rss/money"
+    }
+  },
+  "CNBC TV18":{
+    "rss_home": "https://www.cnbctv18.com/rss/",
+    "feeds": {
+      "economy": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/economy.xml",
+      "markets": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml"
+    }
+  },
+  "Trade Brains":{
+    "rss_home": "https://tradebrains.in/blog/feed/",
+    "feeds": {
+      "markets": "https://tradebrains.in/blog/feed/"
+    }
+  },
+  "Alpha Ideas":{
+    "rss_home": "https://alphaideas.in/feed/",
+    "feeds": {
+      "markets": "https://alphaideas.in/feed/"
+    }
+  },
+  "Equity Pandit":{
+    "rss_home": "https://www.equitypandit.com/category/latest-news/feed/",
+    "feeds": {
+      "markets": "https://www.equitypandit.com/category/latest-news/feed/"
+    }
+  },
+  "Mind2markets":{
+    "rss_home": "https://mind2markets.com/feed/",
+    "feeds": {
+      "markets": "https://mind2markets.com/feed/"
+    }
+  },
+  "StockManiacs":{
+    "rss_home": "https://www.stockmaniacs.net/blog/feed/",
+    "feeds": {
+      "markets": "https://www.stockmaniacs.net/blog/feed/"
+    }
+  },
+  "Trade Brains":{
+    "rss_home": "https://tradebrains.in/feed/",
+    "feeds": {
+      "markets": "https://tradebrains.in/feed/"
+    }
+  },
+  "TOI":{
+    "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
+    "feeds": {
+      "markets": "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms"
+    }
+  },
+}
+
+from_date = datetime.now() - timedelta(days=7)
+to_date = datetime.now()
+
+
+# url = stock_news["Economic Times"]["feeds"]["stocks"]
+# url = stock_news["Zee Business"]["feeds"]["economy"]
+url = stock_news["TOI"]["feeds"]["markets"]
+
+print(url)
+df, json_obj = fetch_rss_to_json_df(url, fromDate=from_date, toDate=to_date)
+print(json_obj)
 
 
 

@@ -4382,7 +4382,37 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 #  {"SYMBOL":"PUNJABCHEM"}, 
 #  {"SYMBOL":"DIGJAMLMTD"}, 
 #  {"SYMBOL":"SHEKHAWATI"}]
-# fetchYFinTickerCandles(dummyList2,symbolType="NSE",delaySec=6,partial=False,useNseCharting=True)
+
+# dummyList3 = [
+#  {"SYMBOL":"BSE"}, 
+#  {"SYMBOL":"VESUVIUS"}, 
+#  {"SYMBOL":"QUESS"}, 
+#  {"SYMBOL":"VERTOZ"},
+#  {"SYMBOL":"WAAREEINDO"}, 
+#  {"SYMBOL":"VAKRANGEE"}, 
+#  {"SYMBOL":"RAYMOND"}, 
+#  {"SYMBOL":"JITFINFRA"},
+#  {"SYMBOL":"SBGLP"}, 
+#  {"SYMBOL":"NAUKRI"}, 
+#  {"SYMBOL":"PIXTRANS"}, 
+#  {"SYMBOL":"SIEMENS"},
+#  {"SYMBOL":"HUHTAMAKI"}, 
+#  {"SYMBOL":"ADANIGREEN"}, 
+#  {"SYMBOL":"PARAS"}, 
+#  {"SYMBOL":"SADHNANIQ"},
+#  {"SYMBOL":"ORCHPHARMA"}, 
+#  {"SYMBOL":"STAR"}, 
+#  {"SYMBOL":"BASF"}, 
+#  {"SYMBOL":"SHARDAMOTR"},
+#  {"SYMBOL":"KESORAMIND"}, 
+#  {"SYMBOL":"PSB"}, 
+#  {"SYMBOL":"ROSSELLIND"}, 
+#  {"SYMBOL":"VMART"},
+#  {"SYMBOL":"ABFRL"}, 
+#  {"SYMBOL":"INDUSINDBK"}
+# ]
+
+# fetchYFinTickerCandles(dummyList3,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
 # logger1.info(result)
 
 # nseStockList = getAllNseSymbols(local=True)

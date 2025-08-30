@@ -13,6 +13,7 @@ let eventsMap = {}; // key: symbol, value: array of events
 const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
 const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalone');
+const newsFolder = path.join(__dirname, '../../stock_news');
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
 
 const announcementPath = path.join(__dirname, '../../stock_fillings/announcements_nse.csv');
@@ -651,6 +652,38 @@ app.get('/api/results/:type/:symbol', (req, res) => {
     .on('error', (err) => {
       console.error(`Error reading CSV for '${symbol}' (${type}):`, err);
       res.status(500).json({ error: `Failed to load ${type} data for symbol '${symbol}'` });
+    });
+});
+
+
+app.get('/api/news/:symbol', (req, res) => {
+  const { symbol } = req.params;
+
+  const baseFolder = newsFolder;
+  const filePath = path.join(baseFolder, `${symbol}.csv`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `Data for symbol '${symbol}' not found. path '${filePath}'` });
+  }
+
+  const result = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv())
+    .on('data', (row) => {
+      // Optionally parse numeric fields
+      const parsedRow = {
+        type: row.type,
+        date: row.date,
+        details: row.details,
+        url: row.url,
+      };
+      result.push(parsedRow);
+    })
+    .on('end', () => res.json(result))
+    .on('error', (err) => {
+      console.error(`Error reading CSV for '${symbol}' `, err);
+      res.status(500).json({ error: `Failed to load news data for symbol '${symbol}'` });
     });
 });
 

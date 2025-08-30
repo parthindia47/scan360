@@ -14,7 +14,7 @@ function Navbar() {
     ["/fund_raise", "Fund Raise"],
     ["/results", "Results"],
     ["/trades", "Trades"],
-    ["/news", "News"],
+    ["/news", "Resources"],
     ["/chat", "Chat"],
     ["/ai", "AI"],
   ];

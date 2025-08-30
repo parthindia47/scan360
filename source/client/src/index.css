@@ -50,3 +50,18 @@ h1 {
   color: #1976d2;
 }
 
+/* Recharts focus ring cleanup */
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+svg.recharts-surface:focus,
+svg.recharts-surface:focus-visible {
+  outline: none !important;
+}
+
+/* Remove tap highlight on mobile */
+.recharts-wrapper, .recharts-wrapper * {
+  -webkit-tap-highlight-color: transparent;
+}
+

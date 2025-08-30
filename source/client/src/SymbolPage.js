@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback} from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import {
@@ -24,6 +24,187 @@ const timeFrames = {
   'Max': Infinity
 };
 
+const PriceChart = React.memo(function PriceChart({
+  chartData,
+  isMobile,
+  margin,
+  xTicks,
+  volumeTicks,
+  priceTicks,
+  yMin,
+  yMax,
+  decimalPoints,
+  tickPrefix,
+  newsData,
+  onDotClick,
+  getCloseByDate,
+  activeDotKey,   // 👈 new
+  eventKey,       // 👈 new
+}) {
+
+  // Map each event type to a label
+  const EVENT_LABELS = {
+    news: "N",
+    dividend: "D",
+    result: "R",
+    split: "S",
+    // fallback
+    default: "•"
+  };
+
+  return (
+    <div className="-mx-4 sm:mx-0">
+      <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
+        <ComposedChart 
+        data={chartData} 
+        margin={margin} 
+        tabIndex={-1} 
+        focusable={false}
+        >
+          <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
+
+          <XAxis
+            dataKey="date"
+            ticks={isMobile ? xTicks.filter((_, i) => i % 2 === 0) : xTicks}
+            tick={{ fontSize: isMobile ? 8 : 10, fill: "#4f5763" }}
+            axisLine={{ stroke: "#e5e7eb" }}
+            tickLine={{ stroke: "#e5e7eb" }}
+          />
+
+          <YAxis
+            yAxisId="left"
+            orientation="left"
+            ticks={volumeTicks}
+            tick={{ fontSize: isMobile ? 8 : 10, fill: "#4f5763" }}
+            axisLine={{ stroke: "#e5e7eb" }}
+            tickLine={{ stroke: "#e5e7eb" }}
+            vertical={false}
+            label={
+              !isMobile
+                ? { value: "Volume", angle: -90, position: "insideLeft", fill: "#4f5763" }
+                : undefined
+            }
+            tickFormatter={(value) => {
+              if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + "M";
+              if (value >= 1_000) return (value / 1_000).toFixed(0) + "K";
+              return value;
+            }}
+          />
+
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            domain={[yMin * 0.98, yMax * 1.02]}
+            ticks={priceTicks}
+            tick={{ fontSize: isMobile ? 10 : 12, fill: "#4f5763" }}
+            axisLine={{ stroke: "#e5e7eb" }}
+            tickLine={{ stroke: "#e5e7eb" }}
+            label={
+              !isMobile
+                ? { value: "Price", angle: -90, position: "insideRight", fill: "#4f5763" }
+                : undefined
+            }
+            tickFormatter={(value) => value.toFixed(decimalPoints)}
+          />
+
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const { date, close, volume } = payload[0].payload;
+                return (
+                  <div className="bg-white p-2 border rounded shadow text-sm">
+                    <div>{date}</div>
+                    <div>{tickPrefix}{close.toFixed(decimalPoints)}</div>
+                    <div><strong>Vol:</strong> {volume.toLocaleString()}</div>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+
+          <Bar yAxisId="left" dataKey="volume" barSize={isMobile ? 10 : 20} fill="#14eba3" />
+
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="close"
+            stroke="#3b82f6"
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+
+          {newsData.map((ev) => {
+            const y = getCloseByDate(chartData, ev.date);
+            if (y == null) return null;
+
+            const key = eventKey(ev);
+            const isActive = key === activeDotKey;
+
+            return (
+              <ReferenceDot
+                key={key}
+                x={ev.date}
+                y={y}
+                yAxisId="right"
+                r={12}
+                isFront={isActive}
+                isAnimationActive={false}
+                // keep your click through props on the dot – they'll be passed to shape
+                onClick={() =>
+                  onDotClick({
+                    type: ev.type,
+                    date: ev.date,
+                    text: ev.details,
+                    url: ev.url,
+                    price: y,
+                  })
+                }
+                // 👇 custom renderer: move both circle + text together
+                shape={(props) => {
+                  const { cx, cy, onClick } = props; // recharts passes these
+                  const offsetY = -10;               // << shift up 10px (tweak as you like)
+                  const r = 12;
+
+                  return (
+                    <g
+                      transform={`translate(${cx}, ${cy + offsetY})`}
+                      style={{ cursor: "pointer" }}
+                      onClick={onClick}
+                    >
+                      {/* (Optional) larger invisible hit area so it’s easier to click */}
+                      <circle r={20} fill="transparent" style={{ pointerEvents: "all" }} />
+
+                      {/* Visible dot */}
+                      <circle
+                        r={r}
+                        fill={isActive ? "#ef4444" : "#f59e0b"}
+                        stroke={isActive ? "#111827" : "white"}
+                        strokeWidth={isActive ? 3 : 2}
+                      />
+
+                      {/* Center label "N" */}
+                      <text
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize={isActive ? 12 : 10}
+                        fill="white"
+                      >
+                        {EVENT_LABELS[ev.type] || EVENT_LABELS.default}
+                      </text>
+                    </g>
+                  );
+                }}
+              />
+            );
+          })}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+});
+
 function SymbolPage() {
   const [candles, setCandles] = useState({ close: [], volume: [] });
   const [loading, setLoading] = useState(true);
@@ -32,8 +213,11 @@ function SymbolPage() {
   const [selectedRange, setSelectedRange] = useState('1Y');
   const [consolidatedData, setConsolidatedData] = useState([]);
   const [standaloneData, setStandaloneData] = useState([]);
+  const [newsData, setNewsData] = useState([]);
   const [activeResultsTab, setActiveResultsTab] = useState('consolidated');
   const [isMobile, setIsMobile] = useState(false);
+  const [clickedMsg, setClickedMsg] = useState(null);
+  const [activeDotKey, setActiveDotKey] = useState(null);
 
   const { symbol } = useParams();
   let decimalPoints = 2;
@@ -119,6 +303,21 @@ function SymbolPage() {
     }
   }, [consolidatedData, standaloneData]);
 
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/news/${symbol}`)
+      .then(res => {
+        setNewsData(res.data);
+      })
+      .catch(err => {
+        console.error('Error fetching consolidated data:', err);
+        setNewsData([]);
+      });
+  }, [symbol]);
+
+  // build a unique key for each event (adjust if your data shape differs)
+  const eventKey = useCallback((ev) => {
+    return `${ev.date}__${ev.type || ""}__${ev.url || ""}`;
+  }, []);
 
   // Utility function to generate N ticks between min and max
   const generateTicks = (min, max, count, toFixed = null) => {
@@ -165,44 +364,66 @@ function SymbolPage() {
     }));
   };
 
-  if (loading) return <div className="p-4">Loading...</div>;
-  if (!candles.close || candles.close.length === 0) return <div className="p-4">No data available</div>;
-
-  // Example: keep these in your component (or pass them as props)
-  const dividendEvents = [
-    { date: "2025-08-01" },
-    { date: "2025-07-01" }
-  ];
-
-  // Helper: get close price on a given date from chartData
   const getCloseByDate = (data, dateStr) => {
     const row = data.find(d => d.date === dateStr);
     return row ? row.close : null;
   };
 
-  const chartData = getChartData();
-  const closePrices = chartData.map(d => d.close);
-  const yMin = Math.min(...closePrices);
-  const yMax = Math.max(...closePrices);
+  // 1) chartData memo
+  const chartData = useMemo(() => getChartData(), [candles, selectedRange]);
 
-  // Generate ticks
-  const priceTicks = generateTicks(yMin, yMax, 8, decimalPoints);   // Two decimals for price
-  const volumeData = chartData.map(d => d.volume);
-  const vMin = Math.min(...volumeData);
-  const vMax = Math.max(...volumeData);
-  const volumeTicks = generateTicks(vMin, vMax, 8);     // Rounded integers for volume
+  // 2) derived ranges memo
+  const closePrices = useMemo(() => chartData.map(d => d.close), [chartData]);
+  const yMin = useMemo(() => Math.min(...closePrices), [closePrices]);
+  const yMax = useMemo(() => Math.max(...closePrices), [closePrices]);
 
-  // X ticks 
-  const xTickCount = 6;
-  const xTickInterval = Math.max(1, Math.floor(chartData.length / (xTickCount - 1)));
-  const xTicks = chartData
-    .filter((_, i) => i % xTickInterval === 0)
-    .map(d => d.date);
+  const volumeData = useMemo(() => chartData.map(d => d.volume), [chartData]);
+  const vMin = useMemo(() => Math.min(...volumeData), [volumeData]);
+  const vMax = useMemo(() => Math.max(...volumeData), [volumeData]);
 
-  // Ensure the last date is included
-  if (chartData.length > 0 && xTicks[xTicks.length - 1] !== chartData[chartData.length - 1].date) {
-    xTicks.push(chartData[chartData.length - 1].date);
-  }
+  // 3) ticks memo
+  const priceTicks = useMemo(
+    () => generateTicks(yMin, yMax, 8, decimalPoints),
+    [yMin, yMax, decimalPoints]
+  );
+  const volumeTicks = useMemo(
+    () => generateTicks(vMin, vMax, 8),
+    [vMin, vMax]
+  );
+  const xTicks = useMemo(() => {
+    const xTickCount = 6;
+    const interval = Math.max(1, Math.floor(chartData.length / (xTickCount - 1)));
+    const ticks = chartData.filter((_, i) => i % interval === 0).map(d => d.date);
+    if (chartData.length > 0 && ticks[ticks.length - 1] !== chartData[chartData.length - 1].date) {
+      ticks.push(chartData[chartData.length - 1].date);
+    }
+    return ticks;
+  }, [chartData]);
+
+  // 4) stable margin + click handler
+  const chartMargin = useMemo(
+    () => ({ top: 20, right: isMobile ? 10 : 50, left: isMobile ? 10 : 50, bottom: 0 }),
+    [isMobile]
+  );
+
+  // Avoid setting state if the same event is clicked again (prevents useless parent re-renders)
+  const handleDotClick = useCallback((msg) => {
+    setClickedMsg(prev =>
+      prev &&
+      prev.type === msg.type &&
+      prev.date === msg.date &&
+      prev.price === msg.price &&
+      prev.url === msg.url &&
+      prev.text === msg.text
+        ? prev
+        : msg
+    );
+    // mark the dot active
+    setActiveDotKey(eventKey(msg)); // msg has date/type/url
+  }, [eventKey]);
+
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (!candles.close || candles.close.length === 0) return <div className="p-4">No data available</div>;
 
   return (
     <div className="p-1 mb-10">
@@ -350,128 +571,71 @@ function SymbolPage() {
         })}
       </div>
 
-      {/* Stock Chart */}
-      <div className="-mx-4 sm:mx-0">
-        <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
-          <ComposedChart
-            data={chartData}
-            margin={{
-              top: 20,
-              right: isMobile ? 10 : 50, // slightly smaller margin on mobile
-              left: isMobile ? 10 : 50,
-              bottom: 0
-            }}
-          >
-            <CartesianGrid 
-              stroke="#e5e7eb" // light gray
-              strokeDasharray="3 3" 
-              vertical={false} // disable vertical lines
-            />
-            <XAxis
-              dataKey="date"
-              ticks={isMobile ? xTicks.filter((_, i) => i % 2 === 0) : xTicks}
-              tick={{ fontSize: isMobile ? 8 : 10, fill: "#4f5763" }} // lighter tick color
-              axisLine={{ stroke: "#e5e7eb" }}
-              tickLine={{ stroke: "#e5e7eb" }}
-            />
+      {/* Sticky message box above the chart */}
+      <div className="mb-2">   {/* 👈 reserve ~80px */}
+        {clickedMsg ? (
+          <div className="w-full max-w-full md:max-w-3xl px-3 py-2 border rounded-lg bg-white shadow-sm text-sm">
+            {/* Row 1: type + meta */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
+              {/* Type chip */}
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                {clickedMsg.type}
+              </span>
 
-            <YAxis
-              yAxisId="left"
-              orientation="left"
-              ticks={volumeTicks}
-              tick={{ fontSize: isMobile ? 8 : 10, fill: "#4f5763" }}
-              axisLine={{ stroke: "#e5e7eb" }}
-              tickLine={{ stroke: "#e5e7eb" }}
-              vertical={false}
-              label={
-                !isMobile
-                  ? { value: "Volume", angle: -90, position: "insideLeft", fill: "#4f5763" }
-                  : undefined
-              }
-              tickFormatter={(value) => {
-                if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
-                if (value >= 1_000) return (value / 1_000).toFixed(0) + 'K';
-                return value;
-              }}
-            />
+              {/* Date */}
+              <span className="font-mono text-gray-700">
+                {clickedMsg.date}
+              </span>
 
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              domain={[yMin * 0.98, yMax * 1.02]}
-              ticks={priceTicks}
-              tick={{ fontSize: isMobile ? 10 : 12, fill: "#4f5763" }}
-              axisLine={{ stroke: "#e5e7eb" }}
-              tickLine={{ stroke: "#e5e7eb" }}
-              label={
-                !isMobile
-                  ? { value: "Price", angle: -90, position: "insideRight", fill: "#4f5763" }
-                  : undefined
-              }
-              tickFormatter={(value) => value.toFixed(decimalPoints)}
-            />
+              {/* Price */}
+              <span className="font-mono text-gray-900">
+                {tickPrefix}{Number(clickedMsg.price).toFixed(decimalPoints)}
+              </span>
+            </div>
 
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  const { date, close, volume } = payload[0].payload;
-                  return (
-                    <div className="bg-white p-2 border rounded shadow text-sm">
-                      <div>{date}</div>
-                      <div>{tickPrefix}{close.toFixed(decimalPoints)}</div>
-                      <div><strong>Vol:</strong> {volume.toLocaleString()}</div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
+            {/* Row 2: details (wraps + scrolls if very long) */}
+            <p className="text-gray-700 whitespace-pre-wrap break-words max-h-28 overflow-auto">
+              {clickedMsg.text}
+            </p>
 
-            {/* Volume Bars */}
-            <Bar
-              yAxisId="left"
-              dataKey="volume"
-              barSize={isMobile ? 10 : 20}
-              fill="#14eba3"
-            />
-
-            {/* Price Line */}
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="close"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              dot={false}
-            />
-
-          {/* ---------- DIVIDEND MARKERS (CIRCLES WITH "D") ---------- */}
-          {dividendEvents.map((ev, idx) => {
-            const y = getCloseByDate(chartData, ev.date);
-            if (y == null) return null; // date not in data
-            return (
-              <ReferenceDot
-                key={idx}
-                x={ev.date}
-                y={y}
-                yAxisId="right"
-                r={11}
-                fill="#f59e0b"  // amber
-                stroke="white"
-                strokeWidth={2}
-                label={{
-                  value: "N",
-                  fill: "white",
-                  fontSize: 10,
-                  position: "center"
-                }}
-              />
-            );
-          })}
-
-          </ComposedChart>
-        </ResponsiveContainer>
+            {/* Row 3: link (breaks on small screens) */}
+            {clickedMsg.url && (
+              <a
+                href={clickedMsg.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-blue-600 underline break-all"
+              >
+                Read source
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="inline-flex items-start gap-2 sm:gap-3 px-3 py-2 border rounded bg-white shadow-sm text-sm">
+            💡 Tip: tap a marker on the chart to show event details.
+          </div>
+        )}
       </div>
+
+
+      {/* Stock Chart */}
+      <PriceChart
+        chartData={chartData}
+        isMobile={isMobile}
+        margin={chartMargin}
+        xTicks={xTicks}
+        volumeTicks={volumeTicks}
+        priceTicks={priceTicks}
+        yMin={yMin}
+        yMax={yMax}
+        decimalPoints={decimalPoints}
+        tickPrefix={tickPrefix}
+        newsData={newsData}
+        onDotClick={handleDotClick}
+        getCloseByDate={getCloseByDate}
+        activeDotKey={activeDotKey}   // 👈
+        eventKey={eventKey}           // 👈
+      />
 
       <div>
         <h4 className="text-lg font-semibold">
@@ -564,7 +728,7 @@ function SymbolPage() {
         <h3 className="font-semibold text-green-600 mb-2">Positive Impacts</h3>
         {stockInfo.positiveImpacts && stockInfo.positiveImpacts.length > 5 && stockInfo.positiveImpacts.trim() !== "" ? (
           <ul className="list-disc list-inside text-sm">
-            {stockInfo.positiveImpacts.split("/").map((item, idx) => (
+            {stockInfo.positiveImpacts.split("*").map((item, idx) => (
               <li key={idx}>{item.trim()}</li>
             ))}
           </ul>
