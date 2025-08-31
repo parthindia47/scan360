@@ -3,18 +3,12 @@ import requests
 from urllib.parse import quote_plus
 from urllib.parse import urlparse, unquote
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
-from newspaper import Article
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer  # You can use others too
-from googlesearch import search
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 import re
+import os
+from curl_cffi import requests as cffireq
 
 '''
 1. Moneycontrol
@@ -47,82 +41,6 @@ currently implemented scrappers:
 3. Google
 
 '''
-news_rss = {
-    "The Hindu":{
-      "rss_home": "https://www.thehindu.com/rssfeeds/",
-      "feeds":{ 
-         "india": "https://www.thehindu.com/news/national/feeder/default.rss",
-         "world": "https://www.thehindu.com/news/international/feeder/default.rss" 
-        }
-    },
-    "Times of India":{
-      "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
-      "feeds": { 
-        "feed": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
-        "india": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" 
-      }
-    },
-    "Hindustan Times":{
-      "rss_home": "https://www.hindustantimes.com/rss-feeds",
-      "feeds": {
-        "india": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
-        "world": "https://www.hindustantimes.com/feeds/rss/world-news/rssfeed.xml"
-      }
-    },
-    "Indian Express":{
-      "rss_home": "https://indianexpress.com/rss/",
-      "feeds": { 
-        "feed": "https://indianexpress.com/feed/",
-        "india": "https://indianexpress.com/section/india/feed/"
-      }
-    },
-    "NDTV":{
-      "rss_home": "https://www.ndtv.com/rss",
-      "feeds":
-        { "feed": "https://feeds.feedburner.com/ndtvnews-top-stories" }
-    },
-    "Zee News":{
-      "rss_home": "https://zeenews.india.com/rss",
-      "feeds": { 
-        "india": "https://zeenews.india.com/rss/india-news.xml",
-        "world": "https://zeenews.india.com/rss/world-news.xml" 
-      }
-    },
-    "News18":{
-      "rss_home": "https://www.news18.com/rss/",
-      "feeds":{ 
-        "india": "https://www.news18.com/rss/india.xml",
-        "world": "https://www.news18.com/rss/world.xml" 
-      }
-    },
-    "Business Standard":{
-      "rss_home": "https://www.business-standard.com/rss-feeds/listing",
-      "feeds": { 
-        "markets": "https://www.business-standard.com/rss/markets-106.rss"
-      }
-    },
-    "India Today":{
-      "rss_home": "https://www.indiatoday.in/rss",
-      "feeds":{ 
-        "india": "https://www.indiatoday.in/rss/1206514",
-        "world": "https://www.indiatoday.in/rss/1206577" 
-      }
-    },
-    "Google News":{
-      "rss_home": "https://www.indiatoday.in/rss",
-      "feeds": { 
-        "india": "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
-        "world": "https://news.google.com/rss/?hl=en&gl=US&ceid=US:en" 
-      }
-    },
-    "BBC":{
-      "rss_home": "https://www.bbc.co.uk/news/10628494",
-      "feeds": { 
-        "world": "http://feeds.bbci.co.uk/news/world/rss.xml"
-      },
-    },
-}
-
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
 
@@ -133,7 +51,7 @@ returns the response of given url
 should pass base/first urls which "do not need cookies" to access.
 '''
 def fetchUrl(url, headers=None, payload=None):
-    print("Fetching Base URL : " + url)
+    print("Fetching Base URL : ",url)
     try:
         # Send a GET request to the URL to download the JSON content
         response = requests.get(url,headers=headers)
@@ -142,12 +60,12 @@ def fetchUrl(url, headers=None, payload=None):
         if response.status_code == 200:
           return response
         else:
-            print("Failed to fetch. Status code:", response.status_code)
+            print("Failed to fetch. Status code: ", response.status_code)
     except Exception as e:
-        print("An error occurred:", e)
+        print("An error occurred: ", e)
         
 def fetchPostJson(url, cookies=None, payload=None):
-    print("Fetching JSON Object : " + url)
+    print("Fetching JSON Object : ", url)
     try:
         # Send a GET request to the URL to download the JSON content
         #print("Cookies Type:", type(cookies))
@@ -164,9 +82,9 @@ def fetchPostJson(url, cookies=None, payload=None):
             jsonData = response.json()
             return jsonData
         else:
-            print("Failed to download JSON. Status code:", response.status_code)
+            print("Failed to download JSON. Status code: ", response.status_code)
     except Exception as e:
-        print("An error occurred:", e)
+        print("An error occurred: ", e)
 
 def fetchGetJson(url, headers=None, cookies=None, payload=None):
     print("Fetching JSON Object : " + url)
@@ -185,9 +103,9 @@ def fetchGetJson(url, headers=None, cookies=None, payload=None):
             jsonData = response.json()
             return jsonData
         else:
-            print("Failed to download JSON. Status code:", response.status_code)
+            print("Failed to download JSON. Status code: ", response.status_code)
     except Exception as e:
-        print("An error occurred:", e)
+        print("An error occurred: ", e)
 
 
 # ==========================================================================
@@ -359,7 +277,7 @@ def testCogencisScrapper():
       time = story.get("sourceDateTime", "N/A")
       source = story.get("sourceName", "N/A")
       link = story.get("sourceLink", "N/A")
-      print(f"📅 {time} | 🗞 {headline} | 🔗 {link} ({source})\n")
+      print(f"{time} |  {headline} | {link} ({source})\n")
       
 # ==========================================================================
 # ============================  Google RSS =================================
@@ -426,34 +344,6 @@ def google_search(query: str, num_results: int = 5):
 
     return df, json_result
 
-def fetch_rss_to_json_df(base_url, fromDate=None, toDate=None):
-    # Parse feed
-    resp = requests.get(base_url, headers=headers, timeout=10)
-    print(resp)
-    feed = feedparser.parse(resp.content)
-
-    # Extract and clean data
-    data = []
-    for entry in feed.entries:
-        published_dt = datetime(*entry.published_parsed[:6])  # Convert struct_time to datetime
-
-        # Apply date filter if specified
-        if fromDate and published_dt < fromDate:
-            continue
-        if toDate and published_dt > toDate:
-            continue
-
-        data.append({
-            "title": entry.title,
-            "link": entry.link,
-            "published": entry.published,
-            "published_parsed": published_dt.isoformat(),
-            "summary": entry.summary,
-            "source": entry.get("source", {}).get("title", "Unknown")
-        })
-
-    df = pd.DataFrame(data)
-    return df, data
 
 # ==========================================================================
 # ============================  Grow IPOs =================================
@@ -536,6 +426,13 @@ def testGrowScrapper():
 # print(df)
 
 stock_news = {
+  "Business Standard":{
+    "rss_home": "https://www.business-standard.com/rss-feeds/listing",
+    "feeds": { 
+      "markets": "https://www.business-standard.com/rss/markets-106.rss",
+      "markets-news" : "https://www.business-standard.com/rss/markets/stock-market-news-10618.rss"
+    }
+  },
   "Economic Times":{
     "rss_home": "https://economictimes.indiatimes.com/rss.cms",
     "feeds": { 
@@ -545,7 +442,7 @@ stock_news = {
       "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms"
     }
   },
-  "Hindu Business Line":{
+  "The Hindu Business Line":{
     "rss_home": "https://www.thehindubusinessline.com/rssfeeds/",
     "feeds": { 
       "economy": "https://www.thehindubusinessline.com/economy/feeder/default.rss",
@@ -568,65 +465,232 @@ stock_news = {
       "markets": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml"
     }
   },
-  "Trade Brains":{
-    "rss_home": "https://tradebrains.in/blog/feed/",
-    "feeds": {
-      "markets": "https://tradebrains.in/blog/feed/"
-    }
-  },
-  "Alpha Ideas":{
-    "rss_home": "https://alphaideas.in/feed/",
-    "feeds": {
-      "markets": "https://alphaideas.in/feed/"
-    }
-  },
-  "Equity Pandit":{
-    "rss_home": "https://www.equitypandit.com/category/latest-news/feed/",
-    "feeds": {
-      "markets": "https://www.equitypandit.com/category/latest-news/feed/"
-    }
-  },
-  "Mind2markets":{
-    "rss_home": "https://mind2markets.com/feed/",
-    "feeds": {
-      "markets": "https://mind2markets.com/feed/"
-    }
-  },
-  "StockManiacs":{
-    "rss_home": "https://www.stockmaniacs.net/blog/feed/",
-    "feeds": {
-      "markets": "https://www.stockmaniacs.net/blog/feed/"
-    }
-  },
-  "Trade Brains":{
-    "rss_home": "https://tradebrains.in/feed/",
-    "feeds": {
-      "markets": "https://tradebrains.in/feed/"
-    }
-  },
   "TOI":{
     "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
     "feeds": {
       "markets": "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms"
     }
   },
+  "Equity Pandit":{
+    "rss_home": "https://www.equitypandit.com/category/latest-news/feed/",
+    "feeds": {
+      "feed": "https://www.equitypandit.com/category/latest-news/feed/"
+    }
+  },
+  "Alpha Ideas":{
+    "rss_home": "https://alphaideas.in/feed/",
+    "feeds": {
+      "feed": "https://alphaideas.in/feed/"
+    }
+  },
+  "Mind2markets":{
+    "rss_home": "https://mind2markets.com/feed/",
+    "feeds": {
+      "feed": "https://mind2markets.com/feed/"
+    }
+  },
+  "Trade Brains":{
+    "rss_home": "https://tradebrains.in/feed/",
+    "feeds": {
+      "feed": "https://tradebrains.in/feed/"
+    }
+  },
 }
 
-def fetch_rss_feeds():
-  from_date = datetime.now() - timedelta(days=7)
+india_news = {
+    "The Hindu":{
+      "rss_home": "https://www.thehindu.com/rssfeeds/",
+      "feeds":{ 
+         "india": "https://www.thehindu.com/news/national/feeder/default.rss",
+        }
+    },
+    "Times of India":{
+      "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
+      "feeds": { 
+        "feed": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
+        "india": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" 
+      }
+    },
+    "Hindustan Times":{
+      "rss_home": "https://www.hindustantimes.com/rss-feeds",
+      "feeds": {
+        "india": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+      }
+    },
+    "Indian Express":{
+      "rss_home": "https://indianexpress.com/rss/",
+      "feeds": { 
+        "feed": "https://indianexpress.com/feed/",
+        "india": "https://indianexpress.com/section/india/feed/"
+      }
+    },
+    "NDTV":{
+      "rss_home": "https://www.ndtv.com/rss",
+      "feeds": { 
+         "feed": "https://feeds.feedburner.com/ndtvnews-top-stories"
+      }
+    },
+    "News18":{
+      "rss_home": "https://www.news18.com/rss/",
+      "feeds":{ 
+        "india": "https://www.news18.com/rss/india.xml",
+      }
+    },
+    "India Today":{
+      "rss_home": "https://www.indiatoday.in/rss",
+      "feeds":{ 
+        "india": "https://www.indiatoday.in/rss/1206514",
+      }
+    }
+}
+
+global_news = {
+    "BBC":{
+      "rss_home": "https://www.bbc.co.uk/news/10628494",
+      "feeds": { 
+        "world" : "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "asia" : "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
+        "business" : "https://feeds.bbci.co.uk/news/business/rss.xml",
+      },
+    },
+    "CNBC":{
+      "rss_home": "https://www.cnbc.com/rss-feeds/",
+      "feeds": { 
+        "world" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362",
+        "usa" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362",
+        "asia" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19832390",
+        "europe" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19794221",
+        "business" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147",
+        "economy" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"
+      },
+    },
+    "nytimes":{
+      "rss_home": "https://www.nytimes.com/rss",
+      "feeds": { 
+        "world" : "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "asia" : "https://rss.nytimes.com/services/xml/rss/nyt/AsiaPacific.xml",
+        "middle-east" : "https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml",
+        "business" : "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "economy" : "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml"
+      },
+    },
+}
+
+news_dicts = {
+  "stock_news":stock_news,
+  "india_news":india_news,
+  "global_news":global_news,
+}
+
+news_csv = {
+  "stock_news":"stock_news/stock_news.csv",
+  "india_news":"stock_news/india_news.csv",
+  "global_news":"stock_news/global_news.csv",
+}
+
+def clean_html(raw_html: str) -> str:
+    """Remove HTML tags and return plain text."""
+    if not raw_html:
+        return ""
+    return BeautifulSoup(raw_html, "html.parser").get_text(separator=" ", strip=True)
+
+def fetch_rss_to_json_df(base_url, fromDate=None, toDate=None):
+
+    rss_content = None
+    # Parse feed
+    resp = requests.get(base_url, headers=headers, timeout=10)
+    print(resp)
+    if resp.status_code != 200:
+        resp = cffireq.get(
+          base_url,
+          headers=headers,
+          impersonate="chrome",   # or "chrome110", "chrome120"
+          timeout=10,
+        )
+      
+    feed = feedparser.parse(resp.content)
+
+    # Extract and clean data
+    data = []
+    for entry in feed.entries:
+        published_dt = datetime(*entry.published_parsed[:6])  # Convert struct_time to datetime
+
+        # Apply date filter if specified
+        if fromDate and published_dt < fromDate:
+            continue
+        if toDate and published_dt > toDate:
+            continue
+          
+        summary_raw = getattr(entry, "summary", None) or getattr(entry, "description", None) or ""
+        summary_text = clean_html(summary_raw)
+
+        data.append({
+            "title": getattr(entry, "title", None) or "",
+            "link": getattr(entry, "link", None) or "",
+            "published": getattr(entry, "published", None) or "",
+            "published_parsed": published_dt.isoformat(),
+            "summary": summary_text,
+        })
+
+    df = pd.DataFrame(data)
+    return df, data
+
+def fetch_rss_feeds(
+    news_dict,
+    local_url: str,
+    source: str,
+    feed_key: str,
+    days: int,
+):
+  
+  # 1) Load existing CSV (or start empty)
+  if os.path.exists(local_url):
+      try:
+          existing_df = pd.read_csv(local_url)
+      except Exception:
+          # Fallback in case of partial/corrupt file
+          existing_df = pd.DataFrame()
+  else:
+      existing_df = pd.DataFrame()
+  
+   # 2) Compute date window
+  from_date = datetime.now() - timedelta(days=days) 
   to_date = datetime.now()
 
-  url = stock_news["CNBC TV18"]["feeds"]["markets"]
-  print("fetching ",url)
+  # 3) Fetch new data
+  url = news_dict[source]["feeds"][feed_key]
+  print("fetching ", url)
+  new_df, json_obj = fetch_rss_to_json_df(url, fromDate=from_date, toDate=to_date)
 
-  df, json_obj = fetch_rss_to_json_df(url, fromDate=from_date, toDate=to_date)
-  print(df)
+  if not new_df.empty:
+    # 4) Add metadata columns
+    new_df["source"] = source
+    new_df["feed_key"] = feed_key
+    print(new_df)
 
-  local_url="stock_news/all_stock_news.csv"
-  df.drop_duplicates(subset="link", keep="last", inplace=True)
-  df.to_csv(local_url, index=False, encoding='utf-8')
-  
-fetch_rss_feeds()
+    # 5) Append + de-duplicate
+    combined = pd.concat([existing_df, new_df], ignore_index=True, sort=False)
+    combined.drop_duplicates(subset="link", keep="last", inplace=True)
+    combined.to_csv(local_url, index=False, encoding='utf-8')
+
+def fetch_all_rss_feeds(news_type):
+    news_dict = news_dicts[news_type]
+    local_url = news_csv[news_type]
+    days = 2
+    for source, info in news_dict.items():
+        feeds = info.get("feeds", {})
+        for feed_key in feeds.keys():
+            try:
+                print(f"\n Processing {source} - {feed_key}")
+                fetch_rss_feeds(news_dict, local_url=local_url, source=source, feed_key=feed_key, days=days)
+                time.sleep(4)
+            except Exception as e:
+                print(f"X Failed {source} - {feed_key}: {e}")
+
+#================================================================================
+fetch_all_rss_feeds(news_type = "stock_news")
+fetch_all_rss_feeds(news_type = "india_news")
+fetch_all_rss_feeds(news_type = "global_news")
 
 
 
