@@ -14,14 +14,14 @@ const linksData = [
     ],
   },
   {
-    category: 'Global News',
+    category: 'Startup News',
     links: [
-    { name: 'BBC World News', url: 'https://www.bbc.com/news/world' },
-    { name: 'Reuters World News', url: 'https://www.reuters.com/news/world' },
-    { name: 'CNBC World', url: 'https://www.cnbc.com/world/' },
-    { name: 'Forbes', url: 'https://www.forbes.com/business/' },
-    { name: 'Fortune', url: 'https://fortune.com/' },
-    { name: 'The Wall Street Journal - World', url: 'https://www.wsj.com/news/world' },
+    { name: 'ycombinator news', url: 'https://news.ycombinator.com/' },
+    { name: 'Tech Crunch', url: 'https://techcrunch.com/latest/' },
+    { name: 'Tech in Asia', url: 'https://www.techinasia.com/' },
+    { name: 'VentureBeat', url: 'https://venturebeat.com/' },
+    { name: 'Business Insider', url: 'https://www.businessinsider.com/seed-100-best-early-stage-vc-investors-2025-5?utm_source=chatgpt.com' },
+    { name: 'thestartupboard', url: 'https://www.thestartupboard.com/blog/10-best-websites-to-find-angel-investors-for-startups?utm_source=chatgpt.com' },
     ],
   },
   {
@@ -52,7 +52,7 @@ const linksData = [
     ],
   },
   {
-    category: 'Channels',
+    category: 'YT Channels',
     links: [
       { name: 'Groww', url: 'https://www.youtube.com/@GrowwOfficial' },
       { name: 'ET NOW', url: 'https://www.youtube.com/@ETNOW' },
@@ -60,8 +60,8 @@ const linksData = [
       { name: 'Moneycontrol', url: 'https://www.youtube.com/@moneycontrol' },
       { name: 'Markets By Zerodha', url: 'https://www.youtube.com/@marketsbyzerodha' },
       { name: 'Upstox', url: 'https://www.youtube.com/@UpstoxOfficial' },
-      { name: 'FinnovationZ by Prasad', url: 'https://www.youtube.com/@namaskarprasad' },
-      { name: 'CA Rachana Phadke Ranade', url: 'https://www.youtube.com/@CARachanaRanade' },
+      { name: 'FinnovationZ', url: 'https://www.youtube.com/@namaskarprasad' },
+      { name: 'CA Rachana Ranade', url: 'https://www.youtube.com/@CARachanaRanade' },
       { name: 'Sahil Bhadviya', url: 'https://www.youtube.com/@SahilBhadviya' },
       
     ],

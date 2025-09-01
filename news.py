@@ -425,6 +425,8 @@ def testGrowScrapper():
 # df, json_obj = google_search('site:business-standard.com "Welspun"', num_results=5)
 # print(df)
 
+# https://gist.github.com/stungeye/fe88fc810651174d0d180a95d79a8d97
+
 stock_news = {
   "Business Standard":{
     "rss_home": "https://www.business-standard.com/rss-feeds/listing",
@@ -436,7 +438,6 @@ stock_news = {
   "Economic Times":{
     "rss_home": "https://economictimes.indiatimes.com/rss.cms",
     "feeds": { 
-      "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
       "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms",
       "markets": "https://economictimes.indiatimes.com/prime/money-and-markets/rssfeeds/62511286.cms",
       "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms"
@@ -541,7 +542,13 @@ india_news = {
       "feeds":{ 
         "india": "https://www.indiatoday.in/rss/1206514",
       }
-    }
+    },
+    "Economic Times":{
+      "rss_home": "https://economictimes.indiatimes.com/rss.cms",
+      "feeds": { 
+        "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+      }
+    },
 }
 
 global_news = {
