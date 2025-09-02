@@ -67,9 +67,9 @@ const linksData = [
     ],
   },
   {
-    category: 'IPOs',
+    category: 'Scanners',
     links: [
-      { name: 'Screener IPO', url: 'https://www.screener.in/ipo/' },
+      { name: 'Volume Pump', url: 'https://trendlyne.com/stock-screeners/volume-based/high-volume-stocks/top-gainers/today/' },
       { name: 'Below IPO price', url: 'https://www.screener.in/ipo/below-price/' },
       { name: 'IPO listing Returns', url: 'https://groww.in/ipo/closed' },
     ],
