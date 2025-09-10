@@ -37,6 +37,7 @@ const linksData = [
     links: [
       { name: 'Value Pickr', url: 'https://forum.valuepickr.com/' },
       { name: 'Trading QnA', url: 'https://tradingqna.com/c/stocks/13' },
+      { name: 'Reddit: IndianStocks', url: 'https://www.reddit.com/r/IndianStocks/' },
       { name: 'Reddit: IndianStreetBets', url: 'https://www.reddit.com/r/IndianStreetBets/' },
       { name: 'Reddit: IndiaInvestments', url: 'https://www.reddit.com/r/IndiaInvestments/' },
     ],

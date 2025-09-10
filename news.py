@@ -695,9 +695,12 @@ def fetch_all_rss_feeds(news_type):
                 print(f"X Failed {source} - {feed_key}: {e}")
 
 #================================================================================
-fetch_all_rss_feeds(news_type = "stock_news")
-fetch_all_rss_feeds(news_type = "india_news")
-fetch_all_rss_feeds(news_type = "global_news")
+# fetch_all_rss_feeds(news_type = "stock_news")
+# fetch_all_rss_feeds(news_type = "india_news")
+# fetch_all_rss_feeds(news_type = "global_news")
+
+df,data = fetch_google_rss_news("Sona BLW")
+print(data)
 
 
 

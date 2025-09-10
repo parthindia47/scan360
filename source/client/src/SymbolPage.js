@@ -136,16 +136,17 @@ const PriceChart = React.memo(function PriceChart({
           />
 
           {newsData.map((ev) => {
-            const y = getCloseByDate(chartData, ev.date);
-            if (y == null) return null;
+            const match = getCloseByDate(chartData, ev.date);
+            if (!match) return null;
 
+            const { date: xDate, close: y } = match;
             const key = eventKey(ev);
             const isActive = key === activeDotKey;
 
             return (
               <ReferenceDot
                 key={key}
-                x={ev.date}
+                x={xDate}
                 y={y}
                 yAxisId="right"
                 r={12}
@@ -155,7 +156,7 @@ const PriceChart = React.memo(function PriceChart({
                 onClick={() =>
                   onDotClick({
                     type: ev.type,
-                    date: ev.date,
+                    date: xDate,
                     text: ev.details,
                     url: ev.url,
                     price: y,
@@ -364,10 +365,32 @@ function SymbolPage() {
     }));
   };
 
+  // if date fall on saturday or sunday, if will fall to monday
   const getCloseByDate = (data, dateStr) => {
-    const row = data.find(d => d.date === dateStr);
-    return row ? row.close : null;
+    if (!data?.length) return null;
+
+    const toYMD = (d) => {
+      const dt = new Date(d);
+      if (isNaN(dt)) return null;
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const target = toYMD(dateStr);
+    if (!target) return null;
+
+    // exact match
+    const exact = data.find(d => d.date === target);
+    if (exact) return { date: exact.date, close: exact.close };
+
+    // next available trading day
+    const targetTs = new Date(target).getTime();
+    const future = data.find(d => new Date(d.date).getTime() > targetTs);
+    return future ? { date: future.date, close: future.close } : null;
   };
+
 
   // 1) chartData memo
   const chartData = useMemo(() => getChartData(), [candles, selectedRange]);
