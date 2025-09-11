@@ -73,6 +73,8 @@ const linksData = [
       { name: 'Volume Pump', url: 'https://trendlyne.com/stock-screeners/volume-based/high-volume-stocks/top-gainers/today/' },
       { name: 'Below IPO price', url: 'https://www.screener.in/ipo/below-price/' },
       { name: 'IPO listing Returns', url: 'https://groww.in/ipo/closed' },
+      { name: 'NSE Mood Index', url: 'https://www.tickertape.in/market-mood-index?ref=homepage_mmi_section' },
+      { name: 'Crypto Mood Index', url: 'https://coinmarketcap.com/charts/fear-and-greed-index/' },
     ],
   },
 ];

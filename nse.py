@@ -4412,7 +4412,16 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 #  {"SYMBOL":"INDUSINDBK"}
 # ]
 
-# fetchYFinTickerCandles(dummyList3,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
+# dummyList4 = [
+#  {"SYMBOL":"SHARDAMOTR"}, 
+#  {"SYMBOL":"JBMA"}, 
+#  {"SYMBOL":"PARAS"}, 
+#  {"SYMBOL":"SIEMENS"},
+#  {"SYMBOL":"RAYMOND"},
+#  {"SYMBOL":"VIMTALABS"},
+# ]
+
+# fetchYFinTickerCandles(dummyList4,symbolType="NSE",delaySec=6,partial=False,useNseCharting=False)
 # logger1.info(result)
 
 # nseStockList = getAllNseSymbols(local=True)

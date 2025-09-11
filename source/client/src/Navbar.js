@@ -59,7 +59,12 @@ function Navbar() {
         </button>
 
         {/* Logo */}
-        <div className="text-xl font-bold text-blue-700">Scan360</div>
+        <NavLink
+          to="/"
+          className="text-xl font-bold text-blue-700"
+        >
+          Scan360.in
+        </NavLink>
 
         {/* Desktop Menu */}
         <ul className="hidden md:flex space-x-3 text-base font-medium text-gray-700">
