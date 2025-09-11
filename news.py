@@ -428,6 +428,12 @@ def testGrowScrapper():
 # https://gist.github.com/stungeye/fe88fc810651174d0d180a95d79a8d97
 
 stock_news = {
+  "Zee Business":{
+    "rss_home": "https://www.zeebiz.com/rss",
+    "feeds": { 
+      "companies": "https://www.zeebiz.com/companies.xml",
+    }
+  },
   "Business Standard":{
     "rss_home": "https://www.business-standard.com/rss-feeds/listing",
     "feeds": { 
@@ -494,6 +500,24 @@ stock_news = {
     "rss_home": "https://tradebrains.in/feed/",
     "feeds": {
       "feed": "https://tradebrains.in/feed/"
+    }
+  },
+  "Good Returns":{
+    "rss_home": "https://www.goodreturns.in/rss/",
+    "feeds": {
+      "feed": "https://www.goodreturns.in/rss/feeds/goodreturns-fb.xml",
+      "news": "https://www.goodreturns.in/rss/feeds/news-fb.xml",
+      "business": "https://www.goodreturns.in/rss/feeds/business-news-fb.xml",
+      "commentary": "https://www.goodreturns.in/rss/feeds/comentary-news-fb.xml"
+    }
+  },
+  "ET Now":{
+    "rss_home": "https://www.etnownews.com/info/rssfeed",
+    "feeds": {
+      "feed": "https://www.etnownews.com/feeds/gns-etn-latest.xml",
+      "markets": "https://www.etnownews.com/feeds/gns-etn-markets.xml",
+      "economy": "https://www.etnownews.com/feeds/gns-etn-economy.xml",
+      "companies": "https://www.etnownews.com/feeds/gns-etn-companies.xml"
     }
   },
 }
@@ -699,7 +723,7 @@ fetch_all_rss_feeds(news_type = "stock_news")
 fetch_all_rss_feeds(news_type = "india_news")
 fetch_all_rss_feeds(news_type = "global_news")
 
-# df,data = fetch_google_rss_news("Sona BLW")
+# df,data = fetch_google_rss_news("Laxmi Dental")
 # print(data)
 
 
