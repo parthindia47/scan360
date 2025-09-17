@@ -206,6 +206,237 @@ const PriceChart = React.memo(function PriceChart({
   );
 });
 
+/**
+ * Usage:
+ * <NewsFeedTable data={newsFeedData} />
+ */
+const NewsFeedTable = ({ data = [] }) =>  {
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
+  // Get a simple site name like "thehindu" from a URL (or hostname)
+  const siteName = (linkOrHost) => {
+    if (!linkOrHost) return "unknown";
+    try {
+      const host = linkOrHost.includes("://")
+        ? new URL(linkOrHost).hostname
+        : linkOrHost;
+      const cleaned = host.replace(/^www\./i, "");
+      // take the first label only: economictimes.indiatimes.com -> "economictimes"
+      return cleaned.split(".")[0] || cleaned;
+    } catch {
+      // if it's not a valid URL, try treating it as a hostname string
+      const cleaned = String(linkOrHost).replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+      return cleaned.split(".")[0] || "unknown";
+    }
+  };
+
+  const formatDate = (d) => {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d || "");
+    // Format in user's locale (IST)
+    return dt.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
+  const sorted = useMemo(() => {
+    // sort by published desc (latest first)
+    return [...(data || [])].sort((a, b) => {
+      const ta = new Date(a?.published || 0).getTime();
+      const tb = new Date(b?.published || 0).getTime();
+      return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+    });
+  }, [data]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageSafe = Math.min(Math.max(1, page), totalPages);
+  const pageSlice = useMemo(() => {
+    const start = (pageSafe - 1) * PAGE_SIZE;
+    return sorted.slice(start, start + PAGE_SIZE);
+  }, [sorted, pageSafe]);
+
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
+
+  return (
+    <div className="w-full">
+      <h4 className="text-lg font-semibold">
+        News & Stories
+      </h4>
+
+      {/* Top controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <div className="text-sm text-gray-500">
+          Showing {pageSlice.length} of {sorted.length} items
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goPrev}
+            disabled={pageSafe === 1}
+            className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="text-sm tabular-nums">
+            Page {pageSafe} of {totalPages}
+          </span>
+          <button
+            onClick={goNext}
+            disabled={pageSafe === totalPages}
+            className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {/* Table wrapper for mobile scroll */}
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="min-w-full text-sm">
+          <tbody className="divide-y">
+            {pageSlice.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="px-3 py-6 text-center text-gray-500">
+                  No news found.
+                </td>
+              </tr>
+            ) : (
+              pageSlice.map((row, idx) => {
+                const title = row?.title || "(No title)";
+                const link = row?.link || "#";
+                const sourceLabel = siteName(row?.source || row?.link || "");
+                const published = formatDate(row?.published);
+
+                return (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="px-3 py-2">
+                      <span className="font-light hover:decoration-solid break-words">
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={title}
+                      >
+                        {title}
+                      </a>
+                      </span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {/* source as hyperlink to link, simple host name */}
+                        <a
+                          href={row.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          {sourceLabel}
+                        </a>{" "}
+                        ({published})
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bottom controls (mobile-friendly) */}
+      {/* <div className="flex items-center justify-between gap-2 mt-3">
+        <button
+          onClick={goPrev}
+          disabled={pageSafe === 1}
+          className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <div className="text-sm tabular-nums">
+          Page {pageSafe} of {totalPages}
+        </div>
+        <button
+          onClick={goNext}
+          disabled={pageSafe === totalPages}
+          className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div> */}
+    </div>
+  );
+}
+
+const FinancialImpacts = ({ stockInfo, className = "" }) => {
+  if (!stockInfo) return null;
+
+  const parseList = (str = "", delim = "*") =>
+    String(str)
+      .split(delim)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+  const positives = parseList(stockInfo.positiveImpacts || "", "*");
+  const negatives = parseList(stockInfo.negativeImpacts || "", "/");
+
+  return (
+    <div className={`mt-6 ${className}`}>
+      {/* Header with top margin */}
+      <h4 className="text-lg font-semibold mb-2">
+        Financial Impacts
+      </h4>
+
+      {/* Card */}
+      <div className="rounded-xl border border-gray-200 bg-white">
+        {/* Two-column layout (stacks on mobile) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 items-stretch">
+          {/* Positive column */}
+          <div className="p-4 flex flex-col h-full border-b border-gray-200 md:border-b-0 md:border-r">
+            <div className="text-sm font-semibold text-gray-700 inline-flex items-center gap-2">
+              <span aria-hidden>👍</span>
+              <span>Positive Impacts</span>
+            </div>
+
+            {positives.length ? (
+              <ul className="mt-2 list-disc list-inside space-y-1 text-sm text-gray-800">
+                {positives.map((item, idx) => (
+                  <li key={idx} className="break-words">{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-gray-400 italic">
+                No positive impacts available
+              </p>
+            )}
+          </div>
+
+          {/* Negative column */}
+          <div className="p-4 flex flex-col h-full">
+            <div className="text-sm font-semibold text-gray-700 inline-flex items-center gap-2">
+              <span aria-hidden>👎</span>
+              <span>Negative Impacts</span>
+            </div>
+
+            {negatives.length ? (
+              <ul className="mt-2 list-disc list-inside space-y-1 text-sm text-gray-800">
+                {negatives.map((item, idx) => (
+                  <li key={idx} className="break-words">{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-gray-400 italic">
+                No negative impacts available
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 function SymbolPage() {
   const [candles, setCandles] = useState({ close: [], volume: [] });
   const [loading, setLoading] = useState(true);
@@ -215,6 +446,7 @@ function SymbolPage() {
   const [consolidatedData, setConsolidatedData] = useState([]);
   const [standaloneData, setStandaloneData] = useState([]);
   const [newsData, setNewsData] = useState([]);
+  const [newsFeedData, setNewsFeedData] = useState([]);
   const [activeResultsTab, setActiveResultsTab] = useState('consolidated');
   const [isMobile, setIsMobile] = useState(false);
   const [clickedMsg, setClickedMsg] = useState(null);
@@ -312,6 +544,17 @@ function SymbolPage() {
       .catch(err => {
         console.error('Error fetching consolidated data:', err);
         setNewsData([]);
+      });
+  }, [symbol]);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/news_feed/${symbol}`)
+      .then(res => {
+        setNewsFeedData(res.data);
+      })
+      .catch(err => {
+        console.error('Error fetching news feed data:', err);
+        setNewsFeedData([]);
       });
   }, [symbol]);
 
@@ -744,37 +987,9 @@ function SymbolPage() {
         </div>
       )}
 
-    { stockInfo && 
-    <div className="flex flex-col md:flex-row gap-4">
-      {/* Positive List */}
-      <div className="flex-1">
-        <h3 className="font-semibold text-green-600 mb-2">Positive Impacts</h3>
-        {stockInfo.positiveImpacts && stockInfo.positiveImpacts.length > 5 && stockInfo.positiveImpacts.trim() !== "" ? (
-          <ul className="list-disc list-inside text-sm">
-            {stockInfo.positiveImpacts.split("*").map((item, idx) => (
-              <li key={idx}>{item.trim()}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-400 text-sm italic">No positive impacts available</p>
-        )}
-      </div>
-
-      {/* Negative List */}
-      <div className="flex-1">
-        <h3 className="font-semibold text-red-600 mb-2">Negative Impacts</h3>
-        {stockInfo.negativeImpacts && stockInfo.negativeImpacts.length > 5 && stockInfo.negativeImpacts.trim() !== "" ? (
-          <ul className="list-disc list-inside text-sm">
-            {stockInfo.negativeImpacts.split("/").map((item, idx) => (
-              <li key={idx}>{item.trim()}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-400 text-sm italic">No negative impacts available</p>
-        )}
-      </div>
-    </div>}
-
+    <NewsFeedTable data={newsFeedData} />
+    
+    {stockInfo && <FinancialImpacts stockInfo={stockInfo} />}
 
     </div>
   );

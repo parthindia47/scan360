@@ -11,6 +11,7 @@ output/**
 stock_results/**
 stock_fillings/**
 stock_news/**
+stock_news_feed/**
 
 source/client/node_modules/**
 source/server/node_modules/**

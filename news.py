@@ -8,7 +8,12 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import re
 import os
+import hashlib
+import html
+import unicodedata
+import math
 from curl_cffi import requests as cffireq
+
 
 '''
 1. Moneycontrol
@@ -344,6 +349,205 @@ def google_search(query: str, num_results: int = 5):
 
     return df, json_result
 
+def _normalize_title(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    s = html.unescape(text)
+
+    # Replace smart quotes/apostrophes with plain ones
+    s = (s.replace("’", "'").replace("‘", "'")    # curly apostrophes
+           .replace("“", '"').replace("”", '"'))  # curly double quotes
+
+    # Remove trademark-like symbols and zero-width marks
+    s = (s.replace("\u200B", "")  # zero-width space
+           .replace("\uFEFF", "")) # zero-width no-break space
+
+    # Unicode normalize + strip diacritics (é -> e)
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+
+    # Collapse whitespace
+    s = re.sub(r"\s+", " ", s).strip()
+
+    return s
+
+
+def _find_col(df: pd.DataFrame, target: str) -> str:
+    """Find column by case-insensitive exact match."""
+    target = target.lower()
+    for c in df.columns:
+        if c.lower() == target:
+            return c
+    raise KeyError(f"Column '{target}' not found in: {list(df.columns)}")
+
+
+def _hash_title(title: str) -> str:
+    norm = _normalize_title(title)
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest() if norm else None
+
+
+def _safe_symbol_basename(symbol: str) -> str:
+    base = (symbol or "").strip()
+    if base.endswith(".NS"):
+        base = base[:-3]
+    # sanitize a bit for filesystem
+    return base.replace("/", "_").replace("\\", "_").strip() or "UNKNOWN"
+
+def is_missing(val):
+    if val is None:
+        return True
+    if isinstance(val, float) and math.isnan(val):
+        return True
+    if str(val).strip() == "":
+        return True
+    return False
+
+def update_stock_news_feeds(
+    info_csv_path: str = "stock_info/yFinStockInfo_NSE.csv",
+    out_dir: str = "stock_news_feed",
+    language: str = "en",
+    country: str = "IN",
+    partial = True,
+    limit_per_symbol = None,  # optional: cap items per symbol from RSS
+):
+    """
+    Reads the stock info file, fetches Google RSS per longName (if tjiIndustry not N/NEW),
+    and writes/updates per-symbol CSVs in out_dir with duplicate prevention via title_hash.
+    Returns list of symbols where longName was empty.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    info_df = pd.read_csv(info_csv_path)
+
+    # Resolve columns case-insensitively
+    col_symbol = _find_col(info_df, "symbol")
+    col_long   = _find_col(info_df, "longname")
+    col_ind    = _find_col(info_df, "tjiindustry")
+    col_quote  = _find_col(info_df, "quoteType")
+
+    missing_longname_symbols = []
+
+    # Normalize industry filter values
+    def _is_blocked_industry(val) -> bool:
+        if pd.isna(val):
+            return False
+        s = str(val).strip().upper()
+        return s in {"N", "NEW"}
+
+    def _try_parse(dt):
+        try:
+            return datetime.strptime(dt, "%a, %d %b %Y %H:%M:%S %Z")
+        except Exception:
+            return None
+
+    for _, row in info_df.iterrows():
+        symbol = str(row[col_symbol]).strip() if not pd.isna(row[col_symbol]) else ""
+        tji_ind = row[col_ind] if col_ind in row else None
+        long_name_val = row[col_long] if col_long in row else None
+        quote_type = row[col_quote] if col_quote in row else None
+        
+        #print(quote_type)
+
+        # Skip blocked industries
+        if _is_blocked_industry(tji_ind):
+            continue
+          
+        # Handle empty/NaN longName
+        if is_missing(long_name_val):
+            missing_longname_symbols.append(symbol)
+            print(f"[INFO] Missing longName for symbol: {symbol}")
+            continue
+
+        long_name = str(long_name_val).strip()
+        if not long_name:
+            missing_longname_symbols.append(symbol)
+            print(f"[INFO] Missing longName for symbol: {symbol}")
+            continue
+        
+        # Output file per symbol (without .NS)
+        base = _safe_symbol_basename(symbol)
+        out_path = os.path.join(out_dir, f"{base}.csv")
+        
+        if partial and os.path.exists(out_path):
+          continue
+
+        # Fetch news
+        try:
+            rss_df, _ = fetch_google_rss_news(long_name, language=language, country=country)
+            time.sleep(5)  # be polite
+        except Exception as e:
+            print(f"[WARN] RSS fetch failed for {symbol} ({long_name}): {e}")
+            continue
+
+        if rss_df.empty:
+            print(f"[INFO] No RSS entries for {symbol} ({long_name}).")
+            continue
+
+        # Ensure expected columns exist
+        for col in ["title", "link", "published", "source"]:
+            if col not in rss_df.columns:
+                rss_df[col] = None
+
+        # Optionally limit entries per symbol (after we have all cols)
+        if isinstance(limit_per_symbol, int) and limit_per_symbol > 0:
+            rss_df = rss_df.tail(limit_per_symbol)
+
+        # Add hash + metadata
+        rss_df = rss_df.copy()
+        rss_df["title"] = rss_df["title"].apply(_normalize_title)
+        rss_df["title_hash"] = rss_df["title"].apply(_hash_title)
+        rss_df["symbol"] = symbol
+        rss_df["longName"] = long_name
+        rss_df["fetched_at"] = datetime.now().isoformat(timespec="seconds")
+
+        if os.path.exists(out_path):
+            # Merge path: read existing and dedupe after concat
+            try:
+                existing = pd.read_csv(out_path)
+            except Exception as e:
+                print(f"[WARN] Failed reading existing CSV for {symbol} at {out_path}: {e}")
+                existing = pd.DataFrame()
+
+            # Ensure existing has title_hash (compute if missing)
+            if not existing.empty:
+                if "title_hash" not in existing.columns and "title" in existing.columns:
+                    existing = existing.copy()
+                    existing["title_hash"] = existing["title"].apply(_hash_title)
+                elif "title_hash" not in existing.columns:
+                    existing["title_hash"] = None
+
+            combined = pd.concat([existing, rss_df], ignore_index=True)
+
+            # Drop duplicates by title_hash
+            if "title_hash" in combined.columns:
+                combined = combined.drop_duplicates(subset=["title_hash"], keep="first")
+            else:
+                # Fallback only if title_hash truly missing (shouldn't happen)
+                dedup_keys = [c for c in ["title", "link"] if c in combined.columns]
+                if dedup_keys:
+                    combined = combined.drop_duplicates(subset=dedup_keys, keep="first")
+
+            # Sort by published (when parseable) then fetched_at
+            if "published" in combined.columns:
+                combined["_order"] = combined["published"].apply(_try_parse)
+                combined = combined.sort_values(by=["_order", "fetched_at"] if "fetched_at" in combined.columns else ["_order"],
+                                                ascending=[True, True] if "fetched_at" in combined.columns else [True])
+                combined = combined.drop(columns=["_order"])
+
+            combined.to_csv(out_path, index=False, encoding="utf-8-sig")
+            print(f"[OK] Updated: {out_path} (rows={len(combined)})")
+
+        else:
+            # FIRST WRITE path: dedupe within rss_df itself before saving
+            # (This fixes your issue #1)
+            deduped = rss_df.drop_duplicates(subset=["title_hash"], keep="first").copy()
+            deduped["_order"] = deduped["published"].apply(_try_parse)
+
+            deduped = deduped.sort_values(by=["_order", "fetched_at"], ascending=[True, True]).drop(columns=["_order"])
+            deduped.to_csv(out_path, index=False, encoding="utf-8-sig")
+            print(f"[OK] Created: {out_path} (rows={len(deduped)})")
+    
+    print(missing_longname_symbols)       
+    
 
 # ==========================================================================
 # ============================  Grow IPOs =================================
@@ -723,7 +927,9 @@ fetch_all_rss_feeds(news_type = "stock_news")
 fetch_all_rss_feeds(news_type = "india_news")
 fetch_all_rss_feeds(news_type = "global_news")
 
-# df,data = fetch_google_rss_news("Laxmi Dental")
+update_stock_news_feeds()
+
+# df,data = fetch_google_rss_news("Reliance Industries Limited")
 # print(data)
 
 

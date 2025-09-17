@@ -14,6 +14,7 @@ const candleDataFolder = path.join(__dirname, '../../stock_charts/');
 const consolidatedDataFolder = path.join(__dirname, '../../stock_results/consolidated');
 const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalone');
 const newsFolder = path.join(__dirname, '../../stock_news');
+const newsFeedFolder = path.join(__dirname, '../../stock_news_feed');
 const stockNewsPath = path.join(__dirname, '../../stock_news/stock_news.csv');
 const indiaNewsPath = path.join(__dirname, '../../stock_news/india_news.csv');
 const globalNewsPath = path.join(__dirname, '../../stock_news/global_news.csv');
@@ -697,6 +698,40 @@ app.get('/api/news/:symbol', (req, res) => {
     .on('error', (err) => {
       console.error(`Error reading CSV for '${symbol}' `, err);
       res.status(500).json({ error: `Failed to load news data for symbol '${symbol}'` });
+    });
+});
+
+app.get('/api/news_feed/:symbol', (req, res) => {
+  const { symbol } = req.params;
+
+  const baseFolder = newsFeedFolder;
+  const filePath = path.join(baseFolder, `${symbol}.csv`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `Data for symbol '${symbol}' not found. path '${filePath}'` });
+  }
+
+  const result = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv({
+      // Remove BOM and trim any stray whitespace from header names
+      mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
+    }))
+    .on('data', (row) => {
+      // Optionally parse numeric fields
+      const parsedRow = {
+        published: row.published,
+        title: row.title,
+        source: row.source,
+        link: row.link,
+      };
+      result.push(parsedRow);
+    })
+    .on('end', () => res.json(result))
+    .on('error', (err) => {
+      console.error(`Error reading CSV for '${symbol}' `, err);
+      res.status(500).json({ error: `Failed to load news feed data for symbol '${symbol}'` });
     });
 });
 
