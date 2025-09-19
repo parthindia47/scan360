@@ -8,6 +8,7 @@ function Trades() {
   const [sastDeals, setSastDealsData] = useState([]);
   const [insiderDeals, setInsiderDealsData] = useState([]);
 
+  const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bulkDeals');
 
@@ -18,6 +19,13 @@ function Trades() {
     sastDeals: { key: 'date', direction: 'desc' },
     insiderDeals: { key: 'date', direction: 'desc' },
   });
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/api/bulkDeals`)
@@ -54,6 +62,35 @@ function Trades() {
       .then(res => setInsiderDealsData(res.data))
       .catch(err => console.error('Failed to fetch sastDeals', err));
   }, []);
+
+  const exportToCSV = () => {
+    let data = [];
+    let filename = activeTab + ".csv";
+
+    if (activeTab === "bulkDeals") data = sortedBulkDeals;
+    if (activeTab === "blockDeals") data = sortedBlockDeals;
+    if (activeTab === "shortDeals") data = sortedShortDeals;
+    if (activeTab === "sastDeals") data = sortedSastDeals;
+    if (activeTab === "insiderDeals") data = sortedInsiderDeals;
+
+    if (!data.length) {
+      alert("No data to export");
+      return;
+    }
+
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+      headers.join(","), // header row
+      ...data.map(row => headers.map(h => JSON.stringify(row[h] ?? "")).join(",")) // data rows
+    ];
+
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  };
 
   const renderSortableHeader = (label, columnKey, tabKey) => {
     const config = sortConfigs[tabKey];
@@ -197,7 +234,16 @@ function Trades() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-1">
+
+      <div className="mb-3">
+        <button
+          onClick={exportToCSV}
+          className={`flex-none ${isMobile ? 'px-2 py-1 text-[11px]' : 'px-3 py-1 text-xs'} border rounded bg-emerald-600 text-white hover:bg-emerald-700`}
+        >
+          Export to CSV
+        </button>
+      </div>
 
       {/* 🔹 Tabs */}
       <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
