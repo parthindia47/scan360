@@ -262,7 +262,7 @@ const NewsFeedTable = ({ data = [] }) =>  {
   const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
-    <div className="w-full">
+    <div className="w-full mt-6">
       <h4 className="text-lg font-semibold">
         News & Stories
       </h4>
@@ -883,7 +883,6 @@ function SymbolPage() {
         )}
       </div>
 
-
       {/* Stock Chart */}
       <PriceChart
         chartData={chartData}
@@ -903,8 +902,15 @@ function SymbolPage() {
         eventKey={eventKey}           // 👈
       />
 
+      {/* Financial Impacts */}
+      {stockInfo && <FinancialImpacts stockInfo={stockInfo} />}
+
+      {/* News & Stories */}
+      <NewsFeedTable data={newsFeedData} />
+
+      {/* Financial Results */}
       <div>
-        <h4 className="text-lg font-semibold">
+        <h4 className="text-lg font-semibold mt-6">
           Financial Results
           <span className="text-sm text-gray-400 font-normal ml-2">(Rs. Crores)</span>
         </h4>
@@ -986,10 +992,6 @@ function SymbolPage() {
           No financial data available
         </div>
       )}
-
-    <NewsFeedTable data={newsFeedData} />
-    
-    {stockInfo && <FinancialImpacts stockInfo={stockInfo} />}
 
     </div>
   );
