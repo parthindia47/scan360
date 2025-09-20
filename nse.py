@@ -2253,7 +2253,10 @@ def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_
     if total_entries:
       df = processJsonToDfForNseDocument(master_json_list, urlType)
       df.reset_index(drop=True)
-      df.set_index('hash', inplace=True)
+      if urlType == "sensiBullEconomicCalender":
+        df.set_index('id', inplace=True)
+      else:
+        df.set_index('hash', inplace=True)
 
       #remove if any duplicate
       df = df[~df.index.duplicated()]
@@ -2407,14 +2410,15 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
     df_new = processJsonToDfForNseDocument(master_json_list, urlType)
             
     df.reset_index(drop=True)
-    df.set_index('hash', inplace=True)
-    # logger1.info("df")
-    # logger1.info(df)
-
     df_new.reset_index(drop=True)
-    df_new.set_index('hash', inplace=True)
-    # logger1.info("df_new")
-    # logger1.info(df_new)
+    
+    if urlType == "sensiBullEconomicCalender":
+      df.set_index('hash', inplace=True)
+      df_new.set_index('hash', inplace=True)
+    else:
+      df.set_index('id', inplace=True)
+      df_new.set_index('id', inplace=True)
+
 
     concatenated_df = pd.concat([df, df_new])
     concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
@@ -2630,13 +2634,13 @@ def fetchAllNseFillings():
 
   # fetchNseDocuments("forthcomingListing", cookies=cookies)
   
-  fetchNseDocuments(urlType="upcomingTender",cookies=cookies)
+  # fetchNseDocuments(urlType="upcomingTender",cookies=cookies)
   
-  fetchNseDocuments(urlType="rightsFilings", 
-                    index="equities",
-                    start_date=datetime(2025, 6, 1), 
-                    end_date=datetime(2025, 8, 7), 
-                    cookies=cookies)
+  # fetchNseDocuments(urlType="rightsFilings", 
+  #                   index="equities",
+  #                   start_date=datetime(2025, 6, 1), 
+  #                   end_date=datetime(2025, 8, 7), 
+  #                   cookies=cookies)
   
   # fetchNseDocuments(urlType="qipFilings",
   #                   index="qip",
@@ -2673,6 +2677,7 @@ def fetchAllNseFillings():
   #                   start_date=datetime(2025, 7, 1), 
   #                   end_date=datetime(2025, 8, 3),
   #                   cookies=cookies)
+  
   pass
   
 
@@ -4519,8 +4524,10 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 
 # fetchNseDocuments(urlType="sensiBullEconomicCalender",
-#                   start_date=datetime(2025, 8, 10), 
+#                   start_date=datetime(2023, 6, 10), 
 #                   end_date=datetime(2025, 8, 30))
+
+# syncUpNseDocuments(urlType="sensiBullEconomicCalender", startDateOffset=10, endDateOffset=20)
 
 # syncUpNseDocuments(urlType="sensiBullEconomicCalender", endDateOffset=20)
 
