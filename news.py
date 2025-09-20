@@ -407,7 +407,7 @@ def update_stock_news_feeds(
     out_dir: str = "stock_news_feed",
     language: str = "en",
     country: str = "IN",
-    partial = True,
+    partial = False,
     limit_per_symbol = None,  # optional: cap items per symbol from RSS
 ):
     """
