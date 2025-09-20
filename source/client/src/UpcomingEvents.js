@@ -590,13 +590,12 @@ function UpcomingEvents() {
         </div>
       )}
 
-      {/* 🔹 Forthcoming Ofs*/}
       {activeTab === 'forthcomingOfs' && (
         <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
+            <thead className="bg-gray-200 text-left sticky top-0 z-40">
               <tr>
-                <th className="p-2 text-left">Symbol</th>
+                <th className="p-2 sticky left-0 bg-gray-200 z-50">Symbol</th>
                 <th className="p-2 text-left">Company</th>
                 <th className="p-2 text-left">Type</th>
                 <th className="p-2 text-left">Start Date</th>
@@ -608,7 +607,7 @@ function UpcomingEvents() {
             <tbody>
               {sortedForthcomingOfsData.map((row, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                  <td className="p-2">
+                  <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">
                     <a
                       href={`symbol/${row.symbol}`}
                       target="_blank"
@@ -646,9 +645,9 @@ function UpcomingEvents() {
       {activeTab === 'upcomingTender' && (
         <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
+            <thead className="bg-gray-200 text-left sticky top-0 z-40">
               <tr>
-                <th className="p-2 text-left">Company</th>
+                <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
                 <th className="p-2 text-left">Series</th>
                 <th className="p-2 text-left">Offer Type</th>
                 <th className="p-2 text-left">Issue Type</th>
@@ -661,7 +660,7 @@ function UpcomingEvents() {
             <tbody>
               {sortedUpcomingTenderData.map((row, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                  <td className="p-2">
+                  <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">
                     <a
                       href={`symbol/${row.symbol}`}
                       target="_blank"
@@ -698,10 +697,10 @@ function UpcomingEvents() {
 
       {/* 🔹 Economic Calender */}
       {activeTab === 'economicCalender' && (
-        <div className="overflow-x-auto">
+        <>
           {/* Holidays Link */}
           <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
-            📅 Check upcoming market holidays:{" "}
+            📅 Market holidays List :{" "}
             <a
               href="https://www.nseindia.com/resources/exchange-communication-holidays"
               target="_blank"
@@ -711,12 +710,13 @@ function UpcomingEvents() {
               NSE Holiday Calendar
             </a>
           </div>
+        <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
+            <thead className="bg-gray-200 text-left sticky top-0 z-40">
               <tr>
+                <th className="p-2 sticky left-0 bg-gray-200 z-50">Title</th>
                 <th className="p-2 text-left">Date</th>
                 <th className="p-2 text-left">Country</th>
-                <th className="p-2 text-left">Title</th>
                 <th className="p-2 text-left">Impact</th>
                 <th className="p-2 text-left">Actual</th>
                 <th className="p-2 text-left">Expected</th>
@@ -746,12 +746,12 @@ function UpcomingEvents() {
 
                 return (
                   <tr key={rowKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">{row.title || '—'}</td>
                     <td className="p-2">{formatDate(row.date)}</td>
                     <td className="p-2">
                       <span className="mr-1">{flagMap[row.country] || ""}</span>
                       {row.country || "—"}
                     </td>
-                    <td className="p-2">{row.title || '—'}</td>
                     <td className="p-2">{impactChip}</td>
                     <td className="p-2">{row.actual || '—'}</td>
                     <td className="p-2">{row.expected || '—'}</td>
@@ -779,6 +779,7 @@ function UpcomingEvents() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
 

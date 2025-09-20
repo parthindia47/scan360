@@ -337,9 +337,14 @@ def rupees_to_crores(rupees):
 '''
 this function accept pandas data frame row
 '''
-def compute_hash(row):
-  row_str = ''.join([str(val) for val in row])
-  return hashlib.md5(row_str.encode()).hexdigest()
+def compute_hash(row, urlType):
+    if urlType == "sensiBullEconomicCalender":
+        # use only date, country, title
+        row_str = f"{row['date']}_{row['country']}_{row['title']}"
+    else:
+        # fallback: hash the whole row
+        row_str = ''.join([str(val) for val in row.values])
+    return hashlib.md5(row_str.encode()).hexdigest()
 
 def getAbsoluteFilePath(file_name):
   current_dir = os.path.dirname(__file__)
@@ -1608,7 +1613,7 @@ def processJsonToDfForNseDocument(jsonObj, urlType):
   df = df.sort_values(by=date_key)
 
   # compute hash of all rows
-  df['hash'] = df.apply(compute_hash, axis=1)
+  df['hash'] = df.apply(lambda row: compute_hash(row, urlType), axis=1)
 
   return df
 
@@ -2253,10 +2258,7 @@ def fetchNseDocuments(urlType, index=None, start_date=None, end_date=None, file_
     if total_entries:
       df = processJsonToDfForNseDocument(master_json_list, urlType)
       df.reset_index(drop=True)
-      if urlType == "sensiBullEconomicCalender":
-        df.set_index('id', inplace=True)
-      else:
-        df.set_index('hash', inplace=True)
+      df.set_index('hash', inplace=True)
 
       #remove if any duplicate
       df = df[~df.index.duplicated()]
@@ -2412,13 +2414,8 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
     df.reset_index(drop=True)
     df_new.reset_index(drop=True)
     
-    if urlType == "sensiBullEconomicCalender":
-      df.set_index('hash', inplace=True)
-      df_new.set_index('hash', inplace=True)
-    else:
-      df.set_index('id', inplace=True)
-      df_new.set_index('id', inplace=True)
-
+    df.set_index('hash', inplace=True)
+    df_new.set_index('hash', inplace=True)
 
     concatenated_df = pd.concat([df, df_new])
     concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
@@ -4524,10 +4521,10 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 
 # fetchNseDocuments(urlType="sensiBullEconomicCalender",
-#                   start_date=datetime(2023, 6, 10), 
+#                   start_date=datetime(2024, 6, 10), 
 #                   end_date=datetime(2025, 8, 30))
 
-# syncUpNseDocuments(urlType="sensiBullEconomicCalender", startDateOffset=10, endDateOffset=20)
+# syncUpNseDocuments(urlType="sensiBullEconomicCalender", startDateOffset=5, endDateOffset=20)
 
 # syncUpNseDocuments(urlType="sensiBullEconomicCalender", endDateOffset=20)
 
