@@ -379,9 +379,9 @@ function FundRaise() {
         <>
         <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-              <thead className="bg-gray-200">
+              <thead className="bg-gray-200 text-left sticky top-0 z-40">
                 <tr>
-                  <th className="p-2 text-left">Company</th>
+                  <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
                   <th className="p-2 text-left">Start Date</th>
                   <th className="p-2 text-left">End Date</th>
                   <th className="p-2 text-left">Status</th>
@@ -392,7 +392,7 @@ function FundRaise() {
               <tbody>
                 {liveRightsData.map((row, idx) => (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                    <td className="p-2">
+                    <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">
                       <a
                         href={`symbol/${row.symbol}`}
                         target="_blank"
