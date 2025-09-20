@@ -341,6 +341,9 @@ def compute_hash(row, urlType):
     if urlType == "sensiBullEconomicCalender":
         # use only date, country, title
         row_str = f"{row['date']}_{row['country']}_{row['title']}"
+    if urlType == "upcomingIssues":
+        # use only date, country, title
+        row_str = f"{row['issueStartDate']}_{row['symbol']}_{row['series']}"
     else:
         # fallback: hash the whole row
         row_str = ''.join([str(val) for val in row.values])
@@ -2369,7 +2372,7 @@ and concat the data and saves it.
 note:
 if there is no default index then pandas allot incremental numbers and index.
 '''
-def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None): 
+def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None, reHash=False): 
     
   csv_filename = getOutputCsvFile(urlType)
   current_date = datetime.now()
@@ -2418,6 +2421,10 @@ def syncUpNseDocuments(urlType, startDateOffset=0, endDateOffset=0, cookies=None
     df_new.set_index('hash', inplace=True)
 
     concatenated_df = pd.concat([df, df_new])
+    if reHash:
+      concatenated_df = processJsonToDfForNseDocument(concatenated_df,urlType)
+      concatenated_df.set_index('hash', inplace=True)
+      
     concatenated_df = concatenated_df[~concatenated_df.index.duplicated()]        
     concatenated_df.reset_index(inplace=True)
     # logger1.info("concatenated_df")
@@ -4493,7 +4500,9 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-# cookies_local = getNseCookies()
+cookies_local = getNseCookies()
+syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies_local)
+
 # # dummyList = [{"SYMBOL":"M&M"}]
 # nseStockList = getAllNseSymbols(local=False)
 # # fetchNseResults(nseStockList, period="Quarterly", resultType="non-consolidated", partial=True)

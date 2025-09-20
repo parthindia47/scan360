@@ -516,6 +516,7 @@ function UpcomingEvents() {
                 <th className="p-2 text-left">Issue Size</th>
                 <th className="p-2 text-left">Issue Price</th>
                 {renderSortableHeader('Total Size', 'totalSize', 'upcomingIssues')}
+                <th className="p-2 text-left">Is BSE</th>
               </tr>
             </thead>
             <tbody>
@@ -543,6 +544,7 @@ function UpcomingEvents() {
                       return '—';
                     })()}
                   </td>
+                  <td className="p-2">{item.isBse > 0 ? "Yes" : '—'}</td>
                 </tr>
               ))}
             </tbody>
