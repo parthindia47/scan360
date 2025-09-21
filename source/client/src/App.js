@@ -15,6 +15,7 @@ import Resources from './Resources';
 import Ai from './Ai';
 import Chat from './Chat'
 import News from './News'
+import Learning from './Learning';
 
 import Footer from './Footer';
 
@@ -55,6 +56,7 @@ function App() {
             <Route path="/Resources" element={<Resources />} />
             <Route path="/ai" element={<Ai />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/learning" element={<Learning />} />
           </Routes>
         </div>
       <Footer />
