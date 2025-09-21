@@ -436,6 +436,248 @@ const FinancialImpacts = ({ stockInfo, className = "" }) => {
   );
 };
 
+const StockEvents = ({ events }) =>  {
+  if (!events || events.length === 0) {
+    return (
+      <div className="w-full mt-6">
+        <h4 className="text-lg font-semibold mb-3">Stock Events</h4>
+        <p className="text-gray-500">No events available.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full mt-6">
+      <h4 className="text-lg font-semibold">Stock Events</h4>
+      <div className="overflow-x-auto mt-3">
+        <table className="min-w-full border border-gray-200 text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 border text-left">Date</th>
+              <th className="px-4 py-2 border text-left">Purpose</th>
+              <th className="px-4 py-2 border text-left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((event) => (
+              <tr key={event.hash} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border">
+                  {new Date(event.date).toLocaleDateString("en-IN")}
+                </td>
+                <td className="px-4 py-2 border">{event.purpose}</td>
+                <td className="px-4 py-2 border">{event.bm_desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const StockAnnouncements = ({ events }) =>  {
+  if (!events || events.length === 0) {
+    return (
+      <div className="w-full mt-6">
+        <h4 className="text-lg font-semibold mb-3">Announcements</h4>
+        <p className="text-gray-500">No announcements available.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full mt-6">
+      <h4 className="text-lg font-semibold">Announcements</h4>
+      <div className="overflow-x-auto mt-3">
+        <table className="min-w-full border border-gray-200 text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 border text-left">Date</th>
+              <th className="p-2 text-left">Type</th>
+              <th className="p-2 text-left">Description</th>
+              <th className="p-2 text-left">Attachment</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((event) => (
+              <tr key={event.hash} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border">
+                  {new Date(event.an_dt).toLocaleDateString("en-IN")}
+                </td>
+                <td className="px-4 py-2 border">{event.desc}</td>
+                <td className="px-4 py-2 border">{event.attchmntText}</td>
+                <td className="p-2">
+                  {event.attchmntFile ? (
+                    <a href={event.attchmntFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                      View PDF
+                    </a>
+                  ) : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const TAB_CONFIG = [
+  { key: "stockBulkDeals", label: "Bulk Deals" },
+  { key: "stockBlockDeals", label: "Block Deals" },
+  { key: "stockSastDeals",  label: "SAST Deals" },
+  { key: "stockInsiderDeals", label: "Insider Deals" },
+];
+
+// Simple helpers
+const formatNumber = (v) => {
+  const n = Number(v);
+  if (Number.isNaN(n)) return v ?? "-";
+  return n.toLocaleString("en-IN");
+};
+
+const formatPrice = (v) => {
+  const n = Number(v);
+  if (Number.isNaN(n)) return v ?? "-";
+  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const StockTrades = ({ symbol }) => {
+  // Single state object to hold data/loading/error per tab
+  const [state, setState] = useState({
+    stockBulkDeals:   { data: [], loading: true, error: null },
+    stockBlockDeals:  { data: [], loading: true, error: null },
+    stockSastDeals:   { data: [], loading: true, error: null },
+    stockInsiderDeals:{ data: [], loading: true, error: null },
+  });
+
+  const [activeKey, setActiveKey] = useState(TAB_CONFIG[0].key);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Reset state when symbol changes
+    setState({
+      stockBulkDeals:   { data: [], loading: true, error: null },
+      stockBlockDeals:  { data: [], loading: true, error: null },
+      stockSastDeals:   { data: [], loading: true, error: null },
+      stockInsiderDeals:{ data: [], loading: true, error: null },
+    });
+
+    TAB_CONFIG.forEach(({ key }) => {
+      axios
+        .get(`${process.env.REACT_APP_API_URL}/api_2/${key}/${symbol}`)
+        .then((res) => {
+          if (cancelled) return;
+          setState((prev) => ({
+            ...prev,
+            [key]: { data: Array.isArray(res.data) ? res.data : [], loading: false, error: null },
+          }));
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error(`Error fetching ${key}:`, err);
+          setState((prev) => ({
+            ...prev,
+            [key]: { data: [], loading: false, error: "Failed to load" },
+          }));
+        });
+    });
+
+    return () => { cancelled = true; };
+  }, [symbol]);
+
+  const active = state[activeKey] || { data: [], loading: false, error: null };
+
+  // columns to show per your requirement
+  const columns = useMemo(
+    () => [
+      { key: "date", header: "Date" },
+      { key: "clientName", header: "Client" },
+      { key: "buySell", header: "Side" },
+      { key: "qty", header: "Qty", render: (v) => formatNumber(v) },
+      { key: "watp", header: "WATP", render: (v) => formatPrice(v) },
+    ],
+    []
+  );
+
+  return (
+    <div className="w-full">
+      <h4 className="text-lg font-semibold mb-3">Stock Trades</h4>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 border-b mb-3 pb-2">
+        {TAB_CONFIG.map(({ key, label }) => {
+          const isActive = key === activeKey;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveKey(key)}
+              className={`px-3 py-1 text-sm rounded-t border-b-2 transition ${
+                isActive
+                  ? "border-blue-600 text-blue-700 font-semibold"
+                  : "border-transparent text-gray-600 hover:text-blue-600 hover:border-blue-300"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Content */}
+      {active.loading ? (
+        <div className="flex items-center gap-2 text-blue-700">
+          <span className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Loading…</span>
+        </div>
+      ) : active.error ? (
+        <div className="text-red-600 text-sm">Failed to load data.</div>
+      ) : active.data.length === 0 ? (
+        <div className="text-gray-500 text-sm">No records found.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-200 text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                {columns.map((c) => (
+                  <th key={c.key} className="px-3 py-2 border text-left whitespace-nowrap">
+                    {c.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {active.data.map((row) => (
+                <tr key={row.hash} className="hover:bg-gray-50">
+                  {columns.map((c) => {
+                    const raw = row[c.key];
+                    const val = c.render ? c.render(raw) : (raw ?? "-");
+                    // color BUY/SELL a bit for readability
+                    const extra =
+                      c.key === "buySell"
+                        ? (row.buySell || "").toUpperCase() === "BUY"
+                          ? "text-green-700"
+                          : (row.buySell || "").toUpperCase() === "SELL"
+                          ? "text-red-700"
+                          : "text-gray-700"
+                        : "text-gray-800";
+                    return (
+                      <td key={c.key} className={`px-3 py-2 border align-top ${extra}`}>
+                        {val || "-"}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function SymbolPage() {
   const [candles, setCandles] = useState({ close: [], volume: [] });
@@ -447,6 +689,9 @@ function SymbolPage() {
   const [standaloneData, setStandaloneData] = useState([]);
   const [newsData, setNewsData] = useState([]);
   const [newsFeedData, setNewsFeedData] = useState([]);
+  const [stockEventsData, setStockEventsData] = useState([]);
+  const [stockAnnouncementsData, setStockAnnouncementsData] = useState([]);
+
   const [activeResultsTab, setActiveResultsTab] = useState('consolidated');
   const [isMobile, setIsMobile] = useState(false);
   const [clickedMsg, setClickedMsg] = useState(null);
@@ -557,6 +802,29 @@ function SymbolPage() {
         setNewsFeedData([]);
       });
   }, [symbol]);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/stockEvents/${symbol}`)
+      .then(res => {
+        setStockEventsData(res.data);
+      })
+      .catch(err => {
+        console.error('Error fetching news feed data:', err);
+        setStockEventsData([]);
+      });
+  }, [symbol]);
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api_2/stockAnnouncements/${symbol}`)
+      .then(res => {
+        setStockAnnouncementsData(res.data);
+      })
+      .catch(err => {
+        console.error('Error fetching news feed data:', err);
+        setStockAnnouncementsData([]);
+      });
+  }, [symbol]);
+
 
   // build a unique key for each event (adjust if your data shape differs)
   const eventKey = useCallback((ev) => {
@@ -993,6 +1261,11 @@ function SymbolPage() {
         </div>
       )}
 
+
+      <StockEvents events={stockEventsData} />
+      <StockAnnouncements events={stockAnnouncementsData} />
+      <StockTrades symbol={symbol} />
+      
     </div>
   );
 }

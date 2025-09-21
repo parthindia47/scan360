@@ -43,6 +43,14 @@ const shortDealsPath = path.join(__dirname, '../../stock_fillings/shortDeals_nse
 const sastDealsPath = path.join(__dirname, '../../stock_fillings/sastDeals_nse.csv');
 const insiderDealsPath = path.join(__dirname, '../../stock_fillings/insiderDeals_nse.csv');
 
+const stockEventsFolder = path.join(__dirname, '../../individual_stocks/stock_events');
+const stockAnnouncementsFolder = path.join(__dirname, '../../individual_stocks/stock_announcement');
+const stockBulkDealsFolder = path.join(__dirname, '../../individual_stocks/stock_bulkDeals');
+const stockBlockDealsFolder = path.join(__dirname, '../../individual_stocks/stock_blockDeals');
+const stockSastDealsFolder = path.join(__dirname, '../../individual_stocks/stock_sastDeals');
+const stockInsiderDealsFolder = path.join(__dirname, '../../individual_stocks/stock_insiderDeals');
+
+
 const csvPaths = {
   announcements: announcementPath,
 
@@ -70,6 +78,13 @@ const csvPaths = {
   stockNews: stockNewsPath,
   indiaNews: indiaNewsPath,
   globalNews: globalNewsPath,
+
+  stockEvents: stockEventsFolder,
+  stockAnnouncements: stockAnnouncementsFolder,
+  stockBulkDeals:    stockBulkDealsFolder, 
+  stockBlockDeals:   stockBlockDealsFolder,
+  stockSastDeals:    stockSastDealsFolder, 
+  stockInsiderDeals: stockInsiderDealsFolder,
 };
 
 const dateKeys = {
@@ -99,6 +114,13 @@ const dateKeys = {
   stockNews: "published",
   indiaNews: "published",
   globalNews: "published",
+
+  stockEvents: "date",
+  stockAnnouncements: "an_dt",
+  stockBulkDeals: "date", 
+  stockBlockDeals: "date",
+  stockSastDeals: "date", 
+  stockInsiderDeals: "date",
 };
 
 const daysPastList = {
@@ -128,6 +150,13 @@ const daysPastList = {
   stockNews: 2,
   indiaNews: 2,
   globalNews: 2,
+
+  stockEvents: 400,
+  stockAnnouncements: 400,
+  stockBulkDeals: 400, 
+  stockBlockDeals: 400,
+  stockSastDeals: 400, 
+  stockInsiderDeals: 400,
 };
 
 // ===================== Helper Functions ===================================
@@ -727,6 +756,33 @@ app.get('/api/news_feed/:symbol', (req, res) => {
         link: row.link,
       };
       result.push(parsedRow);
+    })
+    .on('end', () => res.json(result))
+    .on('error', (err) => {
+      console.error(`Error reading CSV for '${symbol}' `, err);
+      res.status(500).json({ error: `Failed to load news feed data for symbol '${symbol}'` });
+    });
+});
+
+app.get('/api_2/:type/:symbol', (req, res) => {
+  const { type, symbol } = req.params;
+
+  const baseFolder = csvPaths[type];
+  const filePath = path.join(baseFolder, `${symbol}.csv`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `Data for symbol '${symbol}' not found. path '${filePath}'` });
+  }
+
+  const result = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv({
+      // Remove BOM and trim any stray whitespace from header names
+      mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
+    }))
+    .on('data', (row) => {
+      result.push(row);
     })
     .on('end', () => res.json(result))
     .on('error', (err) => {
