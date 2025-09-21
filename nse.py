@@ -341,9 +341,11 @@ def compute_hash(row, urlType):
     if urlType == "sensiBullEconomicCalender":
         # use only date, country, title
         row_str = f"{row['date']}_{row['country']}_{row['title']}"
-    if urlType == "upcomingIssues":
+    elif urlType == "upcomingIssues":
         # use only date, country, title
         row_str = f"{row['issueStartDate']}_{row['symbol']}_{row['series']}"
+    elif urlType == "liveRights":
+        row_str = f"{row['rightStartDate']}_{row['symbol']}"
     else:
         # fallback: hash the whole row
         row_str = ''.join([str(val) for val in row.values])
@@ -4500,8 +4502,8 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
 
 # recalculateYFinStockInfo()
 
-cookies_local = getNseCookies()
-syncUpNseDocuments(urlType="upcomingIssues", cookies=cookies_local)
+# cookies_local = getNseCookies()
+# syncUpNseDocuments(urlType="liveRights", cookies=cookies_local, reHash=True)
 
 # # dummyList = [{"SYMBOL":"M&M"}]
 # nseStockList = getAllNseSymbols(local=False)

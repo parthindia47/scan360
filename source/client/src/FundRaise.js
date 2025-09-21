@@ -16,6 +16,7 @@ function FundRaise() {
     qipFilings: { key: 'date', direction: 'desc' },
     schemeOfArrangement: { key: 'date', direction: 'desc' },
     rightsFilings: { key: 'draftDate', direction: 'desc' },
+    liveRights: { key: 'rightEndDate', direction: 'desc' },
   });
 
   useEffect(() => {
@@ -160,11 +161,21 @@ function FundRaise() {
     return dateB - dateA;
   });
 
+  const sortedLiveRightsData = [...liveRightsData].sort((a, b) => {
+    const { key, direction } = sortConfigs.liveRights;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    // default to systemDate
+    const dateA = new Date(a.rightEndDate);
+    const dateB = new Date(b.rightEndDate);
+    return dir * (dateA - dateB);
+  });
+
   return (
     <div className="p-4 mb-4">
       {/* 🔹 Tabs */}
       <div className="flex flex-wrap gap-3 border-b mb-4 ml-1">
-        {['prefIssue', 'qipFilings', 'schemeOfArrangement', 'rightsFilings', 'liveRights'].map(tab => (
+        {['prefIssue', 'liveRights', 'qipFilings', 'rightsFilings', 'schemeOfArrangement'].map(tab => (
           <a
             key={tab}
             href="#"
@@ -178,11 +189,13 @@ function FundRaise() {
                 : 'border-transparent text-gray-500 hover:text-blue-500 hover:border-blue-300'
             }`}
           >
-            {tab === 'rightsFilings' ? 'Rights Filings' :
-            tab === 'qipFilings' ? 'QIP Filings' :
-            tab === 'prefIssue' ? 'Preferential Issues' :
-            tab === 'schemeOfArrangement' ? 'Scheme of Arrangement':
-            'Active Rights'}
+            {
+            tab === 'prefIssue' ?     'Preferential Issues' :
+            tab === 'liveRights' ?    'Rights Issues' :
+            tab === 'qipFilings' ?    'QIP Filings' :
+            tab === 'rightsFilings' ? 'Rights Filings' :
+            'Scheme of Arrangement'
+            }
           </a>
         ))}
       </div>
@@ -193,7 +206,7 @@ function FundRaise() {
           {loading ? (
             <div className="text-center text-blue-600">Loading...</div>
           ) : (
-        <div className="overflow-x-auto">
+          <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
             <thead className="bg-gray-200 text-left sticky top-0 z-40">
               <tr>
@@ -251,6 +264,45 @@ function FundRaise() {
           </div>
           )}
         </>
+      )}
+
+      {/* 🔹 Live Rights */}
+      {activeTab === 'liveRights' && (
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+              <thead className="bg-gray-200 text-left sticky top-0 z-40">
+                <tr>
+                  <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
+                  <th className="p-2 text-left">Start Date</th>
+                  {renderSortableHeader('End Date', 'rightEndDate', 'liveRights')}
+                  <th className="p-2 text-left">Status</th>
+                  <th className="p-2 text-left">Bid Qty</th>
+                  <th className="p-2 text-left">Collected Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedLiveRightsData.map((row, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">
+                      <a
+                        href={`symbol/${row.symbol}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {row.company || '—'}
+                      </a>
+                    </td>
+                    <td className="p-2">{formatDate(row.rightStartDate)}</td>
+                    <td className="p-2">{formatDate(row.rightEndDate)}</td>
+                    <td className="p-2">{row.status || '—'}</td>
+                    <td className="p-2">{row.bidQty || '—'}</td>
+                    <td className="p-2">{row.nse_bse_cumu || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+        </div>
       )}
 
       {/* 🔹 QIP Filings */}
@@ -374,46 +426,6 @@ function FundRaise() {
         </>
       )}
 
-      {/* 🔹 Live Rights */}
-      {activeTab === 'liveRights' && (
-        <>
-        <div className="overflow-x-auto">
-          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-              <thead className="bg-gray-200 text-left sticky top-0 z-40">
-                <tr>
-                  <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
-                  <th className="p-2 text-left">Start Date</th>
-                  <th className="p-2 text-left">End Date</th>
-                  <th className="p-2 text-left">Status</th>
-                  <th className="p-2 text-left">Bid Qty</th>
-                  <th className="p-2 text-left">Collected Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {liveRightsData.map((row, idx) => (
-                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                    <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">
-                      <a
-                        href={`symbol/${row.symbol}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        {row.company || '—'}
-                      </a>
-                    </td>
-                    <td className="p-2">{formatDate(row.rightStartDate)}</td>
-                    <td className="p-2">{formatDate(row.rightEndDate)}</td>
-                    <td className="p-2">{row.status || '—'}</td>
-                    <td className="p-2">{row.bidQty || '—'}</td>
-                    <td className="p-2">{row.nse_bse_cumu || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-        </>
-      )}
     </div>
   );
 }
