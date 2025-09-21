@@ -310,9 +310,9 @@ function FundRaise() {
         <>
         <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
+            <thead className="bg-gray-200 text-left sticky top-0 z-40">
               <tr>
-                <th className="p-2 text-left">Company</th>
+                <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
                 <th className="p-2 text-left">Date</th>
                 <th className="p-2 text-left">Attachment</th>
               </tr>
@@ -320,7 +320,7 @@ function FundRaise() {
             <tbody>
               {sortedQipData.map((row, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                  <td className="p-2">{row.company || '—'}</td>
+                  <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">{row.company || '—'}</td>
                   <td className="p-2">{formatDate(row.date)}</td>
                   <td className="p-2">
                     {row.attachFile ? (
@@ -344,55 +344,14 @@ function FundRaise() {
         </>
       )}
 
-      {/* 🔹 Scheme of Arrangement */}
-      {activeTab === 'schemeOfArrangement' && (
-        <>
-        <div className="overflow-x-auto">
-          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="p-2 text-left">Company</th>
-                <th className="p-2 text-left">Date</th>
-                <th className="p-2 text-left">Details</th>
-                <th className="p-3 text-left">Attachment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedSchemeData.map((row, idx) => (
-                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                  <td className="p-2">{row.company || '—'}</td>
-                  <td className="p-2">{formatDate(row.date)}</td>
-                  <td className="p-2">{(row.scheme_details || '-')}</td>
-                  <td className="p-3">
-                    {row.date_attachmnt ? (
-                      <a
-                        href={row.date_attachmnt}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        View File
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </>
-      )}
-
       {/* 🔹 Rights Filings */}
       {activeTab === 'rightsFilings' && (
         <>
         <div className="overflow-x-auto">
           <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
-              <thead className="bg-gray-200">
+              <thead className="bg-gray-200 text-left sticky top-0 z-40">
                 <tr>
-                  <th className="p-2 text-left">Company</th>
+                  <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
                   <th className="p-2 text-left">Date</th>
                   <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-left">Attachment</th>
@@ -401,7 +360,7 @@ function FundRaise() {
               <tbody>
                 {sortedRightsData.map((row, idx) => (
                   <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                    <td className="p-2">{row.company || '—'}</td>
+                    <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">{row.company || '—'}</td>
                     <td className="p-2">{formatDate(row.date)}</td>
                     <td className="p-2">{row.type || '—'}</td>
                     <td className="p-2">
@@ -423,6 +382,47 @@ function FundRaise() {
               </tbody>
             </table>
             </div>
+        </>
+      )}
+
+      {/* 🔹 Scheme of Arrangement */}
+      {activeTab === 'schemeOfArrangement' && (
+        <>
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+            <thead className="bg-gray-200 text-left sticky top-0 z-40">
+              <tr>
+                <th className="p-2 sticky left-0 bg-gray-200 z-50">Company</th>
+                <th className="p-2 text-left">Date</th>
+                <th className="p-2 text-left">Details</th>
+                <th className="p-3 text-left">Attachment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedSchemeData.map((row, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                  <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">{row.company || '—'}</td>
+                  <td className="p-2">{formatDate(row.date)}</td>
+                  <td className="p-2">{(row.scheme_details || '-')}</td>
+                  <td className="p-3">
+                    {row.date_attachmnt ? (
+                      <a
+                        href={row.date_attachmnt}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View File
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
         </>
       )}
 
