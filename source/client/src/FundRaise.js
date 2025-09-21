@@ -108,6 +108,15 @@ function FundRaise() {
     );
   };
 
+  // remove U+FFFD (�) + control chars; keep normal Unicode
+  const CLEAN_REPLACEMENT = /\uFFFD/g;
+  const CONTROL_CHARS = /[\x00-\x1F\x7F-\x9F]/g;
+  function cleanText(v) {
+    if (v == null) return v;
+    if (typeof v !== "string") return v;
+    return v.replace(CLEAN_REPLACEMENT, "").replace(CONTROL_CHARS, "").trim();
+  }
+
   const enrichedPrefData = prefData.map(row => {
     const curr = parseFloat(row.currentPrice);
     const prev = parseFloat(row.previousClose);
@@ -403,7 +412,7 @@ function FundRaise() {
                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                   <td className="p-2 sticky left-0 bg-inherit z-10 font-medium">{row.company || '—'}</td>
                   <td className="p-2">{formatDate(row.date)}</td>
-                  <td className="p-2">{(row.scheme_details || '-')}</td>
+                  <td className="p-2">{(cleanText(row.scheme_details) || '-')}</td>
                   <td className="p-3">
                     {row.date_attachmnt ? (
                       <a
