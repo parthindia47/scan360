@@ -335,6 +335,9 @@ const NewsFeedTable = ({ data = [] }) =>  {
                         </a>{" "}
                         ({published})
                       </span>
+                      <span className="text-xs text-gray-500 ml-2">
+                          {row?.change}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -456,6 +459,7 @@ const StockEvents = ({ events }) =>  {
               <th className="px-4 py-2 border text-left">Date</th>
               <th className="px-4 py-2 border text-left">Purpose</th>
               <th className="px-4 py-2 border text-left">Description</th>
+              <th className="px-4 py-2 border text-left">Change</th>
             </tr>
           </thead>
           <tbody>
@@ -466,6 +470,7 @@ const StockEvents = ({ events }) =>  {
                 </td>
                 <td className="px-4 py-2 border">{event.purpose}</td>
                 <td className="px-4 py-2 border">{event.bm_desc}</td>
+                <td className="px-4 py-2 border">{event.chang}</td>
               </tr>
             ))}
           </tbody>
@@ -496,6 +501,7 @@ const StockAnnouncements = ({ events }) =>  {
               <th className="p-2 text-left">Type</th>
               <th className="p-2 text-left">Description</th>
               <th className="p-2 text-left">Attachment</th>
+              <th className="p-2 text-left">Change</th>
             </tr>
           </thead>
           <tbody>
@@ -513,6 +519,7 @@ const StockAnnouncements = ({ events }) =>  {
                     </a>
                   ) : '—'}
                 </td>
+                <td className="px-4 py-2 border">{event.chang}</td>
               </tr>
             ))}
           </tbody>
@@ -597,13 +604,14 @@ const StockTrades = ({ symbol }) => {
       { key: "buySell", header: "Side" },
       { key: "qty", header: "Qty", render: (v) => formatNumber(v) },
       { key: "watp", header: "WATP", render: (v) => formatPrice(v) },
+      { key: "chang", header: "Change" },
     ],
     []
   );
 
   return (
     <div className="w-full">
-      <h4 className="text-lg font-semibold mb-3">Stock Trades</h4>
+      <h4 className="text-lg font-semibold mb-3 mt-3">Stock Trades</h4>
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b mb-3 pb-2">

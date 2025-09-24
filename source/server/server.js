@@ -754,6 +754,7 @@ app.get('/api/news_feed/:symbol', (req, res) => {
         title: row.title,
         source: row.source,
         link: row.link,
+        change: row.change,
       };
       result.push(parsedRow);
     })

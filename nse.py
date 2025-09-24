@@ -4233,6 +4233,110 @@ def create_symbol_files():
             csv_file = getOutputCsvFile(key)
             date_key = getDateKeyForNseDocument(key)
             split_symbol_csv(csv_file, out_dir, date_key)
+            
+def get_pct_change(
+    symbol: str,
+    event_date,
+    charts_root: str = "stock_charts",
+    round_to: int = 2,
+):
+    fp = os.path.join(charts_root, f"{symbol.upper()}.csv")
+    if not os.path.exists(fp):
+        return None
+
+    cdf = pd.read_csv(fp, usecols=["Date", "Close"])
+
+    # Parse timezone-aware timestamps, then compare by calendar DATE
+    cdf["Date"] = pd.to_datetime(cdf["Date"], errors="coerce")
+    cdf = cdf.dropna(subset=["Date", "Close"]).copy()
+    cdf["cal_date"] = cdf["Date"].dt.date
+    cdf.sort_values("cal_date", inplace=True, kind="mergesort")  # stable sort
+    cdf.reset_index(drop=True, inplace=True)
+
+    # Normalize input event_date
+    if isinstance(event_date, str):
+        ev = pd.to_datetime(event_date, errors="coerce")
+        if pd.isna(ev):
+            return None
+        ev_date = ev.date()
+    else:
+        ev_date = event_date
+
+    # First index with trading date >= event_date
+    idx_list = cdf.index[cdf["cal_date"] >= ev_date].tolist()
+    if not idx_list:
+        return None
+    i = idx_list[0]
+    if i == 0:
+        return None  # no previous trading day to compare with
+
+    cur = float(cdf.at[i, "Close"])
+    prev = float(cdf.at[i - 1, "Close"])
+    if prev == 0:
+        return None
+
+    pct = (cur - prev) / prev * 100.0
+    return round(pct, round_to)
+
+
+def calculate_percentage_column(
+    csv_file: str,
+    date_key: str,
+    charts_root: str = "stock_charts",
+    round_to: int = 2,
+    is_news_feed = False
+) -> None:
+    df = pd.read_csv(csv_file)
+    print("processing ... ", csv_file)
+
+    if "symbol" not in df.columns:
+        raise KeyError("Expected a 'symbol' column in the CSV.")
+    if date_key not in df.columns:
+        raise KeyError(f"Expected a '{date_key}' column in the CSV.")
+
+    # Normalize event dates to strings
+    df[date_key] = pd.to_datetime(df[date_key], errors="coerce").dt.strftime("%Y-%m-%d")
+
+    chang_values = []
+    for _, row in df.iterrows():
+        if is_news_feed:
+          symbol = str(row["symbol"]).strip().upper().removesuffix(".NS")
+        else:
+          symbol = str(row["symbol"]).strip().upper()
+        dstr = row[date_key]
+        if pd.isna(dstr) or dstr is None:
+            chang_values.append(None)
+        else:
+            pct = get_pct_change(symbol, dstr, charts_root=charts_root, round_to=round_to)
+            #print("symbol ", symbol, " dstr ", dstr, " pct ", pct)
+            chang_values.append(pct)
+
+    df["change"] = chang_values
+
+    # Overwrite same CSV
+    df.to_csv(csv_file, index=False)
+    print(f"Updated '{csv_file}' with 'chang' (%) for {len(df)} rows.")
+
+  
+def update_percentage_to_csvs():
+    csv_key_list = ["bulkDeals", "blockDeals", "sastDeals", "insiderDeals", "announcement", "events"]
+
+    for csv_key in csv_key_list:
+        csv_file = getOutputCsvFile(csv_key)
+        date_key = getDateKeyForNseDocument(csv_key)
+        calculate_percentage_column(csv_file, date_key)
+        
+def process_news_feed_folder(folder: str = "stock_news_feed"):
+    """
+    Iterate over all .csv files in `folder` and run
+    calculate_percentage_column(csv_file, "date").
+    """
+    for fname in os.listdir(folder):
+        if fname.lower().endswith(".csv"):
+            csv_file = os.path.join(folder, fname)
+            print(f"Processing: {csv_file}")
+            calculate_percentage_column(csv_file, "published", is_news_feed=True)
+
   
 # ==========================================================================
 # ============================  TEST FUNCTIONS =============================
@@ -4576,7 +4680,9 @@ def create_symbol_files():
 
 # syncUpNseDocuments(urlType="sensiBullEconomicCalender", endDateOffset=20)
 
-create_symbol_files()
+#create_symbol_files()
+#create_symbol_files()
+process_news_feed_folder()
 
 # **************************** Daily Sync Up ********************************
 # cookies_local = getNseCookies()
