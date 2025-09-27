@@ -4218,13 +4218,17 @@ def split_symbol_csv(input_csv, output_dir, date_key):
 
 
 def create_symbol_files():
+    # individual_stock_csv = [
+    #     {"announcement": "individual_stocks/stock_announcement"},
+    #     {"events": "individual_stocks/stock_events"},
+    #     {"bulkDeals": "individual_stocks/stock_bulkDeals"},
+    #     {"blockDeals": "individual_stocks/stock_blockDeals"},
+    #     {"sastDeals": "individual_stocks/stock_sastDeals"},
+    #     {"insiderDeals": "individual_stocks/stock_insiderDeals"},
+    # ]
+    
     individual_stock_csv = [
-        {"announcement": "individual_stocks/stock_announcement"},
         {"events": "individual_stocks/stock_events"},
-        {"bulkDeals": "individual_stocks/stock_bulkDeals"},
-        {"blockDeals": "individual_stocks/stock_blockDeals"},
-        {"sastDeals": "individual_stocks/stock_sastDeals"},
-        {"insiderDeals": "individual_stocks/stock_insiderDeals"},
     ]
 
     for mapping in individual_stock_csv:
@@ -4347,7 +4351,8 @@ def calculate_percentage_column(
     print(f"✔ Updated '{csv_file}' with change_1D and change_1W for {count} rows.")
   
 def update_percentage_to_csvs():
-    csv_key_list = ["bulkDeals", "blockDeals", "sastDeals", "insiderDeals", "announcement", "events"]
+    #csv_key_list = ["bulkDeals", "blockDeals", "sastDeals", "insiderDeals", "announcement", "events"]
+    csv_key_list = ["events"]
 
     for csv_key in csv_key_list:
         csv_file = getOutputCsvFile(csv_key)
@@ -4355,10 +4360,6 @@ def update_percentage_to_csvs():
         calculate_percentage_column(csv_file, date_key)
         
 def process_news_feed_folder(folder: str = "stock_news_feed"):
-    """
-    Iterate over all .csv files in `folder` and run
-    calculate_percentage_column(csv_file, "date").
-    """
     for fname in os.listdir(folder):
         if fname.lower().endswith(".csv"):
             csv_file = os.path.join(folder, fname)
@@ -4711,6 +4712,9 @@ def process_news_feed_folder(folder: str = "stock_news_feed"):
 #create_symbol_files()
 #create_symbol_files()
 #process_news_feed_folder()
+
+# update_percentage_to_csvs()
+# create_symbol_files()
 
 # **************************** Daily Sync Up ********************************
 cookies_local = getNseCookies()

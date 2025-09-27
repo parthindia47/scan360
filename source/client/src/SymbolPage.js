@@ -495,7 +495,12 @@ const FinancialImpacts = ({ stockInfo, className = "" }) => {
   );
 };
 
-const StockEvents = ({ events }) =>  {
+
+const StockEvents = ({ events = [] }) => {
+  // Default: sort by Date (latest first)
+  const [sortField, setSortField] = useState("Date"); // "Date" | "1D" | "1W"
+  const [sortDir, setSortDir] = useState("desc");     // "asc" | "desc"
+
   if (!events || events.length === 0) {
     return (
       <div className="w-full mt-6">
@@ -505,36 +510,118 @@ const StockEvents = ({ events }) =>  {
     );
   }
 
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
+
+  const sortedEvents = useMemo(() => {
+    const arr = [...events];
+    if (sortField === "1D") {
+      arr.sort((a, b) => {
+        const av = parseFloat(a?.change_1D ?? 0);
+        const bv = parseFloat(b?.change_1D ?? 0);
+        return sortDir === "asc" ? av - bv : bv - av;
+      });
+    } else if (sortField === "1W") {
+      arr.sort((a, b) => {
+        const av = parseFloat(a?.change_1W ?? 0);
+        const bv = parseFloat(b?.change_1W ?? 0);
+        return sortDir === "asc" ? av - bv : bv - av;
+      });
+    } else {
+      // Date sort
+      arr.sort((a, b) => {
+        const ta = new Date(a.date).getTime();
+        const tb = new Date(b.date).getTime();
+        const diff = (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+        return sortDir === "asc" ? -diff : diff; // asc = oldest first
+      });
+    }
+    return arr;
+  }, [events, sortField, sortDir]);
+
+  const pctText = (v) =>
+    v == null || isNaN(v) ? "—" : `${Number(v).toFixed(2)}%`;
+
+  const pctClass = (v) =>
+    v == null || isNaN(v)
+      ? "text-gray-500"
+      : Number(v) >= 0
+      ? "text-green-600"
+      : "text-red-600";
+
+  const sortCaret = (field) =>
+    sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "";
+
   return (
     <div className="w-full mt-6">
-      <h4 className="text-lg font-semibold">Stock Events</h4>
-      <div className="overflow-x-auto mt-3">
-        <table className="min-w-full border border-gray-200 text-sm">
+      <h4 className="text-lg font-semibold mb-2">Stock Events</h4>
+
+      {/* Table */}
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="min-w-full text-sm border-collapse">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-2 border text-left">Date</th>
-              <th className="px-4 py-2 border text-left">Purpose</th>
-              <th className="px-4 py-2 border text-left">Description</th>
-              <th className="px-4 py-2 border text-left">Change</th>
+              <th
+                className="px-4 py-2 text-left border border-gray-200 cursor-pointer select-none"
+                onClick={() => toggleSort("Date")}
+                title="Sort by Date"
+              >
+                Date {sortCaret("Date")}
+              </th>
+              <th className="px-4 py-2 text-left border border-gray-200">Purpose</th>
+              <th
+                className="px-4 py-2 text-left border border-gray-200 cursor-pointer select-none"
+                onClick={() => toggleSort("1D")}
+                title="Sort by 1D change"
+              >
+                1D {sortCaret("1D")}
+              </th>
+              <th
+                className="px-4 py-2 text-left border border-gray-200 cursor-pointer select-none"
+                onClick={() => toggleSort("1W")}
+                title="Sort by 1W change"
+              >
+                1W {sortCaret("1W")}
+              </th>
             </tr>
           </thead>
+
           <tbody>
-            {events.map((event) => (
-              <tr key={event.hash} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border">
-                  {new Date(event.date).toLocaleDateString("en-IN")}
-                </td>
-                <td className="px-4 py-2 border">{event.purpose}</td>
-                <td className="px-4 py-2 border">{event.bm_desc}</td>
-                <td className="px-4 py-2 border">{event.chang}</td>
-              </tr>
-            ))}
+            {sortedEvents.map((event, idx) => {
+              const d = new Date(event.date);
+              const dateStr = isNaN(d) ? String(event.date ?? "") : d.toLocaleDateString("en-IN");
+              const c1d = event.change_1D;
+              const c1w = event.change_1W;
+
+              return (
+                <tr
+                  key={event.hash ?? `${event.symbol}-${event.date}-${idx}`}
+                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                >
+                  <td className="px-4 py-2 border border-gray-200">{dateStr}</td>
+                  <td className="px-4 py-2 border border-gray-200">{event.purpose || "—"}</td>
+                  <td className={`px-4 py-2 border border-gray-200 tabular-nums ${pctClass(c1d)}`}>
+                    {pctText(c1d)}
+                  </td>
+                  <td className={`px-4 py-2 border border-gray-200 tabular-nums ${pctClass(c1w)}`}>
+                    {pctText(c1w)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </div>
   );
-}
+};
+
 
 const StockAnnouncements = ({ events }) =>  {
   if (!events || events.length === 0) {
@@ -1326,8 +1413,8 @@ function SymbolPage() {
       )}
 
 
-      {/* <StockEvents events={stockEventsData} />
-      <StockAnnouncements events={stockAnnouncementsData} />
+      <StockEvents events={stockEventsData} />
+      {/* <StockAnnouncements events={stockAnnouncementsData} />
       <StockTrades symbol={symbol} /> */}
       
     </div>
