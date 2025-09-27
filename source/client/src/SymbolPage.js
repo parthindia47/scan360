@@ -495,13 +495,12 @@ const FinancialImpacts = ({ stockInfo, className = "" }) => {
   );
 };
 
-
-const StockEvents = ({ events = [] }) => {
+const StockEvents = ({ data = [] }) => {
   // Default: sort by Date (latest first)
   const [sortField, setSortField] = useState("Date"); // "Date" | "1D" | "1W"
   const [sortDir, setSortDir] = useState("desc");     // "asc" | "desc"
 
-  if (!events || events.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <div className="w-full mt-6">
         <h4 className="text-lg font-semibold mb-3">Stock Events</h4>
@@ -520,7 +519,7 @@ const StockEvents = ({ events = [] }) => {
   };
 
   const sortedEvents = useMemo(() => {
-    const arr = [...events];
+    const arr = [...data];
     if (sortField === "1D") {
       arr.sort((a, b) => {
         const av = parseFloat(a?.change_1D ?? 0);
@@ -543,7 +542,7 @@ const StockEvents = ({ events = [] }) => {
       });
     }
     return arr;
-  }, [events, sortField, sortDir]);
+  }, [data, sortField, sortDir]);
 
   const pctText = (v) =>
     v == null || isNaN(v) ? "—" : `${Number(v).toFixed(2)}%`;
@@ -622,92 +621,257 @@ const StockEvents = ({ events = [] }) => {
   );
 };
 
+const PAGE_SIZE = 10;
 
-const StockAnnouncements = ({ events }) =>  {
-  if (!events || events.length === 0) {
-    return (
-      <div className="w-full mt-6">
-        <h4 className="text-lg font-semibold mb-3">Announcements</h4>
-        <p className="text-gray-500">No announcements available.</p>
-      </div>
-    );
-  }
+const StockAnnouncements = ({ data = [] }) => {
+  // ✅ Hooks always first; no early returns before hooks
+  const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState(null); // "1D" | "1W" | null
+  const [sortDir, setSortDir] = useState("desc");   // "asc" | "desc"
+
+  // Safe data
+  const rows = Array.isArray(data) ? data : [];
+
+  // Helpers (no hooks)
+  const siteName = (url) => {
+    if (!url) return "link";
+    try {
+      const host = new URL(url).hostname.replace(/^www\./i, "");
+      return host.split(".")[0] || host;
+    } catch {
+      return "link";
+    }
+  };
+
+  // "25 Sept 2025"
+  const formatPrettyDate = (d) => {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d || "");
+    return dt.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  const pctText = (v) =>
+    v == null || isNaN(v) ? "" : `${Number(v).toFixed(2)}%`;
+  const pctClass = (v) =>
+    v == null || isNaN(v) ? "text-gray-500" : Number(v) >= 0 ? "text-green-600" : "text-red-600";
+
+  const toggleSort = (field) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+    setPage(1);
+  };
+  const caret = (field) => (sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "");
+
+  // Sort all, then paginate
+  const sorted = useMemo(() => {
+    const arr = [...rows];
+    if (sortField === "1D") {
+      arr.sort((a, b) => {
+        const av = parseFloat(a?.change_1D ?? a?.chang ?? 0);
+        const bv = parseFloat(b?.change_1D ?? b?.chang ?? 0);
+        return sortDir === "asc" ? av - bv : bv - av;
+      });
+    } else if (sortField === "1W") {
+      arr.sort((a, b) => {
+        const av = parseFloat(a?.change_1W ?? 0);
+        const bv = parseFloat(b?.change_1W ?? 0);
+        return sortDir === "asc" ? av - bv : bv - av;
+      });
+    } else {
+      // default: latest first using an_dt or date
+      arr.sort((a, b) => {
+        const ta = new Date(a?.an_dt || a?.date || 0).getTime();
+        const tb = new Date(b?.an_dt || b?.date || 0).getTime();
+        return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+      });
+    }
+    return arr;
+  }, [rows, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageSafe = Math.min(Math.max(1, page), totalPages);
+  const start = (pageSafe - 1) * PAGE_SIZE;
+  const pageSlice = sorted.slice(start, start + PAGE_SIZE);
+
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
     <div className="w-full mt-6">
       <h4 className="text-lg font-semibold">Announcements</h4>
-      <div className="overflow-x-auto mt-3">
-        <table className="min-w-full border border-gray-200 text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 border text-left">Date</th>
-              <th className="p-2 text-left">Type</th>
-              <th className="p-2 text-left">Description</th>
-              <th className="p-2 text-left">Attachment</th>
-              <th className="p-2 text-left">Change</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.hash} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border">
-                  {new Date(event.an_dt).toLocaleDateString("en-IN")}
-                </td>
-                <td className="px-4 py-2 border">{event.desc}</td>
-                <td className="px-4 py-2 border">{event.attchmntText}</td>
-                <td className="p-2">
-                  {event.attchmntFile ? (
-                    <a href={event.attchmntFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                      View PDF
-                    </a>
-                  ) : '—'}
-                </td>
-                <td className="px-4 py-2 border">{event.chang}</td>
+
+      {/* Top controls (paging + sort) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-2 mb-2">
+        <div className="text-sm text-gray-500">
+          Showing {pageSlice.length} of {sorted.length} items
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => toggleSort("1D")}
+            className="px-3 py-1.5 rounded-md border text-sm"
+            title="Sort by 1D change"
+          >
+            1D {caret("1D")}
+          </button>
+          <button
+            onClick={() => toggleSort("1W")}
+            className="px-3 py-1.5 rounded-md border text-sm"
+            title="Sort by 1W change"
+          >
+            1W {caret("1W")}
+          </button>
+          <button
+            onClick={goPrev}
+            disabled={pageSafe === 1}
+            className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="text-sm tabular-nums">
+            Page {pageSafe} of {totalPages}
+          </span>
+          <button
+            onClick={goNext}
+            disabled={pageSafe === totalPages}
+            className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {/* List-style rows in a bordered, rounded table for alignment/scroll */}
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="min-w-full text-sm">
+          <tbody className="divide-y">
+            {pageSlice.length === 0 ? (
+              <tr>
+                <td className="px-4 py-6 text-center text-gray-500">No announcements found.</td>
               </tr>
-            ))}
+            ) : (
+              pageSlice.map((row, idx) => {
+                const type = row?.desc || row?.purpose || "—";
+                const description = row?.attchmntText || row?.bm_desc || "";
+                const href = row?.attchmntFile || row?.link || null;
+                const dateRaw = row?.an_dt || row?.date || null;
+                const dateStr = formatPrettyDate(dateRaw);
+
+                const c1d = parseFloat(row?.change_1D ?? row?.chang ?? null);
+                const c1w = parseFloat(row?.change_1W ?? null);
+
+                return (
+                  <tr
+                    key={row.hash ?? `${row.symbol}-${dateRaw}-${idx}`}
+                    className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <td className="px-4 py-3 border">
+                      {/* {Type} – {Description} – {link} – {date} – (1D …) (1W …) */}
+                      <div className="space-x-1">
+                        <span className="font-medium">{type}</span>
+                        {description && <span className="font-light text-gray-500">– {description}</span>}
+                        {href && (
+                          <>
+                            <span>–</span>
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 underline"
+                              title={href}
+                            >
+                              {siteName(href)}
+                            </a>
+                          </>
+                        )}
+                        {dateStr && (
+                          <>
+                            <span>–</span>
+                            <span className="text-gray-700">{dateStr}</span>
+                          </>
+                        )}
+                        {Number.isFinite(c1d) && (
+                          <span className={`ml-2 ${pctClass(c1d)}`}>{`1D ${pctText(c1d)}`}</span>
+                        )}
+                        {Number.isFinite(c1w) && (
+                          <span className={`ml-2 ${pctClass(c1w)}`}>{`1W ${pctText(c1w)}`}</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Empty state AFTER hooks—no early return */}
+      {rows.length === 0 && (
+        <p className="mt-3 text-gray-500">No announcements available.</p>
+      )}
     </div>
   );
-}
+};
+
 
 const TAB_CONFIG = [
-  { key: "stockBulkDeals", label: "Bulk Deals" },
-  { key: "stockBlockDeals", label: "Block Deals" },
-  { key: "stockSastDeals",  label: "SAST Deals" },
-  { key: "stockInsiderDeals", label: "Insider Deals" },
+  { key: "stockBulkDeals",   label: "Bulk Deals" },
+  { key: "stockBlockDeals",  label: "Block Deals" },
+  { key: "stockSastDeals",   label: "SAST Deals" },
+  { key: "stockInsiderDeals",label: "Insider Deals" },
 ];
 
-// Simple helpers
-const formatNumber = (v) => {
+/* ---- Tiny helpers (no per-tab schema) ---- */
+const fmtNum = (v) => {
   const n = Number(v);
-  if (Number.isNaN(n)) return v ?? "-";
-  return n.toLocaleString("en-IN");
+  return Number.isFinite(n) ? n.toLocaleString("en-IN") : "—";
 };
+const fmtPrice = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n)
+    ? n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "—";
+};
+// 25 Sept 2025 (uniform)
+const fmtDate = (d) => {
+  const dt = new Date(d);
+  return isNaN(dt) ? "—" : dt.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+};
+const pctTxt = (v) => (v == null || isNaN(v) ? "—" : `${Number(v).toFixed(2)}%`);
+const pctCls = (v) =>
+  v == null || isNaN(v) ? "text-gray-500" : Number(v) >= 0 ? "text-green-600" : "text-red-600";
 
-const formatPrice = (v) => {
-  const n = Number(v);
-  if (Number.isNaN(n)) return v ?? "-";
-  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
+// Resolve fields that vary across tabs (simple OR-chains)
+const getClient = (r) => r.clientName || r.acquirerName || r.acqName || r.personName || "—";
+const getSide   = (r) => r.buySell || r.acqSaleType || r.transactionType || "—";
+const getMode   = (r) => r.acqMode || r.acquisitionMode || r.personCategory || r.relation || "—";
+const getQty    = (r) => r.qty || r.noOfShareAcq || r.noOfShareSale || r.secAcq || null;
+const getAvg    = (r) => r.watp || r.avgPrice || r.price || null;
+const getDealCr = (r) => (r.dealValue != null ? Number(r.dealValue) : null); // already in Cr if you set it so
+const getD1     = (r) => parseFloat(r.change_1D ?? r.change ?? r.chg ?? NaN);
+const getW1     = (r) => parseFloat(r.change_1W ?? NaN);
 
 const StockTrades = ({ symbol }) => {
-  // Single state object to hold data/loading/error per tab
-  const [state, setState] = useState({
+  const [data, setData] = useState({
     stockBulkDeals:   { data: [], loading: true, error: null },
     stockBlockDeals:  { data: [], loading: true, error: null },
     stockSastDeals:   { data: [], loading: true, error: null },
     stockInsiderDeals:{ data: [], loading: true, error: null },
   });
-
   const [activeKey, setActiveKey] = useState(TAB_CONFIG[0].key);
+
+  // sorting (just 3 keys)
+  const [sortKey, setSortKey] = useState("date"); // 'date' | 'd1' | 'w1'
+  const [sortDir, setSortDir] = useState("desc"); // 'asc' | 'desc'
 
   useEffect(() => {
     let cancelled = false;
 
-    // Reset state when symbol changes
-    setState({
+    // reset
+    setData({
       stockBulkDeals:   { data: [], loading: true, error: null },
       stockBlockDeals:  { data: [], loading: true, error: null },
       stockSastDeals:   { data: [], loading: true, error: null },
@@ -719,7 +883,7 @@ const StockTrades = ({ symbol }) => {
         .get(`${process.env.REACT_APP_API_URL}/api_2/${key}/${symbol}`)
         .then((res) => {
           if (cancelled) return;
-          setState((prev) => ({
+          setData((prev) => ({
             ...prev,
             [key]: { data: Array.isArray(res.data) ? res.data : [], loading: false, error: null },
           }));
@@ -727,7 +891,7 @@ const StockTrades = ({ symbol }) => {
         .catch((err) => {
           if (cancelled) return;
           console.error(`Error fetching ${key}:`, err);
-          setState((prev) => ({
+          setData((prev) => ({
             ...prev,
             [key]: { data: [], loading: false, error: "Failed to load" },
           }));
@@ -737,20 +901,44 @@ const StockTrades = ({ symbol }) => {
     return () => { cancelled = true; };
   }, [symbol]);
 
-  const active = state[activeKey] || { data: [], loading: false, error: null };
+  const active = data[activeKey] || { data: [], loading: false, error: null };
 
-  // columns to show per your requirement
-  const columns = useMemo(
-    () => [
-      { key: "date", header: "Date" },
-      { key: "clientName", header: "Client" },
-      { key: "buySell", header: "Side" },
-      { key: "qty", header: "Qty", render: (v) => formatNumber(v) },
-      { key: "watp", header: "WATP", render: (v) => formatPrice(v) },
-      { key: "chang", header: "Change" },
-    ],
-    []
-  );
+  const sortedRows = useMemo(() => {
+    const arr = [...(active.data || [])];
+
+    if (sortKey === "date") {
+      arr.sort((a, b) => {
+        const ta = new Date(a?.date || 0).getTime();
+        const tb = new Date(b?.date || 0).getTime();
+        const diff = (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+        return sortDir === "asc" ? -diff : diff; // default desc
+      });
+    } else if (sortKey === "d1") {
+      arr.sort((a, b) => {
+        const av = getD1(a); const bv = getD1(b);
+        const na = isNaN(av) ? -Infinity : av;
+        const nb = isNaN(bv) ? -Infinity : bv;
+        return sortDir === "asc" ? na - nb : nb - na;
+      });
+    } else if (sortKey === "w1") {
+      arr.sort((a, b) => {
+        const av = getW1(a); const bv = getW1(b);
+        const na = isNaN(av) ? -Infinity : av;
+        const nb = isNaN(bv) ? -Infinity : bv;
+        return sortDir === "asc" ? na - nb : nb - na;
+      });
+    }
+    return arr;
+  }, [active.data, sortKey, sortDir]);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+  const caret = (key) => (sortKey === key ? (sortDir === "asc" ? "↑" : "↓") : "");
 
   return (
     <div className="w-full">
@@ -787,47 +975,83 @@ const StockTrades = ({ symbol }) => {
       ) : active.data.length === 0 ? (
         <div className="text-gray-500 text-sm">No records found.</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-200 text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                {columns.map((c) => (
-                  <th key={c.key} className="px-3 py-2 border text-left whitespace-nowrap">
-                    {c.header}
-                  </th>
-                ))}
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100 text-gray-700">
+              <tr className="font-semibold">
+                <th
+                  className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => toggleSort("date")}
+                  title="Sort by Date"
+                >
+                  Date {caret("date")}
+                </th>
+                <th className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap">Buyer/Seller</th>
+                <th className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap">Type</th>
+                <th className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap">Mode</th>
+                <th className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap">Qty</th>
+                <th className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap">Avg/WATP</th>
+                <th
+                  className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => toggleSort("d1")}
+                  title="Sort by 1D"
+                >
+                  1D {caret("d1")}
+                </th>
+                <th
+                  className="px-3 py-2 border border-gray-200 text-left whitespace-nowrap cursor-pointer select-none"
+                  onClick={() => toggleSort("w1")}
+                  title="Sort by 1W"
+                >
+                  1W {caret("w1")}
+                </th>
               </tr>
             </thead>
-            <tbody>
-              {active.data.map((row) => (
-                <tr key={row.hash} className="hover:bg-gray-50">
-                  {columns.map((c) => {
-                    const raw = row[c.key];
-                    const val = c.render ? c.render(raw) : (raw ?? "-");
-                    // color BUY/SELL a bit for readability
-                    const extra =
-                      c.key === "buySell"
-                        ? (row.buySell || "").toUpperCase() === "BUY"
-                          ? "text-green-700"
-                          : (row.buySell || "").toUpperCase() === "SELL"
-                          ? "text-red-700"
-                          : "text-gray-700"
-                        : "text-gray-800";
-                    return (
-                      <td key={c.key} className={`px-3 py-2 border align-top ${extra}`}>
-                        {val || "-"}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+
+            <tbody className="text-gray-700">
+              {sortedRows.map((row, idx) => {
+                const d1 = getD1(row);
+                const w1 = getW1(row);
+                const qty = getQty(row);
+                const avg = getAvg(row);
+                const dealCr = getDealCr(row);
+
+                return (
+                  <tr
+                    key={row.hash ?? `${row.symbol}-${row.date}-${idx}`}
+                    className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <td className="px-3 py-2 border border-gray-200 align-top">{fmtDate(row.date)}</td>
+                    <td className="px-3 py-2 border border-gray-200 align-top">{getClient(row)}</td>
+                    <td className="px-3 py-2 border border-gray-200 align-top">
+                      <span className={
+                        (row.buySell || row.acqSaleType || "").toUpperCase() === "BUY" ? "text-green-700" :
+                        (row.buySell || row.acqSaleType || "").toUpperCase() === "SELL" ? "text-red-700" :
+                        "text-gray-700"
+                      }>
+                        {getSide(row)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 border border-gray-200 align-top">{getMode(row)}</td>
+                    <td className="px-3 py-2 border border-gray-200 align-top tabular-nums">{fmtNum(qty)}</td>
+                    <td className="px-3 py-2 border border-gray-200 align-top tabular-nums">{fmtPrice(avg)}</td>
+
+                    <td className={`px-3 py-2 border border-gray-200 align-top tabular-nums ${pctCls(d1)}`}>
+                      {pctTxt(d1)}
+                    </td>
+                    <td className={`px-3 py-2 border border-gray-200 align-top tabular-nums ${pctCls(w1)}`}>
+                      {pctTxt(w1)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
     </div>
   );
-}
+};
 
 
 function SymbolPage() {
@@ -1413,8 +1637,10 @@ function SymbolPage() {
       )}
 
 
-      <StockEvents events={stockEventsData} />
-      {/* <StockAnnouncements events={stockAnnouncementsData} />
+      <StockEvents data={stockEventsData} />
+      <StockAnnouncements data={stockAnnouncementsData} />
+      <StockTrades symbol={symbol} />
+      {/* 
       <StockTrades symbol={symbol} /> */}
       
     </div>

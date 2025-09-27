@@ -4228,7 +4228,10 @@ def create_symbol_files():
     # ]
     
     individual_stock_csv = [
-        {"events": "individual_stocks/stock_events"},
+        {"bulkDeals": "individual_stocks/stock_bulkDeals"},
+        {"blockDeals": "individual_stocks/stock_blockDeals"},
+        {"sastDeals": "individual_stocks/stock_sastDeals"},
+        {"insiderDeals": "individual_stocks/stock_insiderDeals"},
     ]
 
     for mapping in individual_stock_csv:
@@ -4352,7 +4355,7 @@ def calculate_percentage_column(
   
 def update_percentage_to_csvs():
     #csv_key_list = ["bulkDeals", "blockDeals", "sastDeals", "insiderDeals", "announcement", "events"]
-    csv_key_list = ["events"]
+    csv_key_list = ["bulkDeals", "blockDeals", "sastDeals", "insiderDeals"]
 
     for csv_key in csv_key_list:
         csv_file = getOutputCsvFile(csv_key)
