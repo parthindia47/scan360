@@ -210,11 +210,12 @@ const PriceChart = React.memo(function PriceChart({
  * Usage:
  * <NewsFeedTable data={newsFeedData} />
  */
-const NewsFeedTable = ({ data = [] }) =>  {
+const NewsFeedTable = ({ data = [] }) => {
   const PAGE_SIZE = 10;
   const [page, setPage] = useState(1);
+  const [sortField, setSortField] = useState(null); // "1D" | "1W" | null
+  const [sortDir, setSortDir] = useState("desc");   // "asc" | "desc"
 
-  // Get a simple site name like "thehindu" from a URL (or hostname)
   const siteName = (linkOrHost) => {
     if (!linkOrHost) return "unknown";
     try {
@@ -222,11 +223,11 @@ const NewsFeedTable = ({ data = [] }) =>  {
         ? new URL(linkOrHost).hostname
         : linkOrHost;
       const cleaned = host.replace(/^www\./i, "");
-      // take the first label only: economictimes.indiatimes.com -> "economictimes"
       return cleaned.split(".")[0] || cleaned;
     } catch {
-      // if it's not a valid URL, try treating it as a hostname string
-      const cleaned = String(linkOrHost).replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+      const cleaned = String(linkOrHost)
+        .replace(/^https?:\/\//i, "")
+        .replace(/^www\./i, "");
       return cleaned.split(".")[0] || "unknown";
     }
   };
@@ -234,7 +235,6 @@ const NewsFeedTable = ({ data = [] }) =>  {
   const formatDate = (d) => {
     const dt = new Date(d);
     if (isNaN(dt.getTime())) return String(d || "");
-    // Format in user's locale (IST)
     return dt.toLocaleString("en-IN", {
       year: "numeric",
       month: "short",
@@ -243,13 +243,29 @@ const NewsFeedTable = ({ data = [] }) =>  {
   };
 
   const sorted = useMemo(() => {
-    // sort by published desc (latest first)
-    return [...(data || [])].sort((a, b) => {
-      const ta = new Date(a?.published || 0).getTime();
-      const tb = new Date(b?.published || 0).getTime();
-      return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
-    });
-  }, [data]);
+    let items = [...(data || [])];
+    if (sortField === "1D") {
+      items.sort((a, b) => {
+        const ca = parseFloat(a?.change_1D ?? 0);
+        const cb = parseFloat(b?.change_1D ?? 0);
+        return sortDir === "asc" ? ca - cb : cb - ca;
+      });
+    } else if (sortField === "1W") {
+      items.sort((a, b) => {
+        const ca = parseFloat(a?.change_1W ?? 0);
+        const cb = parseFloat(b?.change_1W ?? 0);
+        return sortDir === "asc" ? ca - cb : cb - ca;
+      });
+    } else {
+      // default sort by published desc
+      items.sort((a, b) => {
+        const ta = new Date(a?.published || 0).getTime();
+        const tb = new Date(b?.published || 0).getTime();
+        return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+      });
+    }
+    return items;
+  }, [data, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageSafe = Math.min(Math.max(1, page), totalPages);
@@ -261,11 +277,21 @@ const NewsFeedTable = ({ data = [] }) =>  {
   const goPrev = () => setPage((p) => Math.max(1, p - 1));
   const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      // toggle direction
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      // new field defaults to desc
+      setSortField(field);
+      setSortDir("desc");
+    }
+    setPage(1);
+  };
+
   return (
     <div className="w-full mt-6">
-      <h4 className="text-lg font-semibold">
-        News & Stories
-      </h4>
+      <h4 className="text-lg font-semibold">News & Stories</h4>
 
       {/* Top controls */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
@@ -273,6 +299,20 @@ const NewsFeedTable = ({ data = [] }) =>  {
           Showing {pageSlice.length} of {sorted.length} items
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => toggleSort("1D")}
+            className="px-3 py-1.5 rounded-md border text-sm"
+          >
+            1D{" "}
+            {sortField === "1D" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </button>
+          <button
+            onClick={() => toggleSort("1W")}
+            className="px-3 py-1.5 rounded-md border text-sm"
+          >
+            1W{" "}
+            {sortField === "1W" ? (sortDir === "asc" ? "↑" : "↓") : ""}
+          </button>
           <button
             onClick={goPrev}
             disabled={pageSafe === 1}
@@ -293,7 +333,7 @@ const NewsFeedTable = ({ data = [] }) =>  {
         </div>
       </div>
 
-      {/* Table wrapper for mobile scroll */}
+      {/* Table wrapper */}
       <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full text-sm">
           <tbody className="divide-y">
@@ -310,21 +350,50 @@ const NewsFeedTable = ({ data = [] }) =>  {
                 const sourceLabel = siteName(row?.source || row?.link || "");
                 const published = formatDate(row?.published);
 
+                const change_1D = parseFloat(row?.change_1D ?? null);
+                const change_1W = parseFloat(row?.change_1W ?? null);
+
+                const changeText_1D =
+                  change_1D != null && !isNaN(change_1D)
+                    ? `1D ${change_1D.toFixed(2)}%`
+                    : "";
+
+                const changeText_1W =
+                  change_1W != null && !isNaN(change_1W)
+                    ? `1W ${change_1W.toFixed(2)}%`
+                    : "";
+
+                const changeClass_1D =
+                  change_1D != null && !isNaN(change_1D)
+                    ? change_1D >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                    : "text-gray-500";
+
+                const changeClass_1W =
+                  change_1W != null && !isNaN(change_1W)
+                    ? change_1W >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                    : "text-gray-500";
+
                 return (
-                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                  <tr
+                    key={idx}
+                    className={idx % 2 === 0 ? "bg-white" : "bg-gray-100"}
+                  >
                     <td className="px-3 py-2">
                       <span className="font-light hover:decoration-solid break-words">
-                      <a
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={title}
-                      >
-                        {title}
-                      </a>
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={title}
+                        >
+                          {title}
+                        </a>
                       </span>
                       <span className="text-xs text-gray-500 ml-2">
-                        {/* source as hyperlink to link, simple host name */}
                         <a
                           href={row.link}
                           target="_blank"
@@ -335,9 +404,16 @@ const NewsFeedTable = ({ data = [] }) =>  {
                         </a>{" "}
                         ({published})
                       </span>
-                      <span className="text-xs text-gray-500 ml-2">
-                          {row?.change}
-                      </span>
+                      {changeText_1D && (
+                        <span className={`text-xs ml-2 ${changeClass_1D}`}>
+                          {changeText_1D}
+                        </span>
+                      )}
+                      {changeText_1W && (
+                        <span className={`text-xs ml-2 ${changeClass_1W}`}>
+                          {changeText_1W}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -346,30 +422,10 @@ const NewsFeedTable = ({ data = [] }) =>  {
           </tbody>
         </table>
       </div>
-
-      {/* Bottom controls (mobile-friendly) */}
-      {/* <div className="flex items-center justify-between gap-2 mt-3">
-        <button
-          onClick={goPrev}
-          disabled={pageSafe === 1}
-          className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
-        >
-          Prev
-        </button>
-        <div className="text-sm tabular-nums">
-          Page {pageSafe} of {totalPages}
-        </div>
-        <button
-          onClick={goNext}
-          disabled={pageSafe === totalPages}
-          className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div> */}
     </div>
   );
-}
+};
+
 
 const FinancialImpacts = ({ stockInfo, className = "" }) => {
   if (!stockInfo) return null;
@@ -1270,9 +1326,9 @@ function SymbolPage() {
       )}
 
 
-      <StockEvents events={stockEventsData} />
+      {/* <StockEvents events={stockEventsData} />
       <StockAnnouncements events={stockAnnouncementsData} />
-      <StockTrades symbol={symbol} />
+      <StockTrades symbol={symbol} /> */}
       
     </div>
   );

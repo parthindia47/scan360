@@ -4240,43 +4240,56 @@ def get_pct_change(
     charts_root: str = "stock_charts",
     round_to: int = 2,
 ):
+    """
+    Calculate percentage change for 1D (vs previous trading day)
+    and 1W (vs ~5 trading days earlier) for `symbol` on or after event_date.
+
+    Returns dict like {"1D": 1.23, "1W": -2.45}
+    or None if unavailable.
+    """
     fp = os.path.join(charts_root, f"{symbol.upper()}.csv")
     if not os.path.exists(fp):
-        return None
+        return None, None   # ✅ safe unpack
 
     cdf = pd.read_csv(fp, usecols=["Date", "Close"])
-
-    # Parse timezone-aware timestamps, then compare by calendar DATE
     cdf["Date"] = pd.to_datetime(cdf["Date"], errors="coerce")
     cdf = cdf.dropna(subset=["Date", "Close"]).copy()
     cdf["cal_date"] = cdf["Date"].dt.date
-    cdf.sort_values("cal_date", inplace=True, kind="mergesort")  # stable sort
+    cdf.sort_values("cal_date", inplace=True, kind="mergesort")
     cdf.reset_index(drop=True, inplace=True)
 
     # Normalize input event_date
     if isinstance(event_date, str):
         ev = pd.to_datetime(event_date, errors="coerce")
         if pd.isna(ev):
-            return None
+            return None, None   # ✅ safe unpack
         ev_date = ev.date()
     else:
         ev_date = event_date
 
-    # First index with trading date >= event_date
+    # Find first index with trading date >= event_date
     idx_list = cdf.index[cdf["cal_date"] >= ev_date].tolist()
     if not idx_list:
-        return None
+        return None, None   # ✅ safe unpack
     i = idx_list[0]
-    if i == 0:
-        return None  # no previous trading day to compare with
 
-    cur = float(cdf.at[i, "Close"])
-    prev = float(cdf.at[i - 1, "Close"])
-    if prev == 0:
-        return None
+    results_1D, results_1W = None, None
 
-    pct = (cur - prev) / prev * 100.0
-    return round(pct, round_to)
+    # ---- 1D change ----
+    if i > 0:
+        cur = float(cdf.at[i, "Close"])
+        prev = float(cdf.at[i - 1, "Close"])
+        if prev != 0:
+            results_1D = round((cur - prev) / prev * 100.0, round_to)
+
+    # ---- 1W change (≈ 5 trading days back) ----
+    if i > 5:
+        cur = float(cdf.at[i, "Close"])
+        prev_w = float(cdf.at[i - 5, "Close"])  # 5th trading day earlier
+        if prev_w != 0:
+            results_1W = round((cur - prev_w) / prev_w * 100.0, round_to)
+
+    return (results_1D, results_1W)
 
 
 def calculate_percentage_column(
@@ -4284,8 +4297,10 @@ def calculate_percentage_column(
     date_key: str,
     charts_root: str = "stock_charts",
     round_to: int = 2,
-    is_news_feed = False
-) -> None:
+    is_news_feed: bool = False,
+    only_if_empty: bool = False  # if True, calculate only where columns are empty
+):
+    count = 0
     df = pd.read_csv(csv_file)
     print("processing ... ", csv_file)
 
@@ -4294,29 +4309,42 @@ def calculate_percentage_column(
     if date_key not in df.columns:
         raise KeyError(f"Expected a '{date_key}' column in the CSV.")
 
-    # Normalize event dates to strings
-    df[date_key] = pd.to_datetime(df[date_key], errors="coerce").dt.strftime("%Y-%m-%d")
+    # Normalize event dates
+    df[date_key] = pd.to_datetime(df[date_key], errors="coerce")
 
-    chang_values = []
-    for _, row in df.iterrows():
-        if is_news_feed:
-          symbol = str(row["symbol"]).strip().upper().removesuffix(".NS")
-        else:
-          symbol = str(row["symbol"]).strip().upper()
+    # Ensure change cols exist
+    if "change_1D" not in df.columns:
+        df["change_1D"] = None
+    if "change_1W" not in df.columns:
+        df["change_1W"] = None
+
+    # Iterate rows
+    for idx, row in df.iterrows():
         dstr = row[date_key]
-        if pd.isna(dstr) or dstr is None:
-            chang_values.append(None)
-        else:
-            pct = get_pct_change(symbol, dstr, charts_root=charts_root, round_to=round_to)
-            #print("symbol ", symbol, " dstr ", dstr, " pct ", pct)
-            chang_values.append(pct)
+        if pd.isna(dstr):
+            continue
 
-    df["change"] = chang_values
+        # Skip if only_if_empty=True and already has values
+        if only_if_empty and pd.notna(row.get("change_1D")) and pd.notna(row.get("change_1W")):
+            continue
 
-    # Overwrite same CSV
+        # Normalize symbol
+        symbol = str(row["symbol"]).strip().upper()
+        if is_news_feed:
+            symbol = symbol.removesuffix(".NS")
+
+        # Compute
+        pct_1D, pct_1W = get_pct_change(symbol, dstr.strftime("%Y-%m-%d"),
+                                        charts_root=charts_root, round_to=round_to)
+        if pct_1D is not None:
+            df.at[idx, "change_1D"] = pct_1D
+        if pct_1W is not None:
+            df.at[idx, "change_1W"] = pct_1W
+        count = count + 1
+
+    # Overwrite CSV
     df.to_csv(csv_file, index=False)
-    print(f"Updated '{csv_file}' with 'chang' (%) for {len(df)} rows.")
-
+    print(f"✔ Updated '{csv_file}' with change_1D and change_1W for {count} rows.")
   
 def update_percentage_to_csvs():
     csv_key_list = ["bulkDeals", "blockDeals", "sastDeals", "insiderDeals", "announcement", "events"]
@@ -4335,7 +4363,7 @@ def process_news_feed_folder(folder: str = "stock_news_feed"):
         if fname.lower().endswith(".csv"):
             csv_file = os.path.join(folder, fname)
             print(f"Processing: {csv_file}")
-            calculate_percentage_column(csv_file, "published", is_news_feed=True)
+            calculate_percentage_column(csv_file, "published", is_news_feed=True, only_if_empty=True)
 
   
 # ==========================================================================
@@ -4682,33 +4710,33 @@ def process_news_feed_folder(folder: str = "stock_news_feed"):
 
 #create_symbol_files()
 #create_symbol_files()
-process_news_feed_folder()
+#process_news_feed_folder()
 
 # **************************** Daily Sync Up ********************************
-# cookies_local = getNseCookies()
-# nseStockList = getAllNseSymbols(local=False)
+cookies_local = getNseCookies()
+nseStockList = getAllNseSymbols(local=False)
 
-# # Fetch any new symbol from yahoo with partial True
-# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+# Fetch any new symbol from yahoo with partial True
+fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 
-# # Fetch NSE Candles
-# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# Fetch NSE Candles
+syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# # Fetch Commodities Candles
-# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# Fetch Commodities Candles
+commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# # Fetch Other Candles From Yahoo
-# syncUpYahooFinOtherSymbols()
+# Fetch Other Candles From Yahoo
+syncUpYahooFinOtherSymbols()
 
-# # Fetch NSE Fillings and results
-# syncUpAllNseFillings(cookies=cookies_local)
-# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
-# syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-# syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+# Fetch NSE Fillings and results
+syncUpAllNseFillings(cookies=cookies_local)
+integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
+syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 
-# # Finally recalculate details
-# recalculateYFinStockInfo(useNseBhavCopy=True)
+# Finally recalculate details
+recalculateYFinStockInfo(useNseBhavCopy=True)
 
 # **************************************************************************
 
