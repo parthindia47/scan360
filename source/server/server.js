@@ -16,6 +16,8 @@ const standaloneDataFolder = path.join(__dirname, '../../stock_results/standalon
 const newsFolder = path.join(__dirname, '../../stock_news');
 const newsFeedFolder = path.join(__dirname, '../../stock_news_feed');
 const stockNewsPath = path.join(__dirname, '../../stock_news/stock_news.csv');
+const stockNewsFeedPath = path.join(__dirname, '../../stock_news/stock_news_feed.csv');
+const otherNewsFeedPath = path.join(__dirname, '../../stock_news/other_news_feed.csv');
 const indiaNewsPath = path.join(__dirname, '../../stock_news/india_news.csv');
 const globalNewsPath = path.join(__dirname, '../../stock_news/global_news.csv');
 const stockInfoFilePath = path.join(__dirname, '../../stock_info/yFinStockInfo_NSE.csv');
@@ -76,6 +78,8 @@ const csvPaths = {
   insiderDeals: insiderDealsPath,
 
   stockNews: stockNewsPath,
+  stockFeedNews: stockNewsFeedPath,
+  otherFeedNews: otherNewsFeedPath,
   indiaNews: indiaNewsPath,
   globalNews: globalNewsPath,
 
@@ -114,6 +118,8 @@ const dateKeys = {
   stockNews: "published",
   indiaNews: "published",
   globalNews: "published",
+  stockFeedNews: "published",
+  otherFeedNews: "published",
 
   stockEvents: "date",
   stockAnnouncements: "an_dt",
@@ -150,6 +156,8 @@ const daysPastList = {
   stockNews: 2,
   indiaNews: 2,
   globalNews: 2,
+  stockFeedNews: 2,
+  otherFeedNews: 2,
 
   stockEvents: 400,
   stockAnnouncements: 400,

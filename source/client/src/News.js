@@ -4,10 +4,13 @@ import axios from 'axios';
 
 function News() {
   const [stockNewsData, setStockNewsData] = useState([]);
+  const [stockFeedNewsData, setStockFeedNewsData] = useState([]);
+  const [otherFeedNewsData, setOtherFeedNewsData] = useState([]);
   const [indiaNewsData, setIndiaNewsData] = useState([]);
   const [globalNewsData, setGlobalNewsData] = useState([]); // API uses "global", UI shows "World"
 
   const [loading, setLoading] = useState(true);
+  const [d1Sort, setD1Sort] = useState(null); // 'asc' | 'desc' | null
 
   // Keep exactly one expanded row per tab: { Stocks: <id|null>, India: <id|null>, World: <id|null> }
   const [expandedIdByTab, setExpandedIdByTab] = useState({
@@ -24,6 +27,22 @@ function News() {
     axios
       .get(`${process.env.REACT_APP_API_URL}/api/stockNews`)
       .then((res) => setStockNewsData(res.data || []))
+      .catch((err) => console.error('Failed to fetch Stock News', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${process.env.REACT_APP_API_URL}/api/otherFeedNews`)
+      .then((res) => setOtherFeedNewsData(res.data || []))
+      .catch((err) => console.error('Failed to fetch Stock News', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${process.env.REACT_APP_API_URL}/api/stockFeedNews`)
+      .then((res) => setStockFeedNewsData(res.data || []))
       .catch((err) => console.error('Failed to fetch Stock News', err))
       .finally(() => setLoading(false));
   }, []);
@@ -82,16 +101,33 @@ function News() {
         return indiaNewsData;
       case 'World':
         return globalNewsData;
+      case 'Stocks Feed':
+        return stockFeedNewsData;
+      case 'Other':
+        return otherFeedNewsData;
       case 'Stocks':
       default:
         return stockNewsData;
     }
-  }, [activeTab, stockNewsData, indiaNewsData, globalNewsData]);
+  }, [activeTab, stockNewsData, indiaNewsData, globalNewsData, stockFeedNewsData, otherFeedNewsData]);
 
-  const currentDataSorted = useMemo(
-    () => sortByPublishedDesc(currentDataRaw),
-    [currentDataRaw]
-  );
+
+  const currentDataSorted = useMemo(() => {
+    const base = sortByPublishedDesc(currentDataRaw);
+
+    // Apply 1D sort only for Stocks Feed / Other
+    const canSortD1 = activeTab === 'Stocks Feed' || activeTab === 'Other';
+    if (!canSortD1 || !d1Sort) return base;
+
+    // sort by change_1D (numeric), keep NaNs at the end
+    return [...base].sort((a, b) => {
+      const avRaw = parseFloat(a?.change_1D);
+      const bvRaw = parseFloat(b?.change_1D);
+      const av = Number.isFinite(avRaw) ? avRaw : (d1Sort === 'asc' ? Infinity : -Infinity);
+      const bv = Number.isFinite(bvRaw) ? bvRaw : (d1Sort === 'asc' ? Infinity : -Infinity);
+      return d1Sort === 'asc' ? av - bv : bv - av;
+    });
+  }, [currentDataRaw, activeTab, d1Sort]);
 
   // Unique dates (for active tab)
   const uniqueDates = useMemo(() => {
@@ -135,7 +171,7 @@ function News() {
     }`;
 
   // Tabs list
-  const tabs = ['Stocks', 'India', 'World'];
+  const tabs = ['Stocks', 'India', 'World', 'Stocks Feed', 'Other'];
 
   // Toggle handler to ensure only one expanded per tab
   const toggleExpandOne = (row) => {
@@ -209,6 +245,19 @@ function News() {
       {/* Total rows after filters */}
       <div className="text-sm mt-3 text-gray-600">
         Total rows {filteredData.length}
+
+        {/* 1D sort toggle — only for Stocks Feed / Other */}
+        {(activeTab === 'Stocks Feed' || activeTab === 'Other') && (
+          <span className="ml-2">
+            <button
+              onClick={() => setD1Sort((s) => (s === 'desc' ? 'asc' : 'desc'))}
+              className="px-1 py-1 rounded-md border text-sm"
+              title="Sort by 1D % change"
+            >
+              1D% {d1Sort === 'asc' ? '↑' : '↓'}
+            </button>
+          </span>
+        )}
       </div>
 
       {loading ? (
@@ -277,6 +326,30 @@ function News() {
                                 <span className="ml-2 text-xs text-gray-700 leading-relaxed">
                                 {"(" + formatDatePretty(publishedStr) + ")"}
                                 </span>
+
+                                {/* 1D change: show only if numeric; color green/red */}
+                                {Number.isFinite(parseFloat(row?.change_1D)) && (
+                                  <span
+                                    className={`ml-2 text-xs leading-relaxed ${
+                                      parseFloat(row.change_1D) >= 0 ? "text-green-600" : "text-red-600"
+                                    }`}
+                                  >
+                                    {`1D ${parseFloat(row.change_1D).toFixed(2)}%`}
+                                  </span>
+                                )}
+
+                                {/* Symbol: show only if present; link to /symbol/{symbol} */}
+                                {row?.symbol && (
+                                  <a
+                                    href={`symbol/${row.symbol}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ml-2 text-xs text-blue-600 underline leading-relaxed"
+                                  >
+                                    {row.symbol}
+                                  </a>
+                                )}
+
                               </div>
 
                               {isExpanded && summary && (

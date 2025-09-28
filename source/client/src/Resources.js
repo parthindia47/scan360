@@ -76,7 +76,7 @@ const linksData = [
       { name: 'NSE Mood Index', url: 'https://www.tickertape.in/market-mood-index?ref=homepage_mmi_section' },
       { name: 'Crypto Mood Index', url: 'https://coinmarketcap.com/charts/fear-and-greed-index/' },
       { name: 'Investing Rule Book', url: 'https://web.archive.org/web/20230602132920/https://www.getpaidindia.com/Equity_Investing_Rules_Book'},
-      { name: 'Scan360 Learning', url: 'http://scan360.in/learning'}
+      { name: 'Scan360 Learning', url: '/learning'}
     ],
   },
 ];

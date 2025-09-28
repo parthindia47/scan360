@@ -165,6 +165,144 @@ const CapitalRaisingTable = () => {
   );
 }
 
+const AdvertisingMediums = () => {
+  const mediums = [
+    {
+      title: "Television (DTH & Cable)",
+      examples: "Star Plus, Sony, Colors, Zee TV",
+    },
+    {
+      title: "FM & Radio",
+      examples: "Red FM, Big FM",
+    },
+    {
+      title: "Digital & Social Media",
+      examples:
+        "Meta (Facebook, Instagram), Google (YouTube, Search, Display), X (Twitter), LinkedIn, ShareChat, Moj, DailyHunt",
+    },
+    {
+      title: "Newspapers",
+      examples:
+        "Times of India, Hindustan Times, The Hindu, Dainik Jagran, Eenadu, Gujarat Samachar",
+    },
+    {
+      title: "Outdoor (OOH & Transit)",
+      examples:
+        "Billboards, metro/train ads, bus wraps, airport ads, digital hoardings",
+    },
+    {
+      title: "Cinema Advertising",
+      examples:
+        "Ads before movies in multiplexes (PVR, INOX, Cinepolis) and single screens",
+    },
+    {
+      title: "OTT / Streaming",
+      examples:
+        "Disney+ Hotstar, JioCinema, SonyLIV, Zee5 – growing rapidly with cricket & IPL ads",
+    },
+    {
+      title: "Influencer Marketing",
+      examples:
+        "YouTube, Instagram Reels, Telegram groups – strong in fashion, food, fintech",
+    },
+    {
+      title: "E-commerce Ads",
+      examples:
+        "Amazon, Flipkart, Meesho – product search ads with high conversion intent",
+    },
+    {
+      title: "In-App Ads",
+      examples:
+        "Gaming (Ludo King, Dream11), fintech, and regional content apps",
+    },
+  ];
+
+  return (
+    <section className="mx-auto max-w-4xl p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        Advertising Mediums in India
+      </h2>
+      <div className="space-y-2">
+        {mediums.map((item, idx) => (
+          <p key={idx}>
+            <span className="font-semibold text-gray-900">{item.title}</span> -{" "}
+            <span className="text-gray-600">{item.examples}</span>
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const AlternateDataSources = () => {
+  const mediums = [
+    {
+      title: "IT companies, Service Sector, Platform Companies",
+      examples: "Number of Job Openings, R&D spending",
+    },
+    {
+      title: "Jewelry companies",
+      examples: "Gold Prices, Duty rate on Gold",
+    },
+    {
+      title: "Digital & Social Media",
+      examples:
+        "Meta (Facebook, Instagram), Google (YouTube, Search, Display), X (Twitter), LinkedIn, ShareChat, Moj, DailyHunt",
+    },
+    {
+      title: "Newspapers",
+      examples:
+        "Times of India, Hindustan Times, The Hindu, Dainik Jagran, Eenadu, Gujarat Samachar",
+    },
+    {
+      title: "Outdoor (OOH & Transit)",
+      examples:
+        "Billboards, metro/train ads, bus wraps, airport ads, digital hoardings",
+    },
+    {
+      title: "Cinema Advertising",
+      examples:
+        "Ads before movies in multiplexes (PVR, INOX, Cinepolis) and single screens",
+    },
+    {
+      title: "OTT / Streaming",
+      examples:
+        "Disney+ Hotstar, JioCinema, SonyLIV, Zee5 – growing rapidly with cricket & IPL ads",
+    },
+    {
+      title: "Influencer Marketing",
+      examples:
+        "YouTube, Instagram Reels, Telegram groups – strong in fashion, food, fintech",
+    },
+    {
+      title: "E-commerce Ads",
+      examples:
+        "Amazon, Flipkart, Meesho – product search ads with high conversion intent",
+    },
+    {
+      title: "In-App Ads",
+      examples:
+        "Gaming (Ludo King, Dream11), fintech, and regional content apps",
+    },
+  ];
+
+  return (
+    <section className="mx-auto max-w-4xl p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        Advertising Mediums in India
+      </h2>
+      <div className="space-y-2">
+        {mediums.map((item, idx) => (
+          <p key={idx}>
+            <span className="font-semibold text-gray-900">{item.title}</span> -{" "}
+            <span className="text-gray-600">{item.examples}</span>
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Th({ children }) {
   return (
     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-600">{children}</th>
@@ -179,6 +317,8 @@ function Learning() {
   return (
     <div className="p-4 mb-6">
       <CapitalRaisingTable/>
+      <AdvertisingMediums/>
+      
     </div>
   )
 }

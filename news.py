@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 from urllib.parse import urlparse, unquote
 from bs4 import BeautifulSoup
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, date
 import pandas as pd
 import re
 import os
@@ -13,6 +13,8 @@ import html
 import unicodedata
 import math
 from curl_cffi import requests as cffireq
+from typing import Union, Optional, List
+import common_scan360
 
 
 '''
@@ -921,13 +923,123 @@ def fetch_all_rss_feeds(news_type):
                 time.sleep(4)
             except Exception as e:
                 print(f"X Failed {source} - {feed_key}: {e}")
+                
 
+def collect_news_in_range(
+    target_date,
+    backdays,
+    folder = "stock_news_feed",
+    out_csv = None,
+    sort_desc = True,
+    symbol_ns_filter = None,
+    # symbol_ns_filter: one of {"with_ns", "without_ns", None}
+):
+    # --- normalize target date ---
+    if isinstance(target_date, str):
+        dt = pd.to_datetime(target_date, errors="coerce")
+        if pd.isna(dt):
+            raise ValueError(f"Bad target_date: {target_date}")
+        target = dt.date()
+    else:
+        # handle datetime.datetime / datetime.date
+        target = target_date.date() if hasattr(target_date, "date") else target_date
+
+    start = target - timedelta(days=int(backdays))
+
+    # --- accumulate filtered frames ---
+    frames: List[pd.DataFrame] = []
+    if not os.path.isdir(folder):
+        raise FileNotFoundError(f"Folder not found: {folder}")
+
+    for fname in os.listdir(folder):
+        if not fname.lower().endswith(".csv"):
+            continue
+        fpath = os.path.join(folder, fname)
+
+        try:
+            df = pd.read_csv(fpath)
+        except Exception as e:
+            print(f"[skip] {fname}: failed to read ({e})")
+            continue
+
+        if "published" not in df.columns:
+            print(f"[skip] {fname}: no 'published' column")
+            continue
+
+        # date range filter
+        pub = pd.to_datetime(df["published"], errors="coerce")
+        mask = pub.dt.date.between(start, target)
+        sub = df.loc[mask].copy()
+        if sub.empty:
+            continue
+
+        # normalize published format
+        sub["published"] = pub.loc[mask].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        # optional symbol suffix filter
+        if symbol_ns_filter in ("with_ns", "without_ns"):
+            if "symbol" not in sub.columns:
+                print(f"[skip filter] {fname}: no 'symbol' column")
+            else:
+                ends_ns = sub["symbol"].astype(str).str.endswith(".NS")
+                if symbol_ns_filter == "with_ns":
+                    sub = sub[ends_ns].copy()
+                    # strip the .NS suffix
+                    sub["symbol"] = sub["symbol"].astype(str).str.removesuffix(".NS")
+                else:  # without_ns
+                    sub = sub[~ends_ns]
+
+        if not sub.empty:
+            frames.append(sub)
+
+    # --- combine / dedupe / sort / save ---
+    if not frames:
+        # write empty with expected headers
+        empty_cols = [
+            "title","link","published","source","title_hash","symbol","longName",
+            "fetched_at","change_1D","change_1W"
+        ]
+        out = pd.DataFrame(columns=empty_cols)
+    else:
+        out = pd.concat(frames, ignore_index=True)
+
+        # drop duplicates by preferred key
+        if "title_hash" in out.columns:
+            out = out.drop_duplicates(subset=["title_hash"], keep="first")
+        elif "hash" in out.columns:
+            out = out.drop_duplicates(subset=["hash"], keep="first")
+
+        # sort by published
+        out = out.sort_values("published", ascending=not sort_desc, kind="mergesort")
+
+    # default output path
+    if out_csv is None:
+        out_csv = os.path.join(
+            folder, f"combined_news_{start.isoformat()}_{target.isoformat()}.csv"
+        )
+
+    out.to_csv(out_csv, index=False)
+    print(f"Wrote {len(out)} rows to {out_csv} (range {start}..{target}, ns_filter={symbol_ns_filter})")
+    return out_csv
+
+def process_news_feed_folder(folder: str = "stock_news_feed"):
+    for fname in os.listdir(folder):
+        if fname.lower().endswith(".csv"):
+            csv_file = os.path.join(folder, fname)
+            print(f"Processing: {csv_file}")
+            common_scan360.calculate_percentage_column(csv_file, "published", is_news_feed=True, only_if_empty=True)
+
+  
 #================================================================================
 fetch_all_rss_feeds(news_type = "stock_news")
 fetch_all_rss_feeds(news_type = "india_news")
 fetch_all_rss_feeds(news_type = "global_news")
 
 update_stock_news_feeds()
+process_news_feed_folder()
+
+collect_news_in_range(date.today(), 3, out_csv="stock_news/stock_news_feed.csv", symbol_ns_filter="with_ns")
+collect_news_in_range(date.today(), 3, out_csv="stock_news/other_news_feed.csv", symbol_ns_filter="without_ns")
 
 # df,data = fetch_google_rss_news("Reliance Industries Limited")
 # print(data)

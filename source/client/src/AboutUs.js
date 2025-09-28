@@ -27,7 +27,7 @@ function AboutUs() {
 
       <p className="mb-6">
         We aim to empower users with various financial metrics, smart filtering tools, and industry-level tracking so they
-        can scan opportunities across multiple sectors — all in one place. We want to capture all the data which impact stock market. Be it how the number of new job openings affects software companies, how marketing spending affects FMCG companies, social media following, how the number of app downloads impacts Zomato, or how gold prices influence jewelry stocks and gold finance companies. At Scan360, we're all about data and how it impacts stocks.
+        can scan opportunities across multiple sectors — all in one place. We want to capture all the data which impact stock market. And we also want to focus on alternate data sources. Be it how the number of new job openings affects software companies, how marketing spending affects FMCG companies, social media following, how the number of app downloads impacts Zomato, or how gold prices influence jewelry stocks and gold finance companies. At Scan360, we're all about data and how it impacts stocks.
       </p>
 
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">Scan360 Release Plan</h2>
