@@ -36,7 +36,7 @@ function News() {
       .get(`${process.env.REACT_APP_API_URL}/api/otherFeedNews`)
       .then((res) => setOtherFeedNewsData(res.data || []))
       .catch((err) => console.error('Failed to fetch Stock News', err))
-      .finally(() => setLoading(false));
+      .finally(() => {});
   }, []);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ function News() {
       .get(`${process.env.REACT_APP_API_URL}/api/stockFeedNews`)
       .then((res) => setStockFeedNewsData(res.data || []))
       .catch((err) => console.error('Failed to fetch Stock News', err))
-      .finally(() => setLoading(false));
+      .finally(() => {});
   }, []);
 
   // Fetch: India

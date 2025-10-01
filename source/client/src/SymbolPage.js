@@ -496,18 +496,9 @@ const FinancialImpacts = ({ stockInfo, className = "" }) => {
 };
 
 const StockEvents = ({ data = [] }) => {
-  // Default: sort by Date (latest first)
+  // ✅ Hooks always first; no early returns before hooks
   const [sortField, setSortField] = useState("Date"); // "Date" | "1D" | "1W"
   const [sortDir, setSortDir] = useState("desc");     // "asc" | "desc"
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="w-full mt-6">
-        <h4 className="text-lg font-semibold mb-3">Stock Events</h4>
-        <p className="text-gray-500">No events available.</p>
-      </div>
-    );
-  }
 
   const toggleSort = (field) => {
     if (sortField === field) {
@@ -519,7 +510,7 @@ const StockEvents = ({ data = [] }) => {
   };
 
   const sortedEvents = useMemo(() => {
-    const arr = [...data];
+    const arr = [...(data || [])];
     if (sortField === "1D") {
       arr.sort((a, b) => {
         const av = parseFloat(a?.change_1D ?? 0);
@@ -533,12 +524,12 @@ const StockEvents = ({ data = [] }) => {
         return sortDir === "asc" ? av - bv : bv - av;
       });
     } else {
-      // Date sort
+      // Date
       arr.sort((a, b) => {
-        const ta = new Date(a.date).getTime();
-        const tb = new Date(b.date).getTime();
+        const ta = new Date(a?.date || 0).getTime();
+        const tb = new Date(b?.date || 0).getTime();
         const diff = (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
-        return sortDir === "asc" ? -diff : diff; // asc = oldest first
+        return sortDir === "asc" ? -diff : diff;
       });
     }
     return arr;
@@ -546,14 +537,12 @@ const StockEvents = ({ data = [] }) => {
 
   const pctText = (v) =>
     v == null || isNaN(v) ? "—" : `${Number(v).toFixed(2)}%`;
-
   const pctClass = (v) =>
     v == null || isNaN(v)
       ? "text-gray-500"
       : Number(v) >= 0
       ? "text-green-600"
       : "text-red-600";
-
   const sortCaret = (field) =>
     sortField === field ? (sortDir === "asc" ? "↑" : "↓") : "";
 
@@ -561,7 +550,6 @@ const StockEvents = ({ data = [] }) => {
     <div className="w-full mt-6">
       <h4 className="text-lg font-semibold mb-2">Stock Events</h4>
 
-      {/* Table */}
       <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full text-sm border-collapse">
           <thead className="bg-gray-100">
@@ -592,34 +580,43 @@ const StockEvents = ({ data = [] }) => {
           </thead>
 
           <tbody>
-            {sortedEvents.map((event, idx) => {
-              const d = new Date(event.date);
-              const dateStr = isNaN(d) ? String(event.date ?? "") : d.toLocaleDateString("en-IN");
-              const c1d = event.change_1D;
-              const c1w = event.change_1W;
+            {(!data || data.length === 0) ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                  No events available.
+                </td>
+              </tr>
+            ) : (
+              sortedEvents.map((event, idx) => {
+                const d = new Date(event.date);
+                const dateStr = isNaN(d) ? String(event.date ?? "") : d.toLocaleDateString("en-IN");
+                const c1d = event.change_1D;
+                const c1w = event.change_1W;
 
-              return (
-                <tr
-                  key={event.hash ?? `${event.symbol}-${event.date}-${idx}`}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                >
-                  <td className="px-4 py-2 border border-gray-200">{dateStr}</td>
-                  <td className="px-4 py-2 border border-gray-200">{event.purpose || "—"}</td>
-                  <td className={`px-4 py-2 border border-gray-200 tabular-nums ${pctClass(c1d)}`}>
-                    {pctText(c1d)}
-                  </td>
-                  <td className={`px-4 py-2 border border-gray-200 tabular-nums ${pctClass(c1w)}`}>
-                    {pctText(c1w)}
-                  </td>
-                </tr>
-              );
-            })}
+                return (
+                  <tr
+                    key={event.hash ?? `${event.symbol}-${event.date}-${idx}`}
+                    className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <td className="px-4 py-2 border border-gray-200">{dateStr}</td>
+                    <td className="px-4 py-2 border border-gray-200">{event.purpose || "—"}</td>
+                    <td className={`px-4 py-2 border border-gray-200 tabular-nums ${pctClass(c1d)}`}>
+                      {pctText(c1d)}
+                    </td>
+                    <td className={`px-4 py-2 border border-gray-200 tabular-nums ${pctClass(c1w)}`}>
+                      {pctText(c1w)}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
     </div>
   );
 };
+
 
 const PAGE_SIZE = 10;
 
