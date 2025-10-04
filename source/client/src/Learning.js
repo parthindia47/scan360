@@ -296,18 +296,18 @@ const DumpEventsTable = () => {
         "",
     },
     {
-      event: "Large Stack Sale by FII/DII/Well Established Investor",
+      event: "Large Stack Sale by FII/DII/Promoter",
       rationale:
         "Signals that there might be something wrong with company, also inject lot of free float in market",
       examples: [
-        "Himadry chemical stock went down due to stake sale by large FII in 2021",
+        "Himadry chemical stock went down due to stake sale by Bain capital in 2021",
         "Indigo went down after promoter stack sale",
       ],
       caveat:
         "It can be just temporary down trade, stock might be fundamentally strong",
     },
     {
-      event: "Sale by previous investors in IPO Stocks",
+      event: "Sale by early investors during IPO",
       rationale:
         "There are lot of early investors who wants exit through IPO, so newly listed companies can go down for brief period of time",
       examples: [
@@ -323,7 +323,7 @@ const DumpEventsTable = () => {
         "Any unsuccessful FPO can be huge blow to credibility of company and can impact heavily",
       examples: [
         "Due to failed FPO of Adani stock due to hindenburg issue, stock went free fall",
-        "Due to failed IPO of wework USA, it's full valuation got destroyed",
+        "Due to failed IPO of Wework USA, it's full valuation got destroyed",
       ],
       caveat:
         "Dilution math matters; if use-of-proceeds underwhelms, gains may fade.",
@@ -361,6 +361,29 @@ const DumpEventsTable = () => {
         "Many times whistleblowers might be biased or some kind of vendetta",
     },
     {
+      event: "Corporate Governance Issue",
+      rationale:
+        "Market takes corporate governance issues very seriously, it is better to be very careful with this companies",
+      examples: [
+        "Easemytrip stock seen large fall due to no clear direction by management and frequent changes",
+        "PC Jewellers remains beaten down due to corporate governance issues",
+        "Rajesh Export went down due to corporate governance issues",
+      ],
+      caveat:
+        "Many times whistleblowers might be biased or some kind of vendetta",
+    },
+    {
+      event: "Pledging Shares or high interest loans",
+      rationale:
+        "If company has to pledge the share to raise capital that proves company is not able to get capital from other mediums",
+      examples: [
+        "In 2019, Zee Entertainment's stock plummeted after news surfaced that its promoters had pledged a significant portion of their shares to lenders",
+        "Under Anil Ambani, the Reliance ADA Group lost control of multiple companies, largely due to a combination of heavy debt and excessive share pledging."
+      ],
+      caveat:
+        "If pledging go beyond control, turnaround if mostly impossible. But in some cases restructuring can happen example cafe coffee day  or suzlon, but this can take very long time",
+    },
+    {
       event: "News Events",
       rationale:
         "Any announcement like US election, tariffs, war can impact Indian stocks",
@@ -371,7 +394,7 @@ const DumpEventsTable = () => {
         "Trading News is double edge sword, sometimes it can go against",
     },
     {
-      event: "Cyclical Turns",
+      event: "Cyclical Down Cycles",
       rationale:
         "Capital-intensive/commodity/credit cycles create multi-quarter trends.",
       examples: [
