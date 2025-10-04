@@ -98,7 +98,7 @@ const PumpEventsTable = () => {
         "Listing ratios & final structures matter; sometimes value takes time to surface.",
     },
     {
-      event: "Large Volume Spike",
+      event: "Large Volume Spike at lower level",
       rationale:
         "Sudden 5-10x volume can flag accumulation or new information in the market.",
       examples: [
@@ -304,7 +304,18 @@ const DumpEventsTable = () => {
         "Indigo went down after promoter stack sale",
       ],
       caveat:
-        "In can be just temporary down trade, stock might be fundamentally strong",
+        "It can be just temporary down trade, stock might be fundamentally strong",
+    },
+    {
+      event: "Sale by previous investors in IPO Stocks",
+      rationale:
+        "There are lot of early investors who wants exit through IPO, so newly listed companies can go down for brief period of time",
+      examples: [
+        "Zomato, Paytm went down huge after IPO before recovering",
+        "Laxmi Dental Went down after IPO despite being decent company",
+      ],
+      caveat:
+        "It can be just temporary down trade, stock might be fundamentally strong",
     },
     {
       event: "Unsuccessful Large FPO / Rights / OFS",
@@ -329,7 +340,7 @@ const DumpEventsTable = () => {
         "Deal closure risk (regulatory/terms). Rumors can cause whipsaws.",
     },
     {
-      event: "Large Volume Spike",
+      event: "Large Volume Spike on High Levels",
       rationale:
         "Sudden 5-10x volume spike at stock high might suggest selling.",
       examples: [
@@ -337,6 +348,17 @@ const DumpEventsTable = () => {
       ],
       caveat:
         "HFT/prop churn can fake signals; always check delivery % and source of flow.",
+    },
+    {
+      event: "whistleblowers and Short Sellers",
+      rationale:
+        "Many stock that might hide some internal issues can go down if whistleblowers or short Sellers report come out",
+      examples: [
+        "UPL stock went down after whistleblowers report",
+        "Adani Stock down after Hindenburg report",
+      ],
+      caveat:
+        "Many times whistleblowers might be biased or some kind of vendetta",
     },
     {
       event: "News Events",
