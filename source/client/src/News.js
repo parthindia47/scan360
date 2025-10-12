@@ -115,16 +115,28 @@ function News() {
   const currentDataSorted = useMemo(() => {
     const base = sortByPublishedDesc(currentDataRaw);
 
-    // Apply 1D sort only for Stocks Feed / Other
     const canSortD1 = activeTab === 'Stocks Feed' || activeTab === 'Other';
     if (!canSortD1 || !d1Sort) return base;
 
-    // sort by change_1D (numeric), keep NaNs at the end
     return [...base].sort((a, b) => {
-      const avRaw = parseFloat(a?.change_1D);
-      const bvRaw = parseFloat(b?.change_1D);
-      const av = Number.isFinite(avRaw) ? avRaw : (d1Sort === 'asc' ? Infinity : -Infinity);
-      const bv = Number.isFinite(bvRaw) ? bvRaw : (d1Sort === 'asc' ? Infinity : -Infinity);
+      const av = Number.parseFloat(a?.change_1D);
+      const bv = Number.parseFloat(b?.change_1D);
+
+      const aBad = !Number.isFinite(av);
+      const bBad = !Number.isFinite(bv);
+
+      // If both are missing/non-numeric, fall back to published desc (keep feed stable)
+      if (aBad && bBad) {
+        const A = a?.published ? new Date(a.published).getTime() : 0;
+        const B = b?.published ? new Date(b.published).getTime() : 0;
+        return B - A;
+      }
+
+      // Push non-numeric to the end irrespective of direction
+      if (aBad) return 1;
+      if (bBad) return -1;
+
+      // Proper numeric compare
       return d1Sort === 'asc' ? av - bv : bv - av;
     });
   }, [currentDataRaw, activeTab, d1Sort]);
@@ -249,13 +261,15 @@ function News() {
         {/* 1D sort toggle — only for Stocks Feed / Other */}
         {(activeTab === 'Stocks Feed' || activeTab === 'Other') && (
           <span className="ml-2">
-            <button
-              onClick={() => setD1Sort((s) => (s === 'desc' ? 'asc' : 'desc'))}
-              className="px-1 py-1 rounded-md border text-sm"
-              title="Sort by 1D % change"
-            >
-              1D% {d1Sort === 'asc' ? '↑' : '↓'}
-            </button>
+              <button
+                onClick={() =>
+                  setD1Sort((s) => (s === null ? 'desc' : s === 'desc' ? 'asc' : null))
+                }
+                className="px-1 py-1 rounded-md border text-sm"
+                title="Sort by 1D % change"
+              >
+                1D%  {d1Sort === 'asc' ? '↑' : d1Sort === 'desc' ? '↓' : '•'}
+              </button>
           </span>
         )}
       </div>
@@ -281,8 +295,8 @@ function News() {
                   </tr>
                 ) : (
                   filteredData.map((row, idx) => {
+                    const rowId = row.title_hash;
                     const publishedStr = row?.published ?? row?.published_parsed ?? '';
-                    const rowId = row.link || `${row.title}|${publishedStr}`;
                     const isExpanded = expandedIdByTab[activeTab] === rowId;
                     const summary = getSummaryText(row);
 

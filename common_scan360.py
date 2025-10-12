@@ -20,7 +20,7 @@ def get_pct_change(
         return None, None   # ✅ safe unpack
 
     cdf = pd.read_csv(fp, usecols=["Date", "Close"])
-    cdf["Date"] = pd.to_datetime(cdf["Date"], errors="coerce")
+    cdf["Date"] = pd.to_datetime(cdf["Date"])
     cdf = cdf.dropna(subset=["Date", "Close"]).copy()
     cdf["cal_date"] = cdf["Date"].dt.date
     cdf.sort_values("cal_date", inplace=True, kind="mergesort")
@@ -28,7 +28,7 @@ def get_pct_change(
 
     # Normalize input event_date
     if isinstance(event_date, str):
-        ev = pd.to_datetime(event_date, errors="coerce")
+        ev = pd.to_datetime(event_date)
         if pd.isna(ev):
             return None, None   # ✅ safe unpack
         ev_date = ev.date()
@@ -41,7 +41,7 @@ def get_pct_change(
         return None, None   # ✅ safe unpack
     i = idx_list[0]
 
-    results_1D, results_1W = None, None
+    results_1D, results_1W, results_1W_forward  = None, None, None
 
     # ---- 1D change ----
     if i > 0:
@@ -56,8 +56,18 @@ def get_pct_change(
         prev_w = float(cdf.at[i - 5, "Close"])  # 5th trading day earlier
         if prev_w != 0:
             results_1W = round((cur - prev_w) / prev_w * 100.0, round_to)
+            
+    # ---- 1W (forward: vs 5th trading day AFTER i) ----
+    n_forward = 5
+    j = i + n_forward
+    if j < len(cdf):
+        cur = float(cdf.at[i, "Close"])
+        fut = float(cdf.at[j, "Close"])  # 5th trading day later
+        if cur != 0:
+            results_1W_forward = round((fut - cur) / cur * 100.0, round_to)
 
-    return (results_1D, results_1W)
+    # sending 1W change at next 5 days not previous 5 days.
+    return (results_1D, results_1W_forward)
 
 
 def calculate_percentage_column(
@@ -78,7 +88,7 @@ def calculate_percentage_column(
         raise KeyError(f"Expected a '{date_key}' column in the CSV.")
 
     # Normalize event dates
-    df[date_key] = pd.to_datetime(df[date_key], errors="coerce")
+    df[date_key] = pd.to_datetime(df[date_key])
 
     # Ensure change cols exist
     if "change_1D" not in df.columns:

@@ -548,7 +548,7 @@ const StockEvents = ({ data = [] }) => {
 
   return (
     <div className="w-full mt-6">
-      <h4 className="text-lg font-semibold mb-2">Stock Events</h4>
+      <h4 className="text-lg font-semibold mb-2">Events</h4>
 
       <div className="overflow-x-auto rounded-xl border">
         <table className="min-w-full text-sm border-collapse">
@@ -939,7 +939,7 @@ const StockTrades = ({ symbol }) => {
 
   return (
     <div className="w-full">
-      <h4 className="text-lg font-semibold mb-3 mt-3">Stock Trades</h4>
+      <h4 className="text-lg font-semibold mb-3 mt-3">Trades</h4>
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b mb-3 pb-2">
@@ -968,7 +968,7 @@ const StockTrades = ({ symbol }) => {
           <span className="text-sm">Loading…</span>
         </div>
       ) : active.error ? (
-        <div className="text-red-600 text-sm">Failed to load data.</div>
+        <div className="text-red-600 text-sm">No data available</div>
       ) : active.data.length === 0 ? (
         <div className="text-gray-500 text-sm">No records found.</div>
       ) : (

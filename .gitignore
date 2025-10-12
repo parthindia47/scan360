@@ -35,3 +35,4 @@ stock_info/input/EQUITY_L.csv
 **/*.xlsm
 docs/stock_ideas.docx
 source/server/data/updated_yahoo_with_tji - Copy.csv
+docs/deployment.txt

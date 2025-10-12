@@ -472,6 +472,41 @@ app.get('/api/industries', async (req, res) => {
   }
 });
 
+let name_symbol_list = [];
+app.get("/api/other/symbol_list", (req, res) => {
+  // ✅ if already loaded, return cached list
+  if (name_symbol_list.length > 0) {
+    return res.json(name_symbol_list);
+  }
+
+  // ✅ if file missing, return empty
+  if (!fs.existsSync(stockInfoFilePath)) {
+    console.warn(`Stock info CSV not found at ${stockInfoFilePath}`);
+    return res.json([]);
+  }
+
+  // ✅ read and populate list once
+  const results = [];
+  fs.createReadStream(stockInfoFilePath)
+    .pipe(csv())
+    .on("data", (row) => {
+      const symbol = (row.symbol || "").trim().toUpperCase().replace(/\.NS$/, "");
+      const name = (row.longName || row.name || "").trim();
+      if (symbol && name) {
+        results.push({ symbol, name });
+      }
+    })
+    .on("end", () => {
+      // cache results for later requests
+      name_symbol_list.push(...results);
+      res.json(name_symbol_list);
+    })
+    .on("error", (err) => {
+      console.error("Error reading CSV", err);
+      res.status(500).json({ error: "Failed to load symbol list data" });
+    });
+});
+
 // ===================== Document APIS ===================================
 
 function getTradeDate(dayPast = 0) {

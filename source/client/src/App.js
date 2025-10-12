@@ -16,6 +16,7 @@ import Ai from './Ai';
 import Chat from './Chat'
 import News from './News'
 import Learning from './Learning';
+import UserPage from './UserPage';
 
 import Footer from './Footer';
 
@@ -48,6 +49,7 @@ function App() {
             <Route path="/fund_raise" element={<FundRaise />} />
             <Route path="/trades" element={<Trades />} />
             <Route path="symbol/:symbol" element={<SymbolPage />} />
+            <Route path="user/:user" element={<UserPage />} />
             <Route path="/about" element={<AboutUs />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/contact" element={<Contact />} />

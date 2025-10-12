@@ -15,6 +15,7 @@ import math
 from curl_cffi import requests as cffireq
 from typing import Union, Optional, List
 import common_scan360
+from email.utils import parsedate_to_datetime
 
 
 '''
@@ -48,8 +49,203 @@ currently implemented scrappers:
 3. Google
 
 '''
+# ==========================================================================
+# ============================  Constants ==================================
 
 headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36'}
+
+stock_news = {
+  "Zee Business":{
+    "rss_home": "https://www.zeebiz.com/rss",
+    "feeds": { 
+      "companies": "https://www.zeebiz.com/companies.xml",
+    }
+  },
+  "Business Standard":{
+    "rss_home": "https://www.business-standard.com/rss-feeds/listing",
+    "feeds": { 
+      "markets": "https://www.business-standard.com/rss/markets-106.rss",
+      "markets-news" : "https://www.business-standard.com/rss/markets/stock-market-news-10618.rss"
+    }
+  },
+  "Economic Times":{
+    "rss_home": "https://economictimes.indiatimes.com/rss.cms",
+    "feeds": { 
+      "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms",
+      "markets": "https://economictimes.indiatimes.com/prime/money-and-markets/rssfeeds/62511286.cms",
+      "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms"
+    }
+  },
+  "The Hindu Business Line":{
+    "rss_home": "https://www.thehindubusinessline.com/rssfeeds/",
+    "feeds": { 
+      "economy": "https://www.thehindubusinessline.com/economy/feeder/default.rss",
+      "markets": "https://www.thehindubusinessline.com/markets/feeder/default.rss",
+      "stocks": "https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"
+    }
+  },
+  "LiveMint":{
+    "rss_home": "https://www.livemint.com/rss",
+    "feeds": {
+      "markets":"https://www.livemint.com/rss/markets",
+      "companies": "https://www.livemint.com/rss/companies",
+      "money": "https://www.livemint.com/rss/money"
+    }
+  },
+  "CNBC TV18":{
+    "rss_home": "https://www.cnbctv18.com/rss/",
+    "feeds": {
+      "economy": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/economy.xml",
+      "markets": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml"
+    }
+  },
+  "TOI":{
+    "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
+    "feeds": {
+      "markets": "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms"
+    }
+  },
+  "Equity Pandit":{
+    "rss_home": "https://www.equitypandit.com/category/latest-news/feed/",
+    "feeds": {
+      "feed": "https://www.equitypandit.com/category/latest-news/feed/"
+    }
+  },
+  "Alpha Ideas":{
+    "rss_home": "https://alphaideas.in/feed/",
+    "feeds": {
+      "feed": "https://alphaideas.in/feed/"
+    }
+  },
+  "Mind2markets":{
+    "rss_home": "https://mind2markets.com/feed/",
+    "feeds": {
+      "feed": "https://mind2markets.com/feed/"
+    }
+  },
+  "Trade Brains":{
+    "rss_home": "https://tradebrains.in/feed/",
+    "feeds": {
+      "feed": "https://tradebrains.in/feed/"
+    }
+  },
+  "Good Returns":{
+    "rss_home": "https://www.goodreturns.in/rss/",
+    "feeds": {
+      "feed": "https://www.goodreturns.in/rss/feeds/goodreturns-fb.xml",
+      "news": "https://www.goodreturns.in/rss/feeds/news-fb.xml",
+      "business": "https://www.goodreturns.in/rss/feeds/business-news-fb.xml",
+      "commentary": "https://www.goodreturns.in/rss/feeds/comentary-news-fb.xml"
+    }
+  },
+  "ET Now":{
+    "rss_home": "https://www.etnownews.com/info/rssfeed",
+    "feeds": {
+      "feed": "https://www.etnownews.com/feeds/gns-etn-latest.xml",
+      "markets": "https://www.etnownews.com/feeds/gns-etn-markets.xml",
+      "economy": "https://www.etnownews.com/feeds/gns-etn-economy.xml",
+      "companies": "https://www.etnownews.com/feeds/gns-etn-companies.xml"
+    }
+  },
+}
+
+india_news = {
+    "The Hindu":{
+      "rss_home": "https://www.thehindu.com/rssfeeds/",
+      "feeds":{ 
+         "india": "https://www.thehindu.com/news/national/feeder/default.rss",
+        }
+    },
+    "Times of India":{
+      "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
+      "feeds": { 
+        "feed": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
+        "india": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" 
+      }
+    },
+    "Hindustan Times":{
+      "rss_home": "https://www.hindustantimes.com/rss-feeds",
+      "feeds": {
+        "india": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+      }
+    },
+    "Indian Express":{
+      "rss_home": "https://indianexpress.com/rss/",
+      "feeds": { 
+        "feed": "https://indianexpress.com/feed/",
+        "india": "https://indianexpress.com/section/india/feed/"
+      }
+    },
+    "NDTV":{
+      "rss_home": "https://www.ndtv.com/rss",
+      "feeds": { 
+         "feed": "https://feeds.feedburner.com/ndtvnews-top-stories"
+      }
+    },
+    "News18":{
+      "rss_home": "https://www.news18.com/rss/",
+      "feeds":{ 
+        "india": "https://www.news18.com/rss/india.xml",
+      }
+    },
+    "India Today":{
+      "rss_home": "https://www.indiatoday.in/rss",
+      "feeds":{ 
+        "india": "https://www.indiatoday.in/rss/1206514",
+      }
+    },
+    "Economic Times":{
+      "rss_home": "https://economictimes.indiatimes.com/rss.cms",
+      "feeds": { 
+        "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+      }
+    },
+}
+
+global_news = {
+    "BBC":{
+      "rss_home": "https://www.bbc.co.uk/news/10628494",
+      "feeds": { 
+        "world" : "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "asia" : "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
+        "business" : "https://feeds.bbci.co.uk/news/business/rss.xml",
+      },
+    },
+    "CNBC":{
+      "rss_home": "https://www.cnbc.com/rss-feeds/",
+      "feeds": { 
+        "world" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362",
+        "usa" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362",
+        "asia" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19832390",
+        "europe" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19794221",
+        "business" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147",
+        "economy" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"
+      },
+    },
+    "nytimes":{
+      "rss_home": "https://www.nytimes.com/rss",
+      "feeds": { 
+        "world" : "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "asia" : "https://rss.nytimes.com/services/xml/rss/nyt/AsiaPacific.xml",
+        "middle-east" : "https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml",
+        "business" : "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "economy" : "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml"
+      },
+    },
+}
+
+news_dicts = {
+  "stock_news":stock_news,
+  "india_news":india_news,
+  "global_news":global_news,
+}
+
+news_csv = {
+  "stock_news":"stock_news/stock_news.csv",
+  "india_news":"stock_news/india_news.csv",
+  "global_news":"stock_news/global_news.csv",
+}
+
 
 # ==========================================================================
 # ============================  Fetch Function =============================
@@ -288,30 +484,144 @@ def testCogencisScrapper():
       
 # ==========================================================================
 # ============================  Google RSS =================================
+
+def _normalize_title(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    s = html.unescape(text)
+
+    # Replace smart quotes/apostrophes with plain ones
+    s = (s.replace("’", "'").replace("‘", "'")    # curly apostrophes
+           .replace("“", '"').replace("”", '"'))  # curly double quotes
+
+    # Remove trademark-like symbols and zero-width marks
+    s = (s.replace("\u200B", "")  # zero-width space
+           .replace("\uFEFF", "")) # zero-width no-break space
+
+    # Unicode normalize + strip diacritics (é -> e)
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+
+    # Collapse whitespace
+    s = re.sub(r"\s+", " ", s).strip()
+
+    return s
+
+
+def _find_col(df: pd.DataFrame, target: str) -> str:
+    """Find column by case-insensitive exact match."""
+    target = target.lower()
+    for c in df.columns:
+        if c.lower() == target:
+            return c
+    raise KeyError(f"Column '{target}' not found in: {list(df.columns)}")
+
+def _hash_title(title: str) -> str:
+    norm = _normalize_title(title)
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest() if norm else None
+
+def _safe_symbol_basename(symbol: str) -> str:
+    base = (symbol or "").strip()
+    if base.endswith(".NS"):
+        base = base[:-3]
+    # sanitize a bit for filesystem
+    return base.replace("/", "_").replace("\\", "_").strip() or "UNKNOWN"
+
+
+def _parse_and_format(dt_str):
+    """
+    Convert various date formats like:
+      - 'Sun, 31 Aug 2025 17:52:07 +0530'
+      - 'Sat, 11 Oct 2025 19:06:30 GMT'
+      - '2025-08-31T22:33:06+05:30'
+      - '2025-08-31T22:33:06Z'
+    → 'YYYY-MM-DD HH:MM:SS' (converted to local time)
+    """
+    if not isinstance(dt_str, str) or not dt_str.strip():
+        return None
+
+    s = dt_str.strip()
+
+    # 1️⃣ Try pandas built-in (handles ISO 8601 automatically)
+    try:
+        dt = pd.to_datetime(s, utc=True)
+        if pd.notna(dt):
+            # Convert to system local time
+            dt = dt.tz_convert(None)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        pass
+
+    # 2️⃣ Try email.utils (RFC822, RSS, etc.)
+    try:
+        dt = parsedate_to_datetime(s)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(None)  # convert to local timezone
+        dt = dt.replace(tzinfo=None)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        pass
+
+    # 3️⃣ Try manual fallbacks
+    for fmt in (
+        "%a, %d %b %Y %H:%M:%S %z",  # e.g., Sun, 31 Aug 2025 17:52:07 +0530
+        "%a, %d %b %Y %H:%M:%S %Z",  # e.g., Sat, 11 Oct 2025 19:06:30 GMT
+        "%Y-%m-%d %H:%M:%S",
+    ):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+
+    # 4️⃣ If nothing matched, return original for debugging
+    return s
+
+
+def is_missing(val):
+    if val is None:
+        return True
+    if isinstance(val, float) and math.isnan(val):
+        return True
+    if str(val).strip() == "":
+        return True
+    return False
+
+
+'''
+<pubDate>Sat, 11 Oct 2025 16:43:54 GMT</pubDate>
+ "published": "Sat, 11 Oct 2025 19:06:30 GMT",
+'''
 def fetch_google_rss_news(query, language="en", country="IN"):
     ceid = f"{country}:{language}"
-    rss_url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl={language}-{country}&gl={country}&ceid={ceid}"
+    rss_url = (
+        f"https://news.google.com/rss/search?"
+        f"q={query.replace(' ', '+')}&hl={language}-{country}&gl={country}&ceid={ceid}"
+    )
     feed = feedparser.parse(rss_url)
 
     if not feed.entries:
         return pd.DataFrame(), []
 
+    # Sort by parsed date (oldest first)
     sorted_entries = sorted(
         feed.entries,
-        key=lambda entry: datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %Z")
+        key=lambda e: datetime.strptime(e.published, "%a, %d %b %Y %H:%M:%S %Z")
     )
 
     data = []
     for entry in sorted_entries:
+        published_fmt = _parse_and_format(entry.published)
         data.append({
             "title": entry.title,
             "link": entry.link,
-            "published": entry.published,
-            "source": entry.source.href if hasattr(entry, 'source') else None
+            "published": published_fmt,
+            "source": entry.source.href if hasattr(entry, "source") else None
         })
 
     df = pd.DataFrame(data)
-    return df, data  # You can choose to use the DataFrame or the JSON-like list
+    return df, data
+
       
 def get_redirected_url(initial_url, headless=True):
     download_dir = r"C:\temp"
@@ -351,60 +661,7 @@ def google_search(query: str, num_results: int = 5):
 
     return df, json_result
 
-def _normalize_title(text: str) -> str:
-    if not isinstance(text, str):
-        return ""
-    s = html.unescape(text)
-
-    # Replace smart quotes/apostrophes with plain ones
-    s = (s.replace("’", "'").replace("‘", "'")    # curly apostrophes
-           .replace("“", '"').replace("”", '"'))  # curly double quotes
-
-    # Remove trademark-like symbols and zero-width marks
-    s = (s.replace("\u200B", "")  # zero-width space
-           .replace("\uFEFF", "")) # zero-width no-break space
-
-    # Unicode normalize + strip diacritics (é -> e)
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
-
-    # Collapse whitespace
-    s = re.sub(r"\s+", " ", s).strip()
-
-    return s
-
-
-def _find_col(df: pd.DataFrame, target: str) -> str:
-    """Find column by case-insensitive exact match."""
-    target = target.lower()
-    for c in df.columns:
-        if c.lower() == target:
-            return c
-    raise KeyError(f"Column '{target}' not found in: {list(df.columns)}")
-
-
-def _hash_title(title: str) -> str:
-    norm = _normalize_title(title)
-    return hashlib.sha256(norm.encode("utf-8")).hexdigest() if norm else None
-
-
-def _safe_symbol_basename(symbol: str) -> str:
-    base = (symbol or "").strip()
-    if base.endswith(".NS"):
-        base = base[:-3]
-    # sanitize a bit for filesystem
-    return base.replace("/", "_").replace("\\", "_").strip() or "UNKNOWN"
-
-def is_missing(val):
-    if val is None:
-        return True
-    if isinstance(val, float) and math.isnan(val):
-        return True
-    if str(val).strip() == "":
-        return True
-    return False
-
-def update_stock_news_feeds(
+def fetch_stock_rss_news_feeds(
     info_csv_path: str = "stock_info/yFinStockInfo_NSE.csv",
     out_dir: str = "stock_news_feed",
     language: str = "en",
@@ -633,197 +890,6 @@ def testGrowScrapper():
 
 # https://gist.github.com/stungeye/fe88fc810651174d0d180a95d79a8d97
 
-stock_news = {
-  "Zee Business":{
-    "rss_home": "https://www.zeebiz.com/rss",
-    "feeds": { 
-      "companies": "https://www.zeebiz.com/companies.xml",
-    }
-  },
-  "Business Standard":{
-    "rss_home": "https://www.business-standard.com/rss-feeds/listing",
-    "feeds": { 
-      "markets": "https://www.business-standard.com/rss/markets-106.rss",
-      "markets-news" : "https://www.business-standard.com/rss/markets/stock-market-news-10618.rss"
-    }
-  },
-  "Economic Times":{
-    "rss_home": "https://economictimes.indiatimes.com/rss.cms",
-    "feeds": { 
-      "economy": "https://economictimes.indiatimes.com/rssfeeds/1373380682.cms",
-      "markets": "https://economictimes.indiatimes.com/prime/money-and-markets/rssfeeds/62511286.cms",
-      "stocks": "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms"
-    }
-  },
-  "The Hindu Business Line":{
-    "rss_home": "https://www.thehindubusinessline.com/rssfeeds/",
-    "feeds": { 
-      "economy": "https://www.thehindubusinessline.com/economy/feeder/default.rss",
-      "markets": "https://www.thehindubusinessline.com/markets/feeder/default.rss",
-      "stocks": "https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"
-    }
-  },
-  "LiveMint":{
-    "rss_home": "https://www.livemint.com/rss",
-    "feeds": {
-      "markets":"https://www.livemint.com/rss/markets",
-      "companies": "https://www.livemint.com/rss/companies",
-      "money": "https://www.livemint.com/rss/money"
-    }
-  },
-  "CNBC TV18":{
-    "rss_home": "https://www.cnbctv18.com/rss/",
-    "feeds": {
-      "economy": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/economy.xml",
-      "markets": "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml"
-    }
-  },
-  "TOI":{
-    "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
-    "feeds": {
-      "markets": "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms"
-    }
-  },
-  "Equity Pandit":{
-    "rss_home": "https://www.equitypandit.com/category/latest-news/feed/",
-    "feeds": {
-      "feed": "https://www.equitypandit.com/category/latest-news/feed/"
-    }
-  },
-  "Alpha Ideas":{
-    "rss_home": "https://alphaideas.in/feed/",
-    "feeds": {
-      "feed": "https://alphaideas.in/feed/"
-    }
-  },
-  "Mind2markets":{
-    "rss_home": "https://mind2markets.com/feed/",
-    "feeds": {
-      "feed": "https://mind2markets.com/feed/"
-    }
-  },
-  "Trade Brains":{
-    "rss_home": "https://tradebrains.in/feed/",
-    "feeds": {
-      "feed": "https://tradebrains.in/feed/"
-    }
-  },
-  "Good Returns":{
-    "rss_home": "https://www.goodreturns.in/rss/",
-    "feeds": {
-      "feed": "https://www.goodreturns.in/rss/feeds/goodreturns-fb.xml",
-      "news": "https://www.goodreturns.in/rss/feeds/news-fb.xml",
-      "business": "https://www.goodreturns.in/rss/feeds/business-news-fb.xml",
-      "commentary": "https://www.goodreturns.in/rss/feeds/comentary-news-fb.xml"
-    }
-  },
-  "ET Now":{
-    "rss_home": "https://www.etnownews.com/info/rssfeed",
-    "feeds": {
-      "feed": "https://www.etnownews.com/feeds/gns-etn-latest.xml",
-      "markets": "https://www.etnownews.com/feeds/gns-etn-markets.xml",
-      "economy": "https://www.etnownews.com/feeds/gns-etn-economy.xml",
-      "companies": "https://www.etnownews.com/feeds/gns-etn-companies.xml"
-    }
-  },
-}
-
-india_news = {
-    "The Hindu":{
-      "rss_home": "https://www.thehindu.com/rssfeeds/",
-      "feeds":{ 
-         "india": "https://www.thehindu.com/news/national/feeder/default.rss",
-        }
-    },
-    "Times of India":{
-      "rss_home": "https://timesofindia.indiatimes.com/rss.cms",
-      "feeds": { 
-        "feed": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
-        "india": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" 
-      }
-    },
-    "Hindustan Times":{
-      "rss_home": "https://www.hindustantimes.com/rss-feeds",
-      "feeds": {
-        "india": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
-      }
-    },
-    "Indian Express":{
-      "rss_home": "https://indianexpress.com/rss/",
-      "feeds": { 
-        "feed": "https://indianexpress.com/feed/",
-        "india": "https://indianexpress.com/section/india/feed/"
-      }
-    },
-    "NDTV":{
-      "rss_home": "https://www.ndtv.com/rss",
-      "feeds": { 
-         "feed": "https://feeds.feedburner.com/ndtvnews-top-stories"
-      }
-    },
-    "News18":{
-      "rss_home": "https://www.news18.com/rss/",
-      "feeds":{ 
-        "india": "https://www.news18.com/rss/india.xml",
-      }
-    },
-    "India Today":{
-      "rss_home": "https://www.indiatoday.in/rss",
-      "feeds":{ 
-        "india": "https://www.indiatoday.in/rss/1206514",
-      }
-    },
-    "Economic Times":{
-      "rss_home": "https://economictimes.indiatimes.com/rss.cms",
-      "feeds": { 
-        "feed": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
-      }
-    },
-}
-
-global_news = {
-    "BBC":{
-      "rss_home": "https://www.bbc.co.uk/news/10628494",
-      "feeds": { 
-        "world" : "http://feeds.bbci.co.uk/news/world/rss.xml",
-        "asia" : "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
-        "business" : "https://feeds.bbci.co.uk/news/business/rss.xml",
-      },
-    },
-    "CNBC":{
-      "rss_home": "https://www.cnbc.com/rss-feeds/",
-      "feeds": { 
-        "world" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362",
-        "usa" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15837362",
-        "asia" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19832390",
-        "europe" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19794221",
-        "business" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147",
-        "economy" : "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"
-      },
-    },
-    "nytimes":{
-      "rss_home": "https://www.nytimes.com/rss",
-      "feeds": { 
-        "world" : "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
-        "asia" : "https://rss.nytimes.com/services/xml/rss/nyt/AsiaPacific.xml",
-        "middle-east" : "https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml",
-        "business" : "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-        "economy" : "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml"
-      },
-    },
-}
-
-news_dicts = {
-  "stock_news":stock_news,
-  "india_news":india_news,
-  "global_news":global_news,
-}
-
-news_csv = {
-  "stock_news":"stock_news/stock_news.csv",
-  "india_news":"stock_news/india_news.csv",
-  "global_news":"stock_news/global_news.csv",
-}
 
 def clean_html(raw_html: str) -> str:
     """Remove HTML tags and return plain text."""
@@ -889,6 +955,10 @@ def fetch_rss_feeds(
           existing_df = pd.DataFrame()
   else:
       existing_df = pd.DataFrame()
+      
+  # existing_df["title"] = existing_df["title"].apply(_normalize_title)
+  # existing_df["title_hash"] = existing_df["title"].apply(_hash_title)
+  # existing_df["published"]  = existing_df["published"].apply(_parse_and_format)
   
    # 2) Compute date window
   from_date = datetime.now() - timedelta(days=days) 
@@ -903,11 +973,14 @@ def fetch_rss_feeds(
     # 4) Add metadata columns
     new_df["source"] = source
     new_df["feed_key"] = feed_key
+    new_df["title"] = new_df["title"].apply(_normalize_title)
+    new_df["title_hash"] = new_df["title"].apply(_hash_title)
+    new_df["published"]  = new_df["published"].apply(_parse_and_format)
     print(new_df)
 
     # 5) Append + de-duplicate
     combined = pd.concat([existing_df, new_df], ignore_index=True, sort=False)
-    combined.drop_duplicates(subset="link", keep="last", inplace=True)
+    combined = combined.drop_duplicates(subset=["title_hash"], keep="first")
     combined.to_csv(local_url, index=False, encoding='utf-8')
 
 def fetch_all_rss_feeds(news_type):
@@ -924,7 +997,6 @@ def fetch_all_rss_feeds(news_type):
             except Exception as e:
                 print(f"X Failed {source} - {feed_key}: {e}")
                 
-
 def collect_news_in_range(
     target_date,
     backdays,
@@ -936,7 +1008,7 @@ def collect_news_in_range(
 ):
     # --- normalize target date ---
     if isinstance(target_date, str):
-        dt = pd.to_datetime(target_date, errors="coerce")
+        dt = pd.to_datetime(target_date)
         if pd.isna(dt):
             raise ValueError(f"Bad target_date: {target_date}")
         target = dt.date()
@@ -967,7 +1039,7 @@ def collect_news_in_range(
             continue
 
         # date range filter
-        pub = pd.to_datetime(df["published"], errors="coerce")
+        pub = pd.to_datetime(df["published"])
         mask = pub.dt.date.between(start, target)
         sub = df.loc[mask].copy()
         if sub.empty:
@@ -1022,7 +1094,7 @@ def collect_news_in_range(
     print(f"Wrote {len(out)} rows to {out_csv} (range {start}..{target}, ns_filter={symbol_ns_filter})")
     return out_csv
 
-def process_news_feed_folder(folder: str = "stock_news_feed"):
+def calculate_percentage_for_rss_news_feeds(folder: str = "stock_news_feed"):
     for fname in os.listdir(folder):
         if fname.lower().endswith(".csv"):
             csv_file = os.path.join(folder, fname)
@@ -1035,8 +1107,8 @@ fetch_all_rss_feeds(news_type = "stock_news")
 fetch_all_rss_feeds(news_type = "india_news")
 fetch_all_rss_feeds(news_type = "global_news")
 
-update_stock_news_feeds()
-process_news_feed_folder()
+fetch_stock_rss_news_feeds(partial = True)
+calculate_percentage_for_rss_news_feeds()
 
 collect_news_in_range(date.today(), 3, out_csv="stock_news/stock_news_feed.csv", symbol_ns_filter="with_ns")
 collect_news_in_range(date.today(), 3, out_csv="stock_news/other_news_feed.csv", symbol_ns_filter="without_ns")
