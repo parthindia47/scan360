@@ -165,10 +165,7 @@ function News() {
   useEffect(() => {
     const currentExpandedId = expandedIdByTab[activeTab];
     if (!currentExpandedId) return;
-    const stillVisible = filteredData.some((row) => {
-      const id = row.link || `${row.title}|${row.published ?? row.published_parsed ?? ''}`;
-      return id === currentExpandedId;
-    });
+    const stillVisible = filteredData.some((row) => getRowId(row) === currentExpandedId);
     if (!stillVisible) {
       setExpandedIdByTab((prev) => ({ ...prev, [activeTab]: null }));
     }
@@ -187,12 +184,17 @@ function News() {
 
   // Toggle handler to ensure only one expanded per tab
   const toggleExpandOne = (row) => {
-    const rowId = row.link || `${row.title}|${row.published ?? row.published_parsed ?? ''}`;
+    const rowId = getRowId(row);
     setExpandedIdByTab((prev) => ({
       ...prev,
       [activeTab]: prev[activeTab] === rowId ? null : rowId,
     }));
   };
+
+  const getRowId = (row) =>
+    row?.title_hash ||
+    row?.link ||
+    `${row?.title}|${row?.published ?? row?.published_parsed ?? ''}`;
 
   return (
     <div className="p-4 mb-4">
@@ -295,9 +297,10 @@ function News() {
                   </tr>
                 ) : (
                   filteredData.map((row, idx) => {
-                    const rowId = row.title_hash;
-                    const publishedStr = row?.published ?? row?.published_parsed ?? '';
+                    const rowId = getRowId(row);
                     const isExpanded = expandedIdByTab[activeTab] === rowId;
+
+                    const publishedStr = row?.published ?? row?.published_parsed ?? '';
                     const summary = getSummaryText(row);
 
                     return (

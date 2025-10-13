@@ -147,6 +147,12 @@ stock_news = {
       "companies": "https://www.etnownews.com/feeds/gns-etn-companies.xml"
     }
   },
+  "ANI":{
+    "rss_home": "https://aninews.in/rss-feed/",
+    "feeds": {
+      "business": "https://aninews.in/rss/feed/category/business.xml",
+    }
+  },
 }
 
 india_news = {
