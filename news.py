@@ -1113,7 +1113,7 @@ fetch_all_rss_feeds(news_type = "stock_news")
 fetch_all_rss_feeds(news_type = "india_news")
 fetch_all_rss_feeds(news_type = "global_news")
 
-fetch_stock_rss_news_feeds(partial = True)
+fetch_stock_rss_news_feeds()
 calculate_percentage_for_rss_news_feeds()
 
 collect_news_in_range(date.today(), 3, out_csv="stock_news/stock_news_feed.csv", symbol_ns_filter="with_ns")
