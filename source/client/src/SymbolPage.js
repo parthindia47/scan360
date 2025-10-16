@@ -1371,10 +1371,13 @@ function SymbolPage() {
                 </span>
 
                 <span>
-                  <span className="text-gray-500">Market Cap:</span>{' '}
+                  <span className="text-gray-500">Market Cap:</span>{" "}
                   {isNaN(parseFloat(stockInfo.marketCap))
-                    ? '—'
-                    : `₹${(parseFloat(stockInfo.marketCap) / 1e7).toFixed(2)} Cr`}
+                    ? "—"
+                    : `₹${new Intl.NumberFormat("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(parseFloat(stockInfo.marketCap) / 1e7)} Cr`}
                 </span>
 
                 <span>

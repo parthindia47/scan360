@@ -215,7 +215,34 @@ function Announcements() {
                             {row.symbol || '—'}
                           </a>
                         </td>
-                        <td className="p-2">{getChange(row.currentPrice, row.previousClose)}</td>
+                        <td className="p-2">
+                          {(() => {
+                            const price = parseFloat(row.currentPrice);
+                            const prev = parseFloat(row.previousClose);
+                            if (isNaN(price) || isNaN(prev)) return "—";
+
+                            const change = price - prev;
+                            const pct = (change / prev) * 100;
+
+                            const colorClass =
+                              pct > 0 ? "text-green-600" : pct < 0 ? "text-red-600" : "text-gray-500";
+
+                            return (
+                              <div>
+                                {/* percentage change */}
+                                <div className={`text-xs ${colorClass}`}>
+                                  {pct >= 0 ? "+" : ""}
+                                  {pct.toFixed(2)}%
+                                </div>
+
+                                {/* ₹ price */}
+                                <div className="text-xs text-gray-600">
+                                  ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td className="p-2">{row.announcement_type || row.desc || '—'}</td>
                         <td className="p-2">
                           <span

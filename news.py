@@ -682,6 +682,11 @@ def fetch_stock_rss_news_feeds(
     """
     os.makedirs(out_dir, exist_ok=True)
     info_df = pd.read_csv(info_csv_path)
+    
+    # Define blocked source URLs
+    blocked_sources = [
+        "https://www.earlytimes.in",
+    ]
 
     # Resolve columns case-insensitively
     col_symbol = _find_col(info_df, "symbol")
@@ -781,6 +786,10 @@ def fetch_stock_rss_news_feeds(
                     existing["title_hash"] = None
 
             combined = pd.concat([existing, rss_df], ignore_index=True)
+            
+            # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            # ✅ Remove rows whose 'source' matches any blocked URL
+            combined = combined[~combined["source"].isin(blocked_sources)].copy()
 
             # Drop duplicates by title_hash
             if "title_hash" in combined.columns:

@@ -281,8 +281,8 @@ function News() {
       ) : (
         <>
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="table-auto border-collapse w-full text-sm text-gray-800 font-normal">
+          <div className="overflow-x-hidden">
+            <table className="table-fixed border-collapse w-full text-sm text-gray-800 font-normal">
               <thead>
                 <tr className="bg-gray-200">
                   <th className="p-2 text-left">News & Stories</th>
