@@ -22,7 +22,24 @@
 # "YELLOWP"]
 
 
-CommodityList = ["GROUNDNUT"]
+# CommodityList = ["GROUNDNUT"]
+
+CommodityList = ["COTTON",
+                 "CASTOR",
+                 "COFFEE",
+                 "CPO",
+                 "GUARGUM5",
+                 "MAIZE",
+                 "SUNOIL",
+                 "GROUNDNUT",
+                 "JEERAUNJHA",
+                 "DHANIYA",
+                 "PEPPER",
+                 "RBRRS4KOC",
+                 "SOYAMEAL",
+                 "TMCRJPSGL",
+                 "STEEL"
+                 ]
 
 import time, re, requests
 from bs4 import BeautifulSoup
@@ -30,6 +47,7 @@ from urllib.parse import urlencode, unquote
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo  # Python 3.9+
 import pandas as pd
+from pathlib import Path
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -42,7 +60,7 @@ PRICE_GRAPH = f"{BASE}/spotprices/price_graph"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
 
-STATIC_TOKEN = "7W9IVqXYCHo20XAEiFcS1fwmC4DZBCgicdVidn6Z"  # fallback if page token not found
+STATIC_TOKEN = "fsfds"  # fallback if page token not found
 
 COMMON = {
     "User-Agent": UA,
@@ -178,7 +196,7 @@ def _parse_nc_time(s: str) -> datetime:
     except ValueError:
         raise ValueError(f"Unparseable NCDEX timestamp: {s!r}")
 
-def graph_json_to_ohlc_csv(graph_json: dict, out_csv_path: str) -> pd.DataFrame:
+def graph_json_to_ohlc_csv(graph_json: dict):
     """
     Convert {'dates': [...], 'prices': [...]} intraday series to daily OHLC in IST and save as CSV.
     Columns: Date,Open,High,Low,Close,Volume,Dividends,Stock Splits
@@ -201,9 +219,9 @@ def graph_json_to_ohlc_csv(graph_json: dict, out_csv_path: str) -> pd.DataFrame:
     daily["Date"] = pd.to_datetime(daily["day"]).dt.tz_localize(IST)
     daily["Dividends"] = 0.0
     daily["Stock Splits"] = 0.0
+    daily["Volume"] = 0
 
     out = daily[["Date", "Open", "High", "Low", "Close", "Volume", "Dividends", "Stock Splits"]]
-    out.to_csv(out_csv_path, index=False)
     return out
 
 def fetch_spot_price_graph_range(symbol: str,
@@ -250,21 +268,61 @@ def fetch_spot_price_graph_range(symbol: str,
     }
     
 
-for idx, symbol in enumerate(CommodityList):
-  merged = fetch_spot_price_graph_range(
-      symbol=symbol,
-      start=datetime(2025, 1, 1),
-      end=datetime(2025, 2, 20),
-      step_days=20,
-      pause_seconds=3
-  )
+def fetch_all_commodities():
+    # 1️⃣ Define rolling date range
+    end_dt = datetime.now()
+    start_dt = end_dt - timedelta(days=25)
 
-  # 2) Convert merged intraday series to daily OHLC and save:
-  op_file = symbol + ".csv"
-  df_out = graph_json_to_ohlc_csv(merged, out_csv_path=op_file)
-  print("Saved:", op_file)
-  print(df_out.head())
+    out_dir = Path("stock_charts")
+    out_dir.mkdir(parents=True, exist_ok=True)
 
+    for symbol in CommodityList:
+        print(f"\nFetching: {symbol}  ({start_dt.date()} → {end_dt.date()})")
+
+        # 2️⃣ Fetch latest data window
+        merged = fetch_spot_price_graph_range(
+            symbol=symbol,
+            start=start_dt,
+            end=end_dt,
+            step_days=28,
+            pause_seconds=3,
+        )
+
+        # 3️⃣ Convert fetched data to OHLC DataFrame
+        new_df = graph_json_to_ohlc_csv(merged)
+
+        if new_df is None or new_df.empty:
+            print(f"[{symbol}] ⚠️ No new data fetched, skipping.")
+            continue
+
+        # Ensure Date column is datetime.date
+        new_df["Date"] = pd.to_datetime(new_df["Date"]).dt.date
+        new_df = new_df.sort_values("Date").drop_duplicates(subset=["Date"], keep="last")
+
+        # 4️⃣ Load existing CSV (if exists)
+        op_file = out_dir / f"{symbol}.csv"
+        if op_file.exists():
+            old_df = pd.read_csv(op_file)
+            old_df["Date"] = pd.to_datetime(old_df["Date"]).dt.date
+        else:
+            old_df = pd.DataFrame(columns=new_df.columns)
+
+        # 5️⃣ Keep only new dates
+        existing_dates = set(old_df["Date"]) if not old_df.empty else set()
+        only_new = new_df[~new_df["Date"].isin(existing_dates)]
+
+        if only_new.empty:
+            print(f"[{symbol}] ✅ Up to date — no new entries.")
+            continue
+
+        # 6️⃣ Merge and save
+        combined = pd.concat([old_df, only_new], ignore_index=True)
+        combined = combined.sort_values("Date").reset_index(drop=True)
+        combined.to_csv(op_file, index=False)
+
+        print(f"[{symbol}] ➕ Added {len(only_new)} new rows → Saved ({len(combined)} total).")
+
+fetch_all_commodities()
 # Example:
 # data = fetch_spot_price_graph(datetime(2025,10,1), datetime(2025,10,15), "BAJRA")
 # print(data)
