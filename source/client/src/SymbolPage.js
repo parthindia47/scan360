@@ -1477,7 +1477,7 @@ function SymbolPage() {
                 ${!isLast ? 'border-r border-gray-300' : ''}
                 ${isFirst ? 'rounded-l-md' : ''}
                 ${isLast ? 'rounded-r-md' : ''}
-                px-3 py-1 text-sm sm:px-3.5 sm:py-1 sm:text-base
+                px-3 py-1 text-sm sm:px-3.5 sm:py-1 sm:text-sm
               `}
             >
               {range}
