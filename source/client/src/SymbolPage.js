@@ -1460,31 +1460,42 @@ function SymbolPage() {
       </div>
 
       {/* Timeline Buttons */}
-      <div className="mt-2 mb-1 inline-flex flex-wrap gap-0 border border-gray-300 rounded-md overflow-hidden">
-        {Object.keys(timeFrames).map((range, idx, arr) => {
-          const isActive = selectedRange === range;
-          const isFirst = idx === 0;
-          const isLast = idx === arr.length - 1;
+      <div className="mt-6 mb-1">
+        {/* Mobile: single-row horizontal scroll; Desktop: same look, no wrap needed */}
+        <div className="relative overflow-x-auto">
+          <div className="inline-flex whitespace-nowrap gap-0 border border-gray-300 rounded-md overflow-hidden">
+            {Object.keys(timeFrames).map((range, idx, arr) => {
+              const isActive = selectedRange === range;
+              const isFirst = idx === 0;
+              const isLast = idx === arr.length - 1;
 
-          return (
-            <button
-              key={range}
-              onClick={() => setSelectedRange(range)}
-              className={`px-4 py-1 text-sm font-medium transition-all duration-200
-                ${isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'}
-                ${!isLast ? 'border-r border-gray-300' : ''}
-                ${isFirst ? 'rounded-l-md' : ''}
-                ${isLast ? 'rounded-r-md' : ''}
-              `}
-            >
-              {range}
-            </button>
-          );
-        })}
+              return (
+                <button
+                  key={range}
+                  onClick={() => setSelectedRange(range)}
+                  className={[
+                    // size: better tap targets on mobile
+                    "px-4 py-2 text-xs sm:text-sm font-medium transition-colors duration-200",
+                    // active/inactive styles
+                    isActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100",
+                    // divider between segments
+                    !isLast ? "border-r border-gray-300" : "",
+                    // keep outer corners slightly rounded
+                    isFirst ? "rounded-l-md" : "",
+                    isLast ? "rounded-r-md" : "",
+                    // ensure each button doesn't shrink too small on mobile
+                    "min-w-[64px]"
+                  ].join(" ")}
+                >
+                  {range}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
-
 
       {/* Sticky message box above the chart */}
       <div className="mb-2">   {/* 👈 reserve ~80px */}
