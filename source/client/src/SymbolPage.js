@@ -1460,7 +1460,7 @@ function SymbolPage() {
       </div>
 
       {/* Timeline Buttons */}
-      <div className="mt-6 mb-1 flex flex-wrap justify-center border border-gray-300 rounded-md overflow-hidden">
+      <div className="mt-1 mb-1 inline-flex flex-wrap gap-0 border border-gray-300 rounded-md overflow-hidden">
         {Object.keys(timeFrames).map((range, idx, arr) => {
           const isActive = selectedRange === range;
           const isFirst = idx === 0;
@@ -1470,22 +1470,22 @@ function SymbolPage() {
             <button
               key={range}
               onClick={() => setSelectedRange(range)}
-              className={[
-                // smaller on mobile, larger on desktop
-                "px-2 py-1 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium transition-all duration-200 flex-1 min-w-[48px]",
-                isActive
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-100",
-                !isLast ? "border-r border-gray-300" : "",
-                isFirst ? "rounded-l-md" : "",
-                isLast ? "rounded-r-md" : "",
-              ].join(" ")}
+              className={`transition-all duration-200 font-medium
+                ${isActive
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'}
+                ${!isLast ? 'border-r border-gray-300' : ''}
+                ${isFirst ? 'rounded-l-md' : ''}
+                ${isLast ? 'rounded-r-md' : ''}
+                px-3 py-1 text-sm sm:px-3.5 sm:py-1 sm:text-base
+              `}
             >
               {range}
             </button>
           );
         })}
       </div>
+
 
 
       {/* Sticky message box above the chart */}
