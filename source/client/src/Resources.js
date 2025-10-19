@@ -60,6 +60,7 @@ const linksData = [
       { name: 'CNBC-TV18', url: 'https://www.youtube.com/@cnbctv18india' },
       { name: 'Moneycontrol', url: 'https://www.youtube.com/@moneycontrol' },
       { name: 'Markets By Zerodha', url: 'https://www.youtube.com/@marketsbyzerodha' },
+      { name: 'SOIC', url: 'https://www.youtube.com/@SOICfinance' },
       { name: 'Upstox', url: 'https://www.youtube.com/@UpstoxOfficial' },
       { name: 'FinnovationZ', url: 'https://www.youtube.com/@namaskarprasad' },
       { name: 'CA Rachana Ranade', url: 'https://www.youtube.com/@CARachanaRanade' },
@@ -75,6 +76,7 @@ const linksData = [
       { name: 'IPO listing Returns', url: 'https://groww.in/ipo/closed' },
       { name: 'NSE Mood Index', url: 'https://www.tickertape.in/market-mood-index?ref=homepage_mmi_section' },
       { name: 'Crypto Mood Index', url: 'https://coinmarketcap.com/charts/fear-and-greed-index/' },
+      { name: 'TradeEconomics Commodities', url: 'https://tradingeconomics.com/commodities' },
       { name: 'Investing Rule Book', url: 'https://web.archive.org/web/20230602132920/https://www.getpaidindia.com/Equity_Investing_Rules_Book'},
       { name: 'Scan360 Learning', url: '/learning'}
     ],

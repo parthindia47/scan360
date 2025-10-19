@@ -230,7 +230,7 @@ function Announcements() {
                             return (
                               <div>
                                 {/* percentage change */}
-                                <div className={`text-xs ${colorClass}`}>
+                                <div className={`text-sm font-bold ${colorClass}`}>
                                   {pct >= 0 ? "+" : ""}
                                   {pct.toFixed(2)}%
                                 </div>

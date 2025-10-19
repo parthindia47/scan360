@@ -11,6 +11,7 @@ function Dashboard() {
   const [weighted, setWeighted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [asOfInput, setAsOfInput] = useState(''); // html date input
+  const TIMEFRAMES = ['vs52WH','1D','1W','1M','3M','6M','1Y'];
 
   const fetchIndustries = async (asOfStr = '') => {
     try {
@@ -225,6 +226,49 @@ function Dashboard() {
     return isNaN(date) ? 'Invalid date' : date.toLocaleDateString('en-IN');
   };
 
+  // parse "12.34%" or "12.34" -> number, else null
+  const toNum = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    const n = parseFloat(s.endsWith('%') ? s.slice(0, -1) : s);
+    return Number.isNaN(n) ? null : n;
+  };
+
+  // All-symbols counts for the active type (>= 0 is positive)
+  const globalCounts = useMemo(() => {
+    const counts = Object.fromEntries(TIMEFRAMES.map(tf => [tf, { pos: 0, neg: 0 }]));
+    const list = Object.values(groupedByType[activeType] || {});
+    for (const ind of list) {
+      for (const s of (ind.stocks || [])) {
+        for (const tf of TIMEFRAMES) {
+          const n = toNum(s?.dummyData?.[tf]);
+          if (n == null) continue;
+          if (n >= 0) counts[tf].pos++; else counts[tf].neg++;
+        }
+      }
+    }
+    return counts;
+  }, [groupedByType, activeType]);
+
+  // Per-sector counts (memoized map: { [industry]: { [tf]: {pos,neg} } })
+  const sectorCounts = useMemo(() => {
+    const map = {};
+    const byType = groupedByType[activeType] || {};
+    for (const [industry, data] of Object.entries(byType)) {
+      const c = Object.fromEntries(TIMEFRAMES.map(tf => [tf, { pos: 0, neg: 0 }]));
+      for (const s of (data.stocks || [])) {
+        for (const tf of TIMEFRAMES) {
+          const n = toNum(s?.dummyData?.[tf]);
+          if (n == null) continue;
+          if (n >= 0) c[tf].pos++; else c[tf].neg++;
+        }
+      }
+      map[industry] = c;
+    }
+    return map;
+  }, [groupedByType, activeType]);
+
+
   const industryDataList = Object.values(groupedByType[activeType] || {});
   const totalSymbols = new Set(
     industryDataList.flatMap(industryData => industryData.stocks.map(stock => stock.symbol))
@@ -377,6 +421,11 @@ function Dashboard() {
                       {field}
                       {sortConfigs[activeType]?.field === field &&
                         (sortConfigs[activeType].direction === 'asc' ? ' ↑' : ' ↓')}
+                      <div className="text-sm">
+                        <span className="text-green-600">+{globalCounts[field].pos}</span>
+                        {' / '}
+                        <span className="text-red-600">-{globalCounts[field].neg}</span>
+                      </div>
                     </th>
                   ))}
 
@@ -396,14 +445,25 @@ function Dashboard() {
                     <React.Fragment key={`${activeType}-${industry}`}>
                       <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="sticky left-0 bg-inherit z-10 p-2 w-[70px] min-w-[70px] max-w-[70px]">{index + 1}</td>
+
                         <td
                           className={`sticky left-[70px] bg-inherit z-10 p-2 cursor-pointer text-blue-600 ${
-                                      isMobile ? "min-w-[200px] max-w-[200px]" : "min-w-[250px] max-w-[250px]"
-                                    }`}
+                            isMobile ? "min-w-[200px] max-w-[200px]" : "min-w-[250px] max-w-[250px]"
+                          }`}
                           onClick={() => toggleExpand(industry)}
                         >
-                          {expanded?.[activeType]?.[industry] ? '−' : '+'} {formatIndustryName(industry)} ({data.stocks.length})
+                          {expanded?.[activeType]?.[industry] ? '− ' : '+ '}
+                          {formatIndustryName(industry)} 
+                          ({data.stocks.length})
+
+                          {/* Per-sector +/– counts */}
+                          {/* <span className="ml-1 text-[11px] text-gray-600">
+                              <span className="text-green-600">+{sectorCounts[industry]?.['1D']?.pos ?? 0}</span>
+                              {' / '}
+                              <span className="text-red-600">-{sectorCounts[industry]?.['1D']?.neg ?? 0}</span>
+                          </span> */}
                         </td>
+
 
                         {/* Data rows */}
                         {['vs52WH', '1D', '1W', '1M', '3M', '6M', '1Y'].map((field) => (
@@ -454,7 +514,10 @@ function Dashboard() {
                                   <br />
                                     {"PE " + (stock.pe ?? 0).toFixed(2) +
                                     " | ROE " + ((stock.roe ?? 0) * 100).toFixed(2) + "%" +
-                                    " | Mcap ₹" + ((stock.marketCap ?? 0) / 1e7).toFixed(2) + " Cr"}
+                                    " | Mcap " +  `₹${new Intl.NumberFormat("en-IN", {
+                                                      minimumFractionDigits: 2,
+                                                      maximumFractionDigits: 2,
+                                                    }).format(parseFloat(stock.marketCap) / 1e7)} Cr`}
                                   <br />
                                   {Array.isArray(stock.events) && stock.events.length > 0 && (
                                     <div className="text-gray-500 text-sm mt-1">
