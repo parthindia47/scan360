@@ -1460,18 +1460,23 @@ function SymbolPage() {
       </div>
 
       {/* Timeline Buttons */}
-      <div className="mt-6 mb-1 flex flex-wrap gap-3">
-        {Object.keys(timeFrames).map((range) => {
+      <div className="mt-2 mb-1 inline-flex flex-wrap gap-0 border border-gray-300 rounded-md overflow-hidden">
+        {Object.keys(timeFrames).map((range, idx, arr) => {
           const isActive = selectedRange === range;
+          const isFirst = idx === 0;
+          const isLast = idx === arr.length - 1;
 
           return (
             <button
               key={range}
               onClick={() => setSelectedRange(range)}
-              className={`px-4 py-1 rounded-full text-sm font-medium transition-all duration-200 border
+              className={`px-4 py-1 text-sm font-medium transition-all duration-200
                 ${isActive
-                  ? 'bg-blue-600 text-white border-blue-600 shadow ring-2 ring-blue-300'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:border-gray-400'}
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'}
+                ${!isLast ? 'border-r border-gray-300' : ''}
+                ${isFirst ? 'rounded-l-md' : ''}
+                ${isLast ? 'rounded-r-md' : ''}
               `}
             >
               {range}
@@ -1479,6 +1484,7 @@ function SymbolPage() {
           );
         })}
       </div>
+
 
       {/* Sticky message box above the chart */}
       <div className="mb-2">   {/* 👈 reserve ~80px */}
@@ -1503,21 +1509,25 @@ function SymbolPage() {
             </div>
 
             {/* Row 2: details (wraps + scrolls if very long) */}
-            <p className="text-gray-700 whitespace-pre-wrap break-words max-h-28 overflow-auto">
-              {clickedMsg.text}
-            </p>
+            <div>
+              <span className="text-gray-700 whitespace-pre-wrap break-words max-h-28 overflow-auto">
+                {clickedMsg.text}
+              </span>
 
-            {/* Row 3: link (breaks on small screens) */}
-            {clickedMsg.url && (
-              <a
-                href={clickedMsg.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 inline-block text-blue-600 underline break-all"
-              >
-                Read source
-              </a>
-            )}
+              {/* Row 3: link (breaks on small screens) */}
+              <span className="ml-1">
+              {clickedMsg.url && (
+                <a
+                  href={clickedMsg.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-blue-600 underline break-all"
+                >
+                  source
+                </a>
+              )}
+              </span>
+            </div>
           </div>
         ) : (
           <div className="inline-flex items-start gap-2 sm:gap-3 px-3 py-2 border rounded bg-white shadow-sm text-sm">
