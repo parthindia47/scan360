@@ -3067,9 +3067,9 @@ def is_trading_day(date_to_check):
         return False
 
     # Holiday check
-    if input_date in holiday_dates.values:
-        #logger1.info("It's a holiday.")
-        return False
+    # if input_date in holiday_dates.values:
+    #     #logger1.info("It's a holiday.")
+    #     return False
 
     #logger1.info("It's a trading day.")
     return True
