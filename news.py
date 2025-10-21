@@ -768,6 +768,10 @@ def fetch_stock_rss_news_feeds(
         rss_df["symbol"] = symbol
         rss_df["longName"] = long_name
         rss_df["fetched_at"] = datetime.now().isoformat(timespec="seconds")
+        
+        # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        # ✅ Remove rows whose 'source' matches any blocked URL
+        rss_df = rss_df[~rss_df["source"].isin(blocked_sources)].copy()
 
         if os.path.exists(out_path):
             # Merge path: read existing and dedupe after concat
@@ -787,10 +791,6 @@ def fetch_stock_rss_news_feeds(
 
             combined = pd.concat([existing, rss_df], ignore_index=True)
             
-            # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-            # ✅ Remove rows whose 'source' matches any blocked URL
-            combined = combined[~combined["source"].isin(blocked_sources)].copy()
-
             # Drop duplicates by title_hash
             if "title_hash" in combined.columns:
                 combined = combined.drop_duplicates(subset=["title_hash"], keep="first")

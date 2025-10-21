@@ -268,7 +268,7 @@ def fetch_spot_price_graph_range(symbol: str,
     }
     
 
-def fetch_all_commodities():
+def fetch_all_ncdex_commodities():
     # 1️⃣ Define rolling date range
     end_dt = datetime.now()
     start_dt = end_dt - timedelta(days=25)
@@ -322,7 +322,8 @@ def fetch_all_commodities():
 
         print(f"[{symbol}] ➕ Added {len(only_new)} new rows → Saved ({len(combined)} total).")
 
-fetch_all_commodities()
+if __name__ == "__main__":
+  fetch_all_ncdex_commodities()
 # Example:
 # data = fetch_spot_price_graph(datetime(2025,10,1), datetime(2025,10,15), "BAJRA")
 # print(data)

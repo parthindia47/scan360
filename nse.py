@@ -89,6 +89,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 import common_scan360
+from ncdex import fetch_all_ncdex_commodities
 
 # =======================================================================
 # ========================== Classes ==================================
