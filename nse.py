@@ -89,7 +89,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 import common_scan360
-from ncdex import fetch_all_ncdex_commodities
+import ncdex
 
 # =======================================================================
 # ========================== Classes ==================================
@@ -4096,7 +4096,7 @@ integarated filings always show quaterly results
 "Standalone" / "Consolidated"
 '''        
 def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated", cookies=None, delaySec=8):
-    result_date_list = ["31-Mar-2025", "30-Jun-2025"]
+    result_date_list = ["31-Mar-2025", "30-Jun-2025", "30-Sep-2025", "31-Dec-2025"]
 
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
@@ -4604,9 +4604,12 @@ syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=co
 # Fetch Other Candles From Yahoo
 syncUpYahooFinOtherSymbols()
 
+# Fetch ncdex commodity prices
+ncdex.fetch_all_ncdex_commodities()
+
 # Fetch NSE Fillings and results
 syncUpAllNseFillings(cookies=cookies_local)
-integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=2)
+integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=10)
 syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
 syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
 

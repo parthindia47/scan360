@@ -225,6 +225,8 @@ function loadEventsFromCSV(callback) {
   const offsetDate = new Date();
   offsetDate.setDate(offsetDate.getDate() - 10);
 
+  const seen = new Set(); // 👈 added to track duplicates
+
   fs.createReadStream(eventsPath)
     .pipe(csv())
     .on('data', (row) => {
@@ -233,8 +235,12 @@ function loadEventsFromCSV(callback) {
 
       const eventDate = new Date(row.date);
       if (isNaN(eventDate.getTime())) return; // skip invalid dates
-
       if (eventDate < offsetDate) return; // skip old events
+
+      // 👇 de-dupe key
+      const key = `${symbol}|${row.date}|${(row.purpose || '').trim().toLowerCase()}`;
+      if (seen.has(key)) return; // skip duplicates
+      seen.add(key);
 
       if (!eventsMap[symbol]) {
         eventsMap[symbol] = [];
@@ -247,10 +253,11 @@ function loadEventsFromCSV(callback) {
       });
     })
     .on('end', () => {
-      console.log('✅ Events loaded (filtered by date)');
+      console.log('✅ Events loaded (filtered & deduped by date/purpose)');
       callback();
     });
 }
+
 
 const getStockReturns = async (symbolWithNS, asOfDate) => {
   return new Promise((resolve) => {
