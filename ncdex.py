@@ -279,14 +279,18 @@ def fetch_all_ncdex_commodities():
     for symbol in CommodityList:
         print(f"\nFetching: {symbol}  ({start_dt.date()} → {end_dt.date()})")
 
-        # 2️⃣ Fetch latest data window
-        merged = fetch_spot_price_graph_range(
-            symbol=symbol,
-            start=start_dt,
-            end=end_dt,
-            step_days=28,
-            pause_seconds=3,
-        )
+        # 2️⃣ Fetch latest data window (with try/except)
+        try:
+            merged = fetch_spot_price_graph_range(
+                symbol=symbol,
+                start=start_dt,
+                end=end_dt,
+                step_days=28,
+                pause_seconds=6,
+            )
+        except Exception as e:
+            print(f"[{symbol}] ❌ Error fetching data: {e}")
+            continue
 
         # 3️⃣ Convert fetched data to OHLC DataFrame
         new_df = graph_json_to_ohlc_csv(merged)
@@ -321,6 +325,7 @@ def fetch_all_ncdex_commodities():
         combined.to_csv(op_file, index=False)
 
         print(f"[{symbol}] ➕ Added {len(only_new)} new rows → Saved ({len(combined)} total).")
+
 
 if __name__ == "__main__":
   fetch_all_ncdex_commodities()

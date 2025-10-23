@@ -3,10 +3,18 @@ import time
 import json
 import math
 from typing import List, Dict, Any, Optional
-
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from playwright.sync_api import sync_playwright
+from urllib.parse import urlencode
+
+'''
+
+https://www.naukri.com/jobapi/v3/search?noOfResults=20&urlType=search_by_company_id&searchType=groupsearch&companyName=1point1&companyId=1366438&pageNo=1&seoKey=1point1-jobs-careers-1366438&src=directSearch&latLong=12.958184_77.6421466
+
+
+'''
 
 
 BASE_URL = "https://www.naukri.com/jobapi/v3/search"
@@ -40,96 +48,108 @@ def _make_session() -> requests.Session:
     )
     s.mount("https://", HTTPAdapter(max_retries=retries))
     return s
+  
+def print_job_summary(data: dict):
+    """Print total number of jobs and functional area summary."""
+    try:
+        no_of_jobs = data.get("noOfJobs", 0)
+        print(f"\nTotal Jobs: {no_of_jobs}\n")
+
+        functional_areas = data.get("clusters", {}).get("functionalAreaGid", [])
+        if not functional_areas:
+            print("No functional area data found.")
+            return
+
+        print("Functional Areas:")
+        for fa in functional_areas:
+            label = fa.get("label", "")
+            count = fa.get("count", 0)
+            print(f"  - {label}: {count}")
+
+    except Exception as e:
+        print(f"[WARN] Failed to print summary: {e}")
 
 
 def fetch_naukri_company_jobs(
     company_name: str,
     company_id: int,
-    pages: int = 1,
-    results_per_page: int = 20,
-    lat: Optional[float] = None,
-    lon: Optional[float] = None,
-    sleep_between: float = 0.8,
+    pages: int = 1,                # not used for navigation now; just for compatibility
+    results_per_page: int = 20,    # not required; the site decides what it loads
+    lat: Optional[float] = None,   # unused in this capture approach
+    lon: Optional[float] = None,   # unused
+    sleep_between: float = 0.8,    # unused
+    headless: bool = False,        # keep visible so you can interact
 ) -> List[Dict[str, Any]]:
-    """
-    Fetch job listings from Naukri's job search API for a specific company.
 
-    Args:
-        company_name: For SEO key & query (e.g., "1point1")
-        company_id: Company ID from Naukri (e.g., 1366438)
-        pages: How many pages to fetch
-        results_per_page: noOfResults param (default 20)
-        lat, lon: Optional lat/long to include (matches your captured call)
-        sleep_between: polite delay between pages
-
-    Returns:
-        A list of job dicts (raw JSON items from the API).
-    """
-    session = _make_session()
-
-    # Build an SEO-ish key similar to what you captured:
     seo_key = f"{company_name}-jobs-careers-{company_id}"
-
-    headers = DEFAULT_HEADERS.copy()
-    headers["referer"] = f"https://www.naukri.com/{seo_key}"
-
+    start_url = f"https://www.naukri.com/{seo_key}"
     all_jobs: List[Dict[str, Any]] = []
 
-    for page_no in range(1, pages + 1):
-        params = {
-            "noOfResults": results_per_page,
-            "urlType": "search_by_company_id",
-            "searchType": "groupsearch",
-            "companyName": company_name,
-            "companyId": str(company_id),
-            "pageNo": str(page_no),
-            "seoKey": seo_key,
-            "src": "directSearch",
-        }
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless)
+        context = browser.new_context()
+        page = context.new_page()
 
-        # Optional lat/long (as per your capture)
-        if lat is not None and lon is not None:
-            params["latLong"] = f"{lat}_{lon}"
+        # Warm-up to set cookies/consent
+        page.goto("https://www.naukri.com/", wait_until="domcontentloaded")
+        page.wait_for_timeout(600)
 
-        resp = session.get(BASE_URL, headers=headers, params=params, timeout=20)
-        if resp.status_code == 403:
-            raise RuntimeError(
-                "Got 403 (Forbidden). Naukri may be blocking the request. "
-                "Try running from a browser-like environment, keep headers minimal, "
-                "add a short delay, or fetch fewer pages."
-            )
-        if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:400]}")
+        # Go to the company SEO page (the one you normally open)
+        page.goto(start_url, wait_until="domcontentloaded")
 
-        data = resp.json()
+        print("\n✅ Browser is open on the company page.")
+        print("👉 Scroll the page, click 'Next' pagination or filters to load jobs.")
+        print("   Each time the site calls /jobapi/v3/search we will capture it.")
+        print("   When you're done paginating, press Enter here to finish.\n")
 
-        # Naukri responses commonly have a 'jobDetails' list (name can vary).
-        # We'll try a few likely keys and then fall back to flatten everything we find.
-        jobs_list = (
-            data.get("jobDetails")
-            or data.get("jobs")
-            or data.get("data")
-            or []
-        )
+        # Listen and accumulate real page XHR responses to /jobapi/v3/search
+        def on_response(resp):
+            try:
+                url = resp.url
+                if "/jobapi/v3/search" in url:
+                    if resp.status == 200:
+                        body = resp.json()
+                        print_job_summary(body)
+                        jobs = body.get("jobDetails") or body.get("jobs") or body.get("data") or []
+                        # Sometimes jobs are under data.jobDetails
+                        if not jobs and isinstance(body.get("data"), dict):
+                            maybe = body["data"].get("jobDetails") or body["data"].get("jobs")
+                            if maybe:
+                                jobs = maybe
+                        if isinstance(jobs, list):
+                            all_jobs.extend(jobs)
+                            print(f"… captured {len(jobs)} jobs from {url.split('?')[0]}")
+                        else:
+                            print("… received non-list jobs payload; skipping")
+                    else:
+                        # If the site ever challenges mid-run, it would show here
+                        print(f"… got status {resp.status} for {url}")
+            except Exception as e:
+                print(f"[on_response] parse error: {e}")
 
-        # Some responses put the results under data["jobDetails"]
-        if not jobs_list and isinstance(data.get("data"), dict):
-            maybe = data["data"].get("jobDetails") or data["data"].get("jobs")
-            if maybe:
-                jobs_list = maybe
+        page.on("response", on_response)
 
-        # If everything fails, just store the raw page for inspection
-        if not isinstance(jobs_list, list):
-            jobs_list = []
+        # Give you control to interact; press Enter to stop capture
+        try:
+            input()
+        except EOFError:
+            pass
 
-        all_jobs.extend(jobs_list)
+        # Optional: store cookies/state so next run starts trusted
+        context.storage_state(path=f"naukri_{company_id}_state.json")
+        browser.close()
 
-        # Polite delay
-        if page_no < pages:
-            time.sleep(sleep_between)
+    # Deduplicate by jobId if present
+    seen = set()
+    unique_jobs = []
+    for j in all_jobs:
+        jid = j.get("jobId") or j.get("jobIdEncrypted") or j.get("jobIdNumeric") or json.dumps(j, sort_keys=True)
+        if jid in seen:
+            continue
+        seen.add(jid)
+        unique_jobs.append(j)
 
-    return all_jobs
-
+    return unique_jobs
 
 def pick_fields(j: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -151,36 +171,24 @@ def pick_fields(j: Dict[str, Any]) -> Dict[str, Any]:
         "jobId": j.get("jobId") or j.get("jobIdEncrypted") or j.get("jobIdNumeric"),
     }
 
-
 if __name__ == "__main__":
-    # Example: your captured request was for:
-    # companyName=1point1, companyId=1366438
     company = "1point1"
     company_id = 1366438
-
-    # How many pages to pull (20 results/page)
-    pages_to_fetch = 2
 
     jobs = fetch_naukri_company_jobs(
         company_name=company,
         company_id=company_id,
-        pages=pages_to_fetch,
-        results_per_page=20,
-        # lat=12.958184, lon=77.6421466,  # optionally include
+        headless=False,
     )
 
-    # Keep both: a compact TSV and the full JSON for debugging.
     cleaned = [pick_fields(j) for j in jobs]
+    print(f"\nFetched {len(jobs)} jobs (unique).")
 
-    print(f"Fetched {len(jobs)} jobs.")
-    # Save raw
     with open(f"{company_id}_raw.json", "w", encoding="utf-8") as f:
         json.dump(jobs, f, ensure_ascii=False, indent=2)
-
-    # Save cleaned
     with open(f"{company_id}_clean.json", "w", encoding="utf-8") as f:
         json.dump(cleaned, f, ensure_ascii=False, indent=2)
 
-    # Pretty print a few
     for row in cleaned[:5]:
         print(row)
+
