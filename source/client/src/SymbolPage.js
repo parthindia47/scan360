@@ -1436,23 +1436,28 @@ function SymbolPage() {
             {/* Right Column — 3/4 width */}
             {stockInfo.longBusinessSummary && (
               <div className="flex-[1]">
-                <h4 className="text-base font-semibold mb-1">About</h4>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {(() => {
-                  const summary = stockInfo.longBusinessSummary;
-                  const first200 = summary.slice(0, 300);
-                  const lastPeriodIdx = first200.lastIndexOf(".");
-                  
-                  // If a period is found, cut up to and include it
-                  if (lastPeriodIdx !== -1) {
-                    return first200.slice(0, lastPeriodIdx + 1);
-                  }
+                <div className="mb-1 flex items-baseline">
+                  <h4 className="text-base font-semibold">About</h4>
+                  <span className="ml-2 text-sm text-gray-800 font-normal">
+                    [{stockInfo.tjiIndustry?.replace(/([a-z])([A-Z])/g, '$1 $2')}]
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  {(() => {
+                    const summary = stockInfo.longBusinessSummary;
+                    const first200 = summary.slice(0, 300);
+                    const lastPeriodIdx = first200.lastIndexOf(".");
+                    
+                    // If a period is found, cut up to and include it
+                    if (lastPeriodIdx !== -1) {
+                      return first200.slice(0, lastPeriodIdx + 1);
+                    }
 
-                  // Fallback: if no period in first 200 chars, return entire first sentence
-                  const firstSentenceEnd = summary.indexOf(".");
-                  return firstSentenceEnd !== -1 ? summary.slice(0, firstSentenceEnd + 1) : summary;
-                })()}
-              </p>
+                    // Fallback: if no period in first 200 chars, return entire first sentence
+                    const firstSentenceEnd = summary.indexOf(".");
+                    return firstSentenceEnd !== -1 ? summary.slice(0, firstSentenceEnd + 1) : summary;
+                  })()}
+                </p>
               </div>
             )}
           </div>
