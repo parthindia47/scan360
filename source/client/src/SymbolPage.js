@@ -1439,7 +1439,7 @@ function SymbolPage() {
                 <div className="mb-1 flex items-baseline">
                   <h4 className="text-base font-semibold">About</h4>
                   <span className="ml-2 text-sm text-gray-800 font-normal">
-                    [{stockInfo.tjiIndustry?.replace(/([a-z])([A-Z])/g, '$1 $2')}]
+                    [Sector : {stockInfo.tjiIndustry?.replace(/([a-z])([A-Z])/g, '$1 $2')}]
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 leading-relaxed">

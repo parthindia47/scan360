@@ -4060,7 +4060,7 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
                 to_date = latest_entry.get("toDate")
                 broad_cast_date = latest_entry.get("broadCastDate")
 
-                logger1.info(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
+                logger1.info(f"-> Using entry for {to_date} (broadcast: {broad_cast_date})")
 
                 local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
                 json_obj = nse_xbrl_to_json(local_xml_path)
@@ -4090,13 +4090,85 @@ def fetchNseResults(nseStockList, period="Quarterly", resultType="consolidated",
         else:
             logger1.warning(f"No data found for {symbol}")
 
+
+def quarter_window(anchor=None, prev=2, next=1, include_current=False, fmt="DD-MMM-YYYY"):
+    """
+    Return a list of quarter-end dates around an anchor date.
+
+    Args:
+        anchor (datetime.date | str | None): The anchor date. If None, uses today().
+            If str, accepts 'YYYY-MM-DD' or 'DD-MMM-YYYY' (month case-insensitive).
+        prev (int): How many previous quarter-ends to include.
+        next (int): How many next quarter-ends to include.
+        include_current (bool): Whether to include the current quarter-end.
+        fmt (str): 'DD-MMM-YYYY' (default) or 'YYYY-MM-DD'.
+
+    Returns:
+        list[str]: Quarter-end dates in chronological order.
+    """
+    # ---- helpers (kept inside for a single drop-in function) ----
+    MON = {m.lower(): i for i, m in enumerate(
+        ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], 1)}
+    QEND_DAY = {3:31, 6:30, 9:30, 12:31}
+
+    def parse_date(x):
+        if x is None:
+            return date.today()
+        if isinstance(x, date):
+            return x
+        s = str(x).strip()
+        # Try ISO
+        try:
+            y, m, d = map(int, s.split("-"))
+            if y > 31:  # looks like YYYY-MM-DD
+                return date(y, m, d)
+        except Exception:
+            pass
+        # Try DD-MMM-YYYY
+        dd, mmm, yyyy = s.split("-")
+        return date(int(yyyy), MON[mmm[:3].lower()], int(dd))
+
+    def format_date(d):
+        if fmt.upper() == "YYYY-MM-DD":
+            return f"{d.year:04d}-{d.month:02d}-{d.day:02d}"
+        # default: DD-MMM-YYYY
+        return f"{d.day:02d}-{d.strftime('%b')}-{d.year}"
+
+    def quarter_end_for(d):
+        q_end_month = ((d.month - 1) // 3 + 1) * 3
+        return date(d.year, q_end_month, QEND_DAY[q_end_month])
+
+    def shift_quarter_end(qend, delta_quarters):
+        m = qend.month + 3 * delta_quarters
+        y = qend.year + (m - 1) // 12
+        m = (m - 1) % 12 + 1
+        return date(y, m, QEND_DAY[m])
+
+    # ---- core logic ----
+    a = parse_date(anchor)
+    q0 = quarter_end_for(a)
+
+    out = []
+    # previous in chronological order
+    prev_list = [shift_quarter_end(q0, -k) for k in range(prev, 0, -1)]
+    out.extend(prev_list)
+
+    if include_current:
+        out.append(q0)
+
+    next_list = [shift_quarter_end(q0, k) for k in range(1, next + 1)]
+    out.extend(next_list)
+
+    return [format_date(d) for d in out]
+
 '''
 integarated filings always show quaterly results
 # dummyList = [{"SYMBOL":"BAJAJCON"}]
 "Standalone" / "Consolidated"
-'''        
+'''       
 def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated", cookies=None, delaySec=8):
-    result_date_list = ["31-Mar-2025", "30-Jun-2025", "30-Sep-2025", "31-Dec-2025"]
+    # result_date_list = ["31-Mar-2025", "30-Jun-2025", "30-Sep-2025", "31-Dec-2025"]
+    result_date_list = quarter_window(anchor=None, prev=3, next=0, include_current=False)
 
     for idx, obj in enumerate(nseStockList):
         symbol = obj["SYMBOL"]
@@ -4126,7 +4198,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
                 cookies=cookies
             )
 
-            # 🛡 Ensure data is a DataFrame
+            # Ensure data is a DataFrame
             if not isinstance(data, pd.DataFrame) or data.empty:
                 logger1.warning(f"No valid data returned for {symbol}. Skipping.")
                 continue
@@ -4167,7 +4239,7 @@ def syncUpNseResults(nseStockList, period="Quarterly", resultType="consolidated"
                 to_date = matching_entry.get("qe_Date")
                 broad_cast_date = matching_entry.get("creation_Date")
 
-                logger1.info(f"→ Using entry for {to_date} (broadcast: {broad_cast_date})")
+                logger1.info(f"-> Using entry for {to_date} (broadcast: {broad_cast_date})")
                 local_xml_path = save_xml_from_url(xbrl_url, save_dir=csv_dir)
                 json_obj = nse_xbrl_to_json(local_xml_path)
 
@@ -4591,33 +4663,34 @@ def update_percentage_to_csvs():
 cookies_local = getNseCookies()
 nseStockList = getAllNseSymbols(local=False)
 
-# Fetch any new symbol from yahoo with partial True
-fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
+# # Fetch any new symbol from yahoo with partial True
+# fetchYFinStockInfo(nseStockList, delay=5, partial=True, exchange="NSE")
 
-# Fetch NSE Candles
-syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
+# # Fetch NSE Candles
+# syncUpYFinTickerCandles(nseStockList,symbolType="NSE", delaySec=7, useNseBhavCopy=True)
 
-# Fetch Commodities Candles
-commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
-syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
+# # Fetch Commodities Candles
+# commodityNseList = getJsonFromCsvForSymbols(symbolType="COMMODITY_NSE",local=True)
+# syncUpNseCommodity(commodityNseList, delaySec=6, useNseBhavCopy=True, cookies=cookies_local)
 
-# Fetch Other Candles From Yahoo
-syncUpYahooFinOtherSymbols()
+# # Fetch Other Candles From Yahoo
+# syncUpYahooFinOtherSymbols()
 
-# Fetch ncdex commodity prices
-ncdex.fetch_all_ncdex_commodities()
+# # Fetch ncdex commodity prices
+# ncdex.fetch_all_ncdex_commodities()
 
-# Fetch NSE Fillings and results
-syncUpAllNseFillings(cookies=cookies_local)
-integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=10)
-syncUpNseResults(integratedResultsSymbolList, resultType="consolidated", cookies=cookies_local)
-syncUpNseResults(integratedResultsSymbolList, resultType="standalone", cookies=cookies_local)
+# # Fetch NSE Fillings and results
+# syncUpAllNseFillings(cookies=cookies_local)
+# integratedResultsSymbolList = get_financial_result_symbols(urlType="integratedResults", days=10)
+
+syncUpNseResults(nseStockList, resultType="consolidated", cookies=cookies_local)
+syncUpNseResults(nseStockList, resultType="standalone", cookies=cookies_local)
 
 # Finally recalculate details
 recalculateYFinStockInfo(useNseBhavCopy=True)
 
-update_percentage_to_csvs()
-create_individual_symbol_files_from_csvs()
+# update_percentage_to_csvs()
+# create_individual_symbol_files_from_csvs()
 
 # **************************************************************************
 
