@@ -116,6 +116,7 @@ function Results() {
         revYY: pct(revCurr, revPrevY),
         patQQ: pct(patCurr, patPrevQ),
         patYY: pct(patCurr, patPrevY),
+        change: pct(row.currentPrice, row.previousClose),
       };
     })
 
