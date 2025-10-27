@@ -13,6 +13,45 @@ function Dashboard() {
   const [asOfInput, setAsOfInput] = useState(''); // html date input
   const TIMEFRAMES = ['vs52WH','1D','1W','1M','3M','6M','1Y'];
 
+const makeInitialFilters = () => ({
+  vs52WH: { op: '>', value: '' },
+  '1D':   { op: '>', value: '' },
+  '1W':   { op: '>', value: '' },
+  '1M':   { op: '>', value: '' },
+  '3M':   { op: '>', value: '' },
+  '6M':   { op: '>', value: '' },
+  '1Y':   { op: '>', value: '' },
+});
+
+const countFiltered = (stocks) => {
+  return stocks.filter(stockPassesFilters).length;
+};
+
+// active filters (used for filtering the list)
+const [filters, setFilters] = useState(makeInitialFilters());
+
+// drafts (UI inputs; only copied into `filters` when Apply is clicked)
+const [filterDrafts, setFilterDrafts] = useState(makeInitialFilters());
+
+  // helper: compare number with op + ref
+  const cmp = (num, op, ref) => {
+    if (ref === '' || ref === null || Number.isNaN(ref)) return true; // no filter
+    return op === '>' ? num > ref : num < ref;
+  };
+
+  // helper: does a stock pass all active filters?
+  const stockPassesFilters = (stock) => {
+    for (const k of TIMEFRAMES) {
+      const { op, value } = filters[k] || {};
+      if (value === '' || value === null) continue; // inactive
+      const n = toNum(stock?.dummyData?.[k]);       // "12.34%" -> 12.34
+      const ref = parseFloat(value);
+      if (n == null || Number.isNaN(ref)) return false;
+      if (!cmp(n, op || '>', ref)) return false;
+    }
+    return true;
+  };
+
   const fetchIndustries = async (asOfStr = '') => {
     try {
       setLoading(true);
@@ -229,9 +268,14 @@ function Dashboard() {
   // parse "12.34%" or "12.34" -> number, else null
   const toNum = (v) => {
     if (v == null) return null;
-    const s = String(v).trim();
-    const n = parseFloat(s.endsWith('%') ? s.slice(0, -1) : s);
-    return Number.isNaN(n) ? null : n;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+
+    // Normalize: unicode minus → ASCII hyphen, remove commas
+    const s = String(v).trim().replace(/\u2212/g, '-').replace(/,/g, '');
+
+    // Grab the first signed number anywhere in the string
+    const m = s.match(/-?\d+(\.\d+)?/);
+    return m ? parseFloat(m[0]) : null;
   };
 
   // All-symbols counts for the active type (>= 0 is positive)
@@ -270,10 +314,15 @@ function Dashboard() {
 
 
   const industryDataList = Object.values(groupedByType[activeType] || {});
-  const totalSymbols = new Set(
-    industryDataList.flatMap(industryData => industryData.stocks.map(stock => stock.symbol))
-  ).size;
   const lastUpdateDate = industryDataList[0]?.stocks?.[0]?.lastUpdateDate || null;
+
+  const totalSymbols = new Set(
+    industryDataList.flatMap(industryData =>
+      industryData.stocks
+        .filter(stockPassesFilters)   // ✅ only include visible stocks
+        .map(stock => stock.symbol)
+    )
+  ).size;
 
   return (
     <div className="p-6 mb-4">
@@ -314,7 +363,7 @@ function Dashboard() {
           {/* Info + Buttons */}
           <div className="text-sm text-gray-500 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
             <div className="text-gray-400">
-              Updates Daily, last updated - {formatDate(lastUpdateDate)}. Tracked Symbols - {totalSymbols}
+              Updates Daily, last updated - {formatDate(lastUpdateDate)}. Total Symbols - {totalSymbols}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -421,10 +470,85 @@ function Dashboard() {
                       {field}
                       {sortConfigs[activeType]?.field === field &&
                         (sortConfigs[activeType].direction === 'asc' ? ' ↑' : ' ↓')}
-                      <div className="text-sm">
-                        <span className="text-green-600">+{globalCounts[field].pos}</span>
-                        {' / '}
-                        <span className="text-red-600">-{globalCounts[field].neg}</span>
+                        <div className="text-xs">
+                          <span className="text-green-600">+{globalCounts[field].pos}</span>
+                          {' / '}
+                          <span className="text-red-600">-{globalCounts[field].neg}</span>
+                        </div>
+
+                      <div
+                        className="mt-1 flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <select
+                          className="border rounded px-1 py-0.5 text-xs"
+                          value={filterDrafts[field]?.op ?? '>'}
+                          onChange={(e) =>
+                            setFilterDrafts(prev => ({
+                              ...prev,
+                              [field]: { ...(prev[field]||{}), op: e.target.value }
+                            }))
+                          }
+                        >
+                          <option value=">">&gt;</option>
+                          <option value="<">&lt;</option>
+                        </select>
+
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="%"
+                          className="w-10 border rounded px-1 py-0.5 text-xs"
+                          value={filterDrafts[field]?.value ?? ''}
+                          onChange={(e) =>
+                            setFilterDrafts(prev => ({
+                              ...prev,
+                              [field]: { ...(prev[field] || {}), value: e.target.value }
+                            }))
+                          }
+                        />
+
+                      </div>
+
+                      <div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFilters(prev => ({
+                              ...prev,
+                              [field]: {
+                                ...(prev[field] || { op: '>', value: '' }),
+                                ...(filterDrafts[field] || {})
+                              }
+                            }));
+                          }}
+                          className={`px-2 py-1 text-xs border rounded text-white transition-colors
+                            ${filters[field]?.value
+                              ? 'bg-blue-700 hover:bg-blue-700' // active state stays blue-700
+                              : 'bg-blue-400 hover:bg-blue-700'} // inactive default
+                          `}
+                          title="Apply this column’s filter"
+                        >
+                          ✓
+                        </button>
+
+                        <button
+                          className="px-2 py-1 text-xs border rounded bg-red-400 text-white hover:bg-red-700"
+                          title="Clear this column’s filter"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFilterDrafts(prev => ({
+                              ...prev,
+                              [field]: { op: '>', value: '' }  // reset draft
+                            }));
+                            setFilters(prev => ({
+                              ...prev,
+                              [field]: { op: '>', value: '' }  // reset active
+                            }));
+                          }}
+                        >
+                          ✕
+                        </button>
                       </div>
                     </th>
                   ))}
@@ -453,8 +577,8 @@ function Dashboard() {
                           onClick={() => toggleExpand(industry)}
                         >
                           {expanded?.[activeType]?.[industry] ? '− ' : '+ '}
-                          {formatIndustryName(industry)} 
-                          ({data.stocks.length})
+                          {formatIndustryName(industry)}{" "}
+                          ({countFiltered(data.stocks)}/{data.stocks.length})
 
                           {/* Per-sector +/– counts */}
                           {/* <span className="ml-1 text-[11px] text-gray-600">
@@ -475,6 +599,7 @@ function Dashboard() {
 
                     {expanded?.[activeType]?.[industry] &&
                       [...data.stocks]
+                        .filter(stockPassesFilters)   // ← add this line
                         .sort((a, b) => {
                           const field = sortConfigs[activeType]?.field || "1D";
                           const valA = parseFloat(a.dummyData[field]) || 0;
