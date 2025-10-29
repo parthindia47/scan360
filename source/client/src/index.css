@@ -65,3 +65,12 @@ svg.recharts-surface:focus-visible {
   -webkit-tap-highlight-color: transparent;
 }
 
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield; /* for Firefox */
+}
+

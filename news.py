@@ -686,6 +686,7 @@ def fetch_stock_rss_news_feeds(
     # Define blocked source URLs
     blocked_sources = [
         "https://www.earlytimes.in",
+        "https://nchmf.gov.vn"
     ]
 
     # Resolve columns case-insensitively
@@ -807,6 +808,9 @@ def fetch_stock_rss_news_feeds(
                                                 ascending=[True, True] if "fetched_at" in combined.columns else [True])
                 combined = combined.drop(columns=["_order"])
 
+            # remove when not needed.
+            combined = combined[~combined["source"].isin(blocked_sources)].copy()
+            
             combined.to_csv(out_path, index=False, encoding="utf-8-sig")
             print(f"[OK] Updated: {out_path} (rows={len(combined)})")
 

@@ -498,7 +498,7 @@ const [filterDrafts, setFilterDrafts] = useState(makeInitialFilters());
                           type="number"
                           step="0.01"
                           placeholder="%"
-                          className="w-10 border rounded px-1 py-0.5 text-xs"
+                          className="w-8 border rounded px-1 py-0.5 text-xs"
                           value={filterDrafts[field]?.value ?? ''}
                           onChange={(e) =>
                             setFilterDrafts(prev => ({
@@ -524,7 +524,7 @@ const [filterDrafts, setFilterDrafts] = useState(makeInitialFilters());
                           }}
                           className={`px-2 py-1 text-xs border rounded text-white transition-colors
                             ${filters[field]?.value
-                              ? 'bg-blue-700 hover:bg-blue-700' // active state stays blue-700
+                              ? 'bg-blue-800 hover:bg-blue-700' // active state stays blue-700
                               : 'bg-blue-400 hover:bg-blue-700'} // inactive default
                           `}
                           title="Apply this column’s filter"
